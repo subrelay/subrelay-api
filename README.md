@@ -23,16 +23,16 @@ pgAdmin URL: http://localhost:5050
 
 ## Generate new migration
 ```
-yarn run prisma:migrate -name "your migration name"
+npm run typeorm migration:generate ./src/migration/{your_migration_name}
 ```
 
-## Check status
+## Run migration
 ```
-yarn run prisma:status
+npm run typeorm migration:run
 ```
 
-## Generate Prisma client
+## Revert migration
 
 ```
-yarn run prisma:migrate
+npm run typeorm migration:revert
 ```

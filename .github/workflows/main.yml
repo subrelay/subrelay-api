@@ -1,9 +1,14 @@
 name: Main
+
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
+    tags:
+      - v[0-9]*
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
+  release:
+    types: [ created ]
 
 jobs:
   lint:
@@ -15,7 +20,7 @@ jobs:
         with:
           node-version: 18.x
       - run: npm ci
-      - run: npm lint
+      - run: npm run lint
   build:
     runs-on: ubuntu-latest
     steps:
