@@ -13,7 +13,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get('HOST'),
+        host: configService.get('DB_HOST'),
         port: configService.get('DB_PORT'),
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
@@ -21,6 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         entities: ['dist/**/*.entity.js'],
         synchronize: false,
         migrationsRun: true,
+        logging: true,
       }),
     }),
     UserModule,
