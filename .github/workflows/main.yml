@@ -31,8 +31,9 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: npm run build
-  deploy:
+  deploy-stg:
     needs: [build, lint]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
     - name: SSH and deploy node app
