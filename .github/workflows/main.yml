@@ -31,3 +31,22 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: npm run build
+  deploy:
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    steps:
+    - name: SSH and deploy node app
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd ~/subrelay-api
+          git pull origin main
+          export NVM_DIR=~/.nvm
+          source ~/.nvm/nvm.sh
+          npm install
+          npm run build
+          npm run typeorm migration:run
+          pm2 restart api-dev
