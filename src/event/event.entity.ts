@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { ObjectSchema } from '../substrate/substrate.data';
+import { GeneralTypeEnum, ObjectSchema } from '../substrate/substrate.data';
 
 @Entity()
 export class Event {
@@ -34,4 +34,14 @@ export class Event {
   @ManyToOne(() => Chain, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'chainUuid', referencedColumnName: 'uuid' }])
   chain: Chain;
+}
+
+export class EventDetail extends Event {
+  fields: SupportedFilterField[];
+}
+
+export class SupportedFilterField {
+  name: string;
+  description?: string;
+  type: GeneralTypeEnum;
 }

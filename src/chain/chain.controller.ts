@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { TaskStatus } from 'src/common/task.type';
 import { GetEventsQueryParams } from 'src/event/event.dto';
-import { Event } from 'src/event/event.entity';
+import { Event, EventDetail } from 'src/event/event.entity';
 import { EventService } from 'src/event/event.service';
 import { CreateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
@@ -55,7 +55,7 @@ export class ChainController {
   async getEvent(
     @Param('uuid') uuid: string,
     @Param('eventId', ParseIntPipe) eventId: number,
-  ): Promise<Event> {
+  ): Promise<EventDetail> {
     if (!(await this.chainService.chainExist(uuid))) {
       throw new NotFoundException('Chain not found');
     }

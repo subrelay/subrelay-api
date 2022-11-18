@@ -6,7 +6,6 @@ import { Chain } from './chain.entity';
 import { SubstrateService } from 'src/substrate/substrate.service';
 import { ChainInfo } from 'src/substrate/substrate.data';
 import { TaskOutput, TaskStatus } from 'src/common/task.type';
-import { writeFileSync } from 'fs';
 import { EventService } from 'src/event/event.service';
 
 @Injectable()
@@ -57,8 +56,6 @@ export class ChainService {
     });
 
     await this.eventService.createEvents(chainInfo.events, chain.uuid);
-
-    writeFileSync('events.json', JSON.stringify(chainInfo.events));
 
     return {
       status: TaskStatus.SUCCESS,

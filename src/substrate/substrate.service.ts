@@ -28,7 +28,7 @@ export class SubstrateService {
     const allTypes = metadata.asLatest.lookup.types;
     const events: EventDef[] = this.parseEventsDef(allTypes, apiAt.events);
 
-    return {
+    const chainInfo = {
       chainId: apiAt.runtimeVersion.specName.toString(),
       chainTokens: apiAt.registry.chainTokens,
       chainDecimals: apiAt.registry.chainDecimals,
@@ -36,6 +36,17 @@ export class SubstrateService {
       metadataVersion: metadata.version,
       events,
     };
+
+    api.disconnect();
+    return chainInfo;
+  }
+
+  isPrimitiveType(type: string) {
+    return [
+      GeneralTypeEnum.BOOL as string,
+      GeneralTypeEnum.NUMBER as string,
+      GeneralTypeEnum.STRING as string,
+    ].includes(type);
   }
 
   private parseEventsDef(
