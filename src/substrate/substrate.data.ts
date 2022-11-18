@@ -1,46 +1,47 @@
-import { PortableType } from '@polkadot/types/interfaces';
-import { CreateChainRequest } from 'src/chain/chain.dto';
-import { Chain } from 'src/chain/chain.entity';
-
 export class ChainInfo {
   chainId: string;
   chainTokens: string[];
   chainDecimals: number[];
   runtimeVersion: string;
   metadataVersion: number;
-  types: PortableType[];
   events: EventDef[];
-  errors: ErrorDef[];
 }
 
 export enum GeneralTypeEnum {
-  OBJECT,
-  ARRAY,
-  NUMBER,
-  STRING,
-  UNKNOWN,
-  BOOL,
-  TUPLE,
-}
-
-export class FieldDef {
-  name: string;
-  description?: string;
-  typeDef: TypeDef;
-}
-
-export class TypeDef {
-  type: GeneralTypeEnum;
-  originalType?: String;
-  def?: FieldDef[] | TypeDef | TypeDef[];
+  OBJECT = 'object',
+  ARRAY = 'array',
+  NUMBER = 'number',
+  STRING = 'string',
+  UNKNOWN = 'unknown',
+  BOOL = 'boolean',
 }
 
 export class EventDef {
   name: string;
-  fields: FieldDef[];
+  dataSchema: ObjectSchema;
   description?: string;
   pallet: string;
   index: number;
 }
 
+export class PrimitiveSchema {
+  type: GeneralTypeEnum;
+  description?: string;
+}
+
+export class UnknownSchema {
+  type: string;
+  description?: string;
+}
+
+export class ObjectSchema {
+  type: GeneralTypeEnum;
+  description?: string;
+  properties?: {
+    [key: string]: TypeSchema;
+  };
+}
+
 export type ErrorDef = EventDef;
+
+export type TypeSchema = PrimitiveSchema | ObjectSchema | UnknownSchema;

@@ -1,11 +1,12 @@
-import { PortableType } from '@polkadot/types/interfaces';
+import { Event } from '../event/event.entity';
 import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  OneToMany,
+  // OneToMany,
 } from 'typeorm';
-import { ErrorDef } from '../substrate/substrate.data';
 
 export class ChainConfig {
   rpcs: string[];
@@ -37,9 +38,6 @@ export class Chain {
   @Column({ nullable: false, type: 'jsonb' })
   config: ChainConfig;
 
-  // @Column({ nullable: false, type: 'jsonb' })
-  // types: PortableType[];
-
-  // @Column({ nullable: false, type: 'jsonb' })
-  // errors: ErrorDef[];
+  @OneToMany(() => Event, (event) => event.chain, { lazy: true })
+  events: Event[];
 }

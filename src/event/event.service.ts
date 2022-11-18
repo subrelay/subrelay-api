@@ -1,0 +1,78 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EventDef } from 'src/substrate/substrate.data';
+import { Repository } from 'typeorm';
+import { GetEventsQueryParams } from './event.dto';
+import { Event } from './event.entity';
+
+@Injectable()
+export class EventService {
+  constructor(
+    @InjectRepository(Event)
+    private eventRepository: Repository<Event>,
+  ) {}
+
+  async createEvents(events: EventDef[], chainUuid: string) {
+    const createEventsInput: Partial<Event>[] = events.map((event) => ({
+      ...event,
+      chainUuid,
+    }));
+    await this.eventRepository.insert(createEventsInput);
+  }
+
+  getEventByChain(chainUuid: string, eventId: number): Promise<Event> {
+    return this.eventRepository
+      .createQueryBuilder('event')
+      .select([
+        'event.id',
+        'event.name',
+        'event.pallet',
+        'event.index',
+        'event.description',
+        'event."chainUuid"',
+      ])
+      .where('event.id = :eventId', { eventId })
+      .andWhere('event."chainUuid" = :chainUuid', { chainUuid })
+      .getOne();
+  }
+
+  getEventsByChain(
+    chainUuid: string,
+    queryParams: GetEventsQueryParams,
+  ): Promise<Event[]> {
+    let queryBuilder = this.eventRepository
+      .createQueryBuilder('event')
+      .select([
+        'event.id',
+        'event.name',
+        'event.pallet',
+        'event.index',
+        'event.description',
+        'event."chainUuid"',
+      ])
+      .where('event."chainUuid" = :chainUuid', { chainUuid });
+
+    if (queryParams.pallet) {
+      queryBuilder = queryBuilder.andWhere('event.pallet = :pallet', {
+        pallet: queryParams.pallet,
+      });
+    }
+
+    if (queryParams.search) {
+      queryBuilder = queryBuilder.andWhere(
+        '(event.name ILIKE :search OR event.pallet ILIKE :search)',
+        { search: `%${queryParams.search}%` },
+      );
+    }
+
+    const order = queryParams.order || 'name';
+    const sort = queryParams.sort || 'ASC';
+
+    if (queryParams.order && queryParams.offset) {
+      queryBuilder = queryBuilder
+        .limit(queryParams.limit)
+        .offset(queryParams.offset);
+    }
+    return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
+  }
+}

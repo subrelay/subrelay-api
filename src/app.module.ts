@@ -4,8 +4,7 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ChainService } from './chain/chain.service';
-import { ChainController } from './chain/chain.controller';
+import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
 import { SubstrateModule } from './substrate/substrate.module';
 
@@ -29,6 +28,7 @@ import { SubstrateModule } from './substrate/substrate.module';
       }),
     }),
     UserModule,
+    EventModule,
     ChainModule,
     SubstrateModule,
   ],

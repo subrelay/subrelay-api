@@ -5,7 +5,9 @@ import { CreateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
 import { SubstrateService } from 'src/substrate/substrate.service';
 import { ChainInfo } from 'src/substrate/substrate.data';
-import { TaskOutput, TaskStatus } from 'src/common/common.type';
+import { TaskOutput, TaskStatus } from 'src/common/task.type';
+import { writeFileSync } from 'fs';
+import { EventService } from 'src/event/event.service';
 
 @Injectable()
 export class ChainService {
@@ -14,10 +16,24 @@ export class ChainService {
     private chainRepository: Repository<Chain>,
 
     private readonly substrateService: SubstrateService,
+    private readonly eventService: EventService,
   ) {}
 
   getChains(): Promise<Chain[]> {
-    return this.chainRepository.find();
+    return this.chainRepository.find({ loadEagerRelations: false });
+  }
+
+  async chainExist(uuid: string): Promise<boolean> {
+    return (await this.chainRepository.countBy({ uuid })) > 0;
+  }
+
+  getChain(uuid: string): Promise<Chain> {
+    return this.chainRepository.findOne({
+      where: { uuid },
+      relations: {
+        events: true,
+      },
+    });
   }
 
   async createChain(input: CreateChainRequest): Promise<TaskOutput> {
@@ -39,6 +55,10 @@ export class ChainService {
         rpcs: validRpcs,
       },
     });
+
+    await this.eventService.createEvents(chainInfo.events, chain.uuid);
+
+    writeFileSync('events.json', JSON.stringify(chainInfo.events));
 
     return {
       status: TaskStatus.SUCCESS,
@@ -94,7 +114,7 @@ export class ChainService {
 
   private async getChainInfoByRpcs(rpcs: string[]) {
     let chainInfo: ChainInfo;
-    let validRpcs: string[] = [];
+    const validRpcs: string[] = [];
 
     for (const rpc of rpcs) {
       const api = await this.substrateService.createAPI(rpc);

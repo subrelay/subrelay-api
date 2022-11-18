@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsString, IsUrl, MinLength } from 'class-validator';
+import { IsArray, IsNotEmpty, IsString, IsUrl } from 'class-validator';
 
 export class CreateChainRequest {
   @IsNotEmpty()
