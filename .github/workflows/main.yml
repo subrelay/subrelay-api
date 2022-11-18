@@ -33,7 +33,7 @@ jobs:
       - run: npm run build
   deploy-stg:
     needs: [build, lint]
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
     - name: SSH and deploy node app
@@ -44,7 +44,8 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         script: |
           cd ~/subrelay-api
-          git pull origin main
+          git reset --hard
+          git pull origin master
           export NVM_DIR=~/.nvm
           source ~/.nvm/nvm.sh
           npm install
