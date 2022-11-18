@@ -61,7 +61,6 @@ export class ChainController {
     }
 
     const event = await this.eventService.getEventByChain(uuid, eventId);
-    console.log({ event });
 
     if (!event) {
       throw new NotFoundException('Event not found');

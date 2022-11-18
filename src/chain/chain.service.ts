@@ -19,7 +19,10 @@ export class ChainService {
   ) {}
 
   getChains(): Promise<Chain[]> {
-    return this.chainRepository.find({ loadEagerRelations: false });
+    return this.chainRepository.find({
+      loadEagerRelations: false,
+      order: { name: 'ASC' },
+    });
   }
 
   async chainExist(uuid: string): Promise<boolean> {

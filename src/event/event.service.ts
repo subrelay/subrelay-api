@@ -63,7 +63,7 @@ export class EventService {
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(event.name ILIKE :search OR event.pallet ILIKE :search)',
+        '(event.name ILIKE :search OR event.pallet ILIKE :search OR event.description ILIKE :search)',
         { search: `%${queryParams.search}%` },
       );
     }
