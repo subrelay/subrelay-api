@@ -4,6 +4,9 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventModule } from './event/event.module';
+import { ChainModule } from './chain/chain.module';
+import { SubstrateModule } from './substrate/substrate.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
     }),
     UserModule,
+    EventModule,
+    ChainModule,
+    SubstrateModule,
   ],
   controllers: [AppController],
   providers: [AppService],
