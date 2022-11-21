@@ -5,8 +5,8 @@ import { CreateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
 import { SubstrateService } from 'src/substrate/substrate.service';
 import { ChainInfo } from 'src/substrate/substrate.data';
-import { TaskOutput, TaskStatus } from 'src/common/task.type';
 import { EventService } from 'src/event/event.service';
+import { TaskOutput } from 'src/task/type/task.type';
 
 @Injectable()
 export class ChainService {
@@ -61,7 +61,7 @@ export class ChainService {
     await this.eventService.createEvents(chainInfo.events, chain.uuid);
 
     return {
-      status: TaskStatus.SUCCESS,
+      success: true,
       output: chain,
     };
   }
@@ -95,12 +95,12 @@ export class ChainService {
       });
 
       return {
-        status: TaskStatus.SUCCESS,
+        success: true,
         output: chain,
       };
     } else {
       return {
-        status: TaskStatus.FAILED,
+        success: false,
         error: {
           message: 'Latest version',
         },
