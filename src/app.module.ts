@@ -7,6 +7,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
 import { SubstrateModule } from './substrate/substrate.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { SubstrateModule } from './substrate/substrate.module';
     EventModule,
     ChainModule,
     SubstrateModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],

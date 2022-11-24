@@ -9,7 +9,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { TaskStatus } from 'src/common/task.type';
 import { GetEventsQueryParams } from 'src/event/event.dto';
 import { Event, EventDetail } from 'src/event/event.entity';
 import { EventService } from 'src/event/event.service';
@@ -32,7 +31,7 @@ export class ChainController {
   @Post()
   async createChain(@Body() input: CreateChainRequest): Promise<Chain> {
     const taskResult = await this.chainService.createChain(input);
-    if (taskResult.status === TaskStatus.SUCCESS) {
+    if (taskResult.success) {
       return taskResult.output;
     } else {
       throw new InternalServerErrorException(taskResult.error.message);
