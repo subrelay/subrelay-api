@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import {
   IsArray,
   IsEnum,
@@ -7,39 +6,31 @@ import {
   IsString,
   IsUrl,
   ValidateNested,
-  validateSync,
 } from 'class-validator';
+import { AbsConfig, TaskOutput } from './task.type';
 
 export enum NotificationChannel {
   WEBHOOK = 'webhook',
 }
 
-export class NotificationTaskConfig {
+export class NotificationTaskConfig extends AbsConfig {
   @IsEnum(NotificationChannel)
   channel: NotificationChannel;
 
-  private _config: WebhookConfig; // Can not using ValidateNested here
+  config: WebhookConfig; // Can not using ValidateNested here
 
-  public set config(obj: any) {
-    const config = new WebhookConfig(obj);
+  validate(): TaskOutput {
+    const result = super.validate();
 
-    const errors = validateSync(config);
-
-    if (errors.length !== 0) {
-      const message = errors
-        .flatMap((e) => Object.values(e.constraints))
-        .join('. ');
-      throw new BadRequestException(message);
+    if (!result.success) {
+      return result;
     }
-    this._config = obj;
-  }
 
-  public get config(): WebhookConfig {
-    return this._config;
+    return new WebhookConfig(this.config).validate();
   }
 }
 
-export class WebhookConfig {
+export class WebhookConfig extends AbsConfig {
   @IsArray()
   @IsOptional()
   @ValidateNested()
@@ -48,11 +39,6 @@ export class WebhookConfig {
   @IsNotEmpty()
   @IsUrl()
   url: string;
-
-  constructor(obj: any) {
-    this.url = obj?.url;
-    this.headers = obj?.headers;
-  }
 }
 
 export class WebhookHeader {

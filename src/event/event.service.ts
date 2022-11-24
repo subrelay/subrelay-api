@@ -102,7 +102,7 @@ export class EventService {
 
     const eventFields = [
       {
-        name: 'status',
+        name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
       },

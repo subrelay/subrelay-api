@@ -1,4 +1,5 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { mapValues, startCase } from 'lodash';
 import { ProcessTaskRequest } from './task.dto';
 import { TaskService } from './task.service';
 import { TaskOutput } from './type/task.type';
@@ -18,5 +19,16 @@ export class TaskController {
         type: input.type,
       },
     });
+  }
+
+  @Get('/operators')
+  async getTriggerOperators() {
+    const mapping = this.taskService.getOperatorMapping();
+    return mapValues(mapping, (operatorList) =>
+      operatorList.map((operator) => ({
+        value: operator,
+        name: startCase(operator).toLowerCase(),
+      })),
+    );
   }
 }

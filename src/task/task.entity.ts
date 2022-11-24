@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { TaskConfig, TaskType } from './type/task.type';
+import { AbsConfig, TaskType } from './type/task.type';
 
 @Entity()
 export class Task {
@@ -16,5 +16,5 @@ export class Task {
   dependOn?: number;
 
   @Column({ nullable: false, type: 'jsonb' })
-  config: TaskConfig;
+  config: AbsConfig;
 }

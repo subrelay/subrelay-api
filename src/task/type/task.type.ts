@@ -1,14 +1,4 @@
-import {
-  IsEnum,
-  isInstance,
-  IsInstance,
-  IsNotEmpty,
-  IsString,
-  validateSync,
-  ValidationError,
-} from 'class-validator';
-import { NotificationTaskConfig, WebhookConfig } from './notification.type';
-import { TriggerTaskConfig } from './trigger.type';
+import { validateSync } from 'class-validator';
 
 export enum TaskType {
   NOTIFICATION = 'notification',
@@ -23,16 +13,28 @@ export class TaskOutput {
   output?: any;
 }
 
-export type TaskConfig = NotificationTaskConfig | TriggerTaskConfig;
-
-export function getConfigType(type: TaskType): Function {
-  if (type === TaskType.NOTIFICATION) {
-    return NotificationTaskConfig;
+export abstract class AbsConfig {
+  constructor(obj: any) {
+    Object.assign(this, obj);
   }
 
-  if (type === TaskType.TRIGGER) {
-    return TriggerTaskConfig;
-  }
+  validate(): TaskOutput {
+    const errors = validateSync(this);
+    if (errors.length > 0) {
+      return {
+        success: false,
+        error: {
+          message: errors
+            .map((e) => Object.values(e.constraints).join('. '))
+            .join('. '),
+        },
+      };
+    }
 
-  return null;
+    return {
+      success: true,
+    };
+  }
 }
+
+export class TaskValidationError extends Error {}
