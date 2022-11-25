@@ -1,5 +1,5 @@
 import { IsEnum, ValidateNested } from 'class-validator';
-import { Task } from './task.entity';
+import { Task } from './entity/task.entity';
 import { AbsConfig, TaskType } from './type/task.type';
 import { IsTaskConfig } from './validator/task-config.validator';
 
