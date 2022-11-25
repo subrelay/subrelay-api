@@ -1,6 +1,7 @@
 import {
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateIf,
@@ -42,9 +43,8 @@ export class TriggerCondition {
 }
 
 export class TriggerTaskConfig extends AbsConfig {
-  @IsString()
-  @IsNotEmpty()
-  eventId: string;
+  @IsNumber()
+  eventId: number;
 
   @IsTriggerConditions()
   @IsOptional()
