@@ -13,8 +13,6 @@ export class TaskController {
     return this.taskService.processTask({
       data: input.data,
       task: {
-        id: 1, // hardcode
-        name: '1',
         config: input.config,
         type: input.type,
       },

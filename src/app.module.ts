@@ -8,7 +8,6 @@ import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
 import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
-import { WorkflowController } from './workflow/workflow.controller';
 import { WorkflowModule } from './workflow/workflow.module';
 
 @Module({
@@ -37,7 +36,7 @@ import { WorkflowModule } from './workflow/workflow.module';
     TaskModule,
     WorkflowModule,
   ],
-  controllers: [AppController, WorkflowController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

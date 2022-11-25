@@ -1,5 +1,4 @@
-import { WorkflowVerson } from 'src/workflow/entity/workflow-version.entity';
-import { Workflow } from 'src/workflow/entity/workflow.entity';
+import { WorkflowVersion } from '../../workflow/entity/workflow-version.entity';
 import {
   Column,
   Entity,
@@ -26,9 +25,9 @@ export class Task {
   @Column({ nullable: false, type: 'jsonb' })
   config: AbsConfig;
 
-  @ManyToOne(() => WorkflowVerson, { onDelete: 'CASCADE' })
+  @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])
-  workflowVersion: WorkflowVerson;
+  workflowVersion: WorkflowVersion;
 
   @Column({ name: 'workflowVersionId' })
   workflowVersionId: number;

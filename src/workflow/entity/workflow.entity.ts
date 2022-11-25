@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
+import { Chain } from 'src/chain/chain.entity';
 
 @Entity()
 export class Workflow {
@@ -26,4 +27,7 @@ export class Workflow {
 
   @Column({ name: 'userId' })
   userId: number;
+
+  chain?: Chain;
+  updatedAt?: string;
 }

@@ -10,11 +10,17 @@ export class ProcessTaskRequest {
   @IsTaskConfig()
   config: AbsConfig;
 
-  @IsEnum(TaskType)
+  @IsEnum(TaskType, {
+    message: `Invalid status. Possible values: ${Object.values(TaskType).join(
+      ', ',
+    )}`,
+  })
   type: TaskType;
 }
 
+type TaskInput = Pick<Task, 'type' | 'config' | 'dependOn'>;
+
 export class ProcessTaskInput {
-  task: Task;
+  task: TaskInput;
   data: any; // TODO it shoul be workflow
 }

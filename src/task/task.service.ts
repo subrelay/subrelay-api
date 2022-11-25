@@ -3,12 +3,12 @@ import {
   NotificationChannel,
   NotificationTaskConfig,
 } from 'src/task/type/notification.type';
-import { ProcessTaskInput } from './task.dto';
 import { get, isEmpty, keyBy, mapValues } from 'lodash';
 import { TaskOutput, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { GeneralTypeEnum } from 'src/substrate/substrate.data';
+import { ProcessTaskInput } from './task.dto';
 
 @Injectable()
 export class TaskService {
@@ -146,6 +146,8 @@ export class TaskService {
         return (acctualValue as number) < (expectedValue as number);
       case FilterOperator.LESSTHANEQUAL:
         return (acctualValue as number) <= (expectedValue as number);
+      case FilterOperator.EQUAL:
+        return acctualValue == expectedValue;
       default:
         return false;
     }

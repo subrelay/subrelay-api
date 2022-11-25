@@ -10,9 +10,12 @@ import {
 import { Workflow } from './workflow.entity';
 
 @Entity({ name: 'workflow_version' })
-export class WorkflowVerson {
+export class WorkflowVersion {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ type: 'text' })
+  name: string;
 
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: string;
