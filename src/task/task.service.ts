@@ -9,10 +9,23 @@ import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { ProcessTaskInput } from './task.dto';
+import { Task } from './entity/task.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class TaskService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    @InjectRepository(Task)
+    private taskRepository: Repository<Task>,
+
+    private readonly httpService: HttpService,
+  ) {}
+
+  async createTask(input: Partial<Task>): Promise<number> {
+    const result = await this.taskRepository.save(input);
+    return result.id;
+  }
   async processTask(input: ProcessTaskInput): Promise<TaskOutput> {
     let result: TaskOutput = null;
     if (input.task.type === TaskType.NOTIFICATION) {

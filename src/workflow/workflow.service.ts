@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { keyBy, keysIn, mapValues } from 'lodash';
+import { findIndex, get, orderBy } from 'lodash';
 import { Chain } from 'src/chain/chain.entity';
 import { Task } from 'src/task/entity/task.entity';
 import { TaskService } from 'src/task/task.service';
@@ -25,9 +25,20 @@ export class WorkflowService {
     private readonly taskService: TaskService,
   ) {}
 
-  async createWorkflow(input: CreateWorkFlowRequest, userId: number) {
-    const tasksObject = mapValues(keyBy(input.tasks, 'name'));
+  async createWorkflow(
+    input: CreateWorkFlowRequest,
+    userId: number,
+  ): Promise<number> {
+    const tasksInput = orderBy(
+      input.tasks.map((task) => ({
+        ...task,
+        dependOnIndex: findIndex(input.tasks, { name: task.dependOnName }),
+      })),
+      ['dependOnIndex'],
+      ['asc'],
+    );
     let err;
+    let workflowId;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -36,8 +47,10 @@ export class WorkflowService {
     try {
       const workflow = await queryRunner.manager.getRepository(Workflow).save({
         userId,
-        status: WorkflowStatus.INITIAL,
+        status: WorkflowStatus.RUNNING,
       });
+
+      console.log({ workflow });
 
       const workflowVersion = await queryRunner.manager
         .getRepository(WorkflowVersion)
@@ -47,9 +60,33 @@ export class WorkflowService {
           chainUuid: input.chainUuid,
         });
 
-      // create task
+      console.log({ workflowVersion });
+
+      const tasksObject: { [key: string]: number } = {};
+      const taskRepo = queryRunner.manager.getRepository(Task);
+      for (const taskInput of tasksInput) {
+        console.log({ tasksObject });
+
+        console.log({
+          name: taskInput.name,
+          type: taskInput.type,
+          config: taskInput.config,
+          dependOn: get(tasksObject, taskInput.dependOnName),
+          workflowVersionId: workflowVersion.id,
+        });
+
+        const { id: taskId } = await taskRepo.save({
+          name: taskInput.name,
+          type: taskInput.type,
+          config: taskInput.config,
+          dependOn: get(tasksObject, taskInput.dependOnName),
+          workflowVersionId: workflowVersion.id,
+        });
+        Object.assign(tasksObject, { [taskInput.name]: taskId });
+      }
 
       await queryRunner.commitTransaction();
+      workflowId = workflow.id;
     } catch (err) {
       err = err;
       console.log('Failed to create workflow');
@@ -61,10 +98,22 @@ export class WorkflowService {
     if (err) {
       throw err;
     }
+
+    return workflowId;
   }
 
-  async getWorkflow(id: number, userId: number) {
-    return this.workflowRepository
+  getWorkflowSummary(id: number, userId: number): Promise<Workflow> {
+    return this.workflowRepository.findOneBy({ id, userId });
+  }
+
+  async updateWorkflowStatus(id: number, status: WorkflowStatus) {
+    await this.workflowRepository.update({ id }, { status });
+  }
+
+  async getWorkflow(id: number, userId: number): Promise<Workflow> {
+    console.log(await this.workflowRepository.find());
+
+    return await this.workflowRepository
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
       .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
@@ -72,15 +121,19 @@ export class WorkflowService {
       .select([
         'w.id AS id',
         'wv.name AS name',
-        'w."createdAt" AS "createdAt',
+        'w."createdAt" AS "createdAt"',
         'wv."createdAt" AS "updatedAt"',
         'w.status AS status',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name) AS chain`,
-        `JSONB_BUILD_OBJECT('id', t.id, 'type', t.type, 'name', t.name, 'config', t.config, 'dependOn', t."dependOn") AS tasks`,
+        `JSONB_BUILD_OBJECT('uuid', c."uuid", 'name', c.name) AS chain`,
+        `ARRAY_AGG(JSONB_BUILD_OBJECT('id', t.id, 'type', t.type, 'name', t.name, 'config', t.config, 'dependOn', t."dependOn")) AS tasks`,
       ])
-      .where({ id, userId })
-      .andWhere('w.status != :status', { status: WorkflowStatus.INITIAL })
-      .getOne();
+      .where('w.id = :id', { id })
+      .andWhere('w."userId" = :userId', { userId })
+      .groupBy(
+        'w.id, "wv"."name", wv."createdAt", w."createdAt", "w"."status", c.uuid',
+      )
+      .orderBy('wv."createdAt"', 'DESC')
+      .getRawOne();
   }
 
   async getWorkflows(
@@ -102,8 +155,7 @@ export class WorkflowService {
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
       .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .where({ userId })
-      .andWhere('w.status != :status', { status: WorkflowStatus.INITIAL });
+      .where({ userId });
 
     if (chainUuid) {
       queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
@@ -138,7 +190,9 @@ export class WorkflowService {
         break;
     }
 
-    const [workflows, total] = await queryBuilder
+    const total = await queryBuilder.getCount();
+
+    const workflows = await queryBuilder
       .select([
         'DISTINCT w.id AS id',
         'wv.name AS name',
@@ -151,7 +205,7 @@ export class WorkflowService {
       .addOrderBy('wv."createdAt"', 'DESC')
       .limit(limit)
       .offset(offset)
-      .getManyAndCount();
+      .getRawMany();
 
     return {
       workflows,

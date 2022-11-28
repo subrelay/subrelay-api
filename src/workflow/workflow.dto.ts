@@ -61,6 +61,16 @@ export class CreateWorkFlowRequest {
   chainUuid: string;
 }
 
+export class UpdateWorkFlowRequest {
+  @IsEnum(WorkflowStatus, {
+    message: `Invalid status. Possible values: ${Object.values(
+      WorkflowStatus,
+    ).join(', ')}`,
+  })
+  @IsOptional()
+  status: WorkflowStatus;
+}
+
 export class CreateWorkFlowTask {
   @IsString()
   @IsNotEmpty()
@@ -71,7 +81,7 @@ export class CreateWorkFlowTask {
   config: AbsConfig;
 
   @IsEnum(TaskType, {
-    message: `Invalid status. Possible values: ${Object.values(TaskType).join(
+    message: `Invalid type. Possible values: ${Object.values(TaskType).join(
       ', ',
     )}`,
   })
@@ -80,4 +90,6 @@ export class CreateWorkFlowTask {
   @IsOptional()
   @IsString()
   dependOnName?: string;
+
+  dependOnIndex?: number;
 }

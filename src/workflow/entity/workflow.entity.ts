@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
 import { Chain } from 'src/chain/chain.entity';
+import { Task } from 'src/task/entity/task.entity';
 
 @Entity()
 export class Workflow {
@@ -30,4 +31,6 @@ export class Workflow {
 
   chain?: Chain;
   updatedAt?: string;
+  tasks?: Task[];
+  name?: string;
 }
