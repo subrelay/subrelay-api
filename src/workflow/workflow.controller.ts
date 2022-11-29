@@ -12,8 +12,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { findIndex, orderBy } from 'lodash';
+import { findIndex, get, orderBy } from 'lodash';
 import { UserInfo } from 'src/common/user-info.decorator';
+import { EventService } from 'src/event/event.service';
 import { TaskType } from 'src/task/type/task.type';
 import { User } from 'src/user/user.entity';
 import { Workflow } from './entity/workflow.entity';
@@ -28,7 +29,10 @@ import { WorkflowService } from './workflow.service';
 
 @Controller('workflows')
 export class WorkflowController {
-  constructor(private readonly workflowService: WorkflowService) {}
+  constructor(
+    private readonly workflowService: WorkflowService,
+    private readonly eventService: EventService,
+  ) {}
 
   @Get()
   async getWorkflows(
@@ -109,7 +113,7 @@ export class WorkflowController {
       ['dependOnIndex'],
       ['asc'],
     );
-    this.validateTasks(input.tasks);
+    await this.validateTasks(input.chainUuid, input.tasks);
 
     const workflowId = await this.workflowService.createWorkflow(
       input,
@@ -119,13 +123,22 @@ export class WorkflowController {
     return this.workflowService.getWorkflow(workflowId, user.id);
   }
 
-  private validateTasks(tasks: CreateWorkFlowTask[]) {
-    const triggerTasks = tasks.filter((t) => t.type === TaskType.TRIGGER);
+  private async validateTasks(chainUuid: string, tasks: CreateWorkFlowTask[]) {
+    const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
 
-    if (triggerTasks.length !== 1) {
+    if (!triggerTask) {
       throw new BadRequestException('A workflow should has one trigger task');
-    } else if (triggerTasks[0].dependOnIndex !== -1) {
+    } else if (triggerTask.dependOnIndex !== -1) {
       throw new BadRequestException('Trigger task depends on invalid task');
+    }
+
+    const event = await this.eventService.getEventByChain(
+      chainUuid,
+      get(triggerTask, 'config.eventId'),
+    );
+
+    if (!event) {
+      throw new BadRequestException('Event not found');
     }
 
     const otherTasks = tasks.filter((t) => t.type !== TaskType.TRIGGER);

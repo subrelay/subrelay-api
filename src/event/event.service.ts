@@ -33,6 +33,10 @@ export class EventService {
       chainUuid,
     });
 
+    if (!event) {
+      return null;
+    }
+
     return {
       ...event,
       fields: this.getSupportedFields(event),
