@@ -50,8 +50,6 @@ export class WorkflowService {
         status: WorkflowStatus.RUNNING,
       });
 
-      console.log({ workflow });
-
       const workflowVersion = await queryRunner.manager
         .getRepository(WorkflowVersion)
         .save({
@@ -60,21 +58,9 @@ export class WorkflowService {
           chainUuid: input.chainUuid,
         });
 
-      console.log({ workflowVersion });
-
       const tasksObject: { [key: string]: number } = {};
       const taskRepo = queryRunner.manager.getRepository(Task);
       for (const taskInput of tasksInput) {
-        console.log({ tasksObject });
-
-        console.log({
-          name: taskInput.name,
-          type: taskInput.type,
-          config: taskInput.config,
-          dependOn: get(tasksObject, taskInput.dependOnName),
-          workflowVersionId: workflowVersion.id,
-        });
-
         const { id: taskId } = await taskRepo.save({
           name: taskInput.name,
           type: taskInput.type,
@@ -89,7 +75,7 @@ export class WorkflowService {
       workflowId = workflow.id;
     } catch (err) {
       err = err;
-      console.log('Failed to create workflow');
+      console.error('Failed to create workflow');
       await queryRunner.rollbackTransaction();
     } finally {
       await queryRunner.release();
@@ -111,8 +97,6 @@ export class WorkflowService {
   }
 
   async getWorkflow(id: number, userId: number): Promise<Workflow> {
-    console.log(await this.workflowRepository.find());
-
     return await this.workflowRepository
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')

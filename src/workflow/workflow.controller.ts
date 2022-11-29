@@ -12,7 +12,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { findIndex, orderBy } from 'lodash';
+import { UserInfo } from 'src/common/user-info.decorator';
 import { TaskType } from 'src/task/type/task.type';
+import { User } from 'src/user/user.entity';
 import { Workflow } from './entity/workflow.entity';
 import {
   CreateWorkFlowRequest,
@@ -30,21 +32,23 @@ export class WorkflowController {
   @Get()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
+    @UserInfo() user: User,
   ): Promise<GetWorkflowsResponse> {
-    const userId = 1;
     return {
-      ...(await this.workflowService.getWorkflows(queryParams, userId)),
+      ...(await this.workflowService.getWorkflows(queryParams, user.id)),
       limit: queryParams.limit,
       offset: queryParams.offset,
     };
   }
 
   @Get(':id')
-  async getWorkflow(@Param('id', ParseIntPipe) id: number): Promise<Workflow> {
-    const userId = 1;
-    const workflow = await this.workflowService.getWorkflow(id, userId);
+  async getWorkflow(
+    @Param('id', ParseIntPipe) id: number,
+    @UserInfo() user: User,
+  ): Promise<Workflow> {
+    console.log(user);
 
-    console.log({ workflow });
+    const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
       throw new NotFoundException();
@@ -58,9 +62,9 @@ export class WorkflowController {
   async updateWorkflow(
     @Param('id', ParseIntPipe) id: number,
     @Body() input: UpdateWorkFlowRequest,
+    @UserInfo() user: User,
   ) {
-    const userId = 1;
-    const workflow = await this.workflowService.getWorkflowSummary(id, userId);
+    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
 
     if (!workflow) {
       throw new NotFoundException();
@@ -77,8 +81,8 @@ export class WorkflowController {
   @Post()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
+    @UserInfo() user: User,
   ): Promise<Workflow> {
-    const userId = 1;
     input.tasks = orderBy(
       input.tasks.map((task) => ({
         ...task,
@@ -89,9 +93,12 @@ export class WorkflowController {
     );
     this.validateTasks(input.tasks);
 
-    const workflowId = await this.workflowService.createWorkflow(input, userId);
+    const workflowId = await this.workflowService.createWorkflow(
+      input,
+      user.id,
+    );
 
-    return this.workflowService.getWorkflow(workflowId, userId);
+    return this.workflowService.getWorkflow(workflowId, user.id);
   }
 
   private validateTasks(tasks: CreateWorkFlowTask[]) {
