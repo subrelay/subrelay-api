@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -42,6 +47,9 @@ import { AuthMiddleware } from './common/auth.middleware';
 })
 export class AppModule implements NestModule {
   public configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(AuthMiddleware).forRoutes('*');
+    consumer
+      .apply(AuthMiddleware)
+      .exclude({ method: RequestMethod.GET, path: '/' })
+      .forRoutes('*');
   }
 }
