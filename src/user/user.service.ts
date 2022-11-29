@@ -15,6 +15,10 @@ export class UserService {
     return this.usersRepository.find();
   }
 
+  getUser(address: string): Promise<User> {
+    return this.usersRepository.findOneBy({ address });
+  }
+
   createUser(input: CreateUserDto): Promise<User> {
     return this.usersRepository.save(input);
   }

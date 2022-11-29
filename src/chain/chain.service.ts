@@ -3,10 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
-import { SubstrateService } from 'src/substrate/substrate.service';
-import { ChainInfo } from 'src/substrate/substrate.data';
-import { EventService } from 'src/event/event.service';
-import { TaskOutput } from 'src/task/type/task.type';
+import { SubstrateService } from '../substrate/substrate.service';
+import { ChainInfo } from '../substrate/substrate.data';
+import { EventService } from '../event/event.service';
+import { TaskOutput } from '../task/type/task.type';
 
 @Injectable()
 export class ChainService {

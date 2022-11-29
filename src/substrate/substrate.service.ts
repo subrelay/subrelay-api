@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { Vec } from '@polkadot/types-codec';
 import { PortableType, Si1Field } from '@polkadot/types/interfaces';
 import {
   ChainInfo,
@@ -25,7 +24,8 @@ export class SubstrateService {
     const apiAt = await api.at(block.block.header.hash);
 
     const metadata = await api.runtimeMetadata;
-    const allTypes = metadata.asLatest.lookup.types;
+    const allTypes = metadata.asLatest.lookup
+      .types as unknown as PortableType[];
     const events: EventDef[] = this.parseEventsDef(allTypes, apiAt.events);
 
     const chainInfo = {
@@ -50,7 +50,7 @@ export class SubstrateService {
   }
 
   private parseEventsDef(
-    types: Vec<PortableType>,
+    types: PortableType[],
     defs: any,
   ): EventDef[] | ErrorDef[] {
     return Object.keys(defs).flatMap((pallet) => {
@@ -74,10 +74,7 @@ export class SubstrateService {
     });
   }
 
-  private parseFieldSchema(
-    types: Vec<PortableType>,
-    field: Si1Field,
-  ): TypeSchema {
+  private parseFieldSchema(types: PortableType[], field: Si1Field): TypeSchema {
     const typeDef = types.find((type) => type.id.eq(field.type));
 
     if (typeDef.type.def.isPrimitive) {

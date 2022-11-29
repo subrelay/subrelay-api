@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -8,6 +13,8 @@ import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
 import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
+import { WorkflowModule } from './workflow/workflow.module';
+import { AuthMiddleware } from './common/auth.middleware';
 
 @Module({
   imports: [
@@ -33,8 +40,16 @@ import { TaskModule } from './task/task.module';
     ChainModule,
     SubstrateModule,
     TaskModule,
+    WorkflowModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  public configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(AuthMiddleware)
+      .exclude({ method: RequestMethod.GET, path: '/' })
+      .forRoutes('*');
+  }
+}
