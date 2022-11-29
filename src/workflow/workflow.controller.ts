@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   NotFoundException,
@@ -51,7 +52,7 @@ export class WorkflowController {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
-      throw new NotFoundException();
+      throw new NotFoundException('Workflow not found');
     }
 
     return workflow;
@@ -67,7 +68,7 @@ export class WorkflowController {
     const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
 
     if (!workflow) {
-      throw new NotFoundException();
+      throw new NotFoundException('Workflow not found');
     }
 
     if (input.status) {
@@ -76,6 +77,23 @@ export class WorkflowController {
         input.status,
       );
     }
+
+    return this.workflowService.getWorkflowSummary(id, user.id);
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  async deleteWorkflow(
+    @Param('id', ParseIntPipe) id: number,
+    @UserInfo() user: User,
+  ) {
+    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
+
+    if (!workflow) {
+      throw new NotFoundException('Workflow not found');
+    }
+
+    return this.workflowService.deleteWorkflow(id, user.id);
   }
 
   @Post()

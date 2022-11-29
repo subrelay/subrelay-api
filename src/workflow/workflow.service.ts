@@ -92,6 +92,10 @@ export class WorkflowService {
     return this.workflowRepository.findOneBy({ id, userId });
   }
 
+  deleteWorkflow(id: number, userId: number) {
+    return this.workflowRepository.delete({ id, userId });
+  }
+
   async updateWorkflowStatus(id: number, status: WorkflowStatus) {
     await this.workflowRepository.update({ id }, { status });
   }
