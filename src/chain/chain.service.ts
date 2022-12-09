@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  OnApplicationBootstrap,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateChainRequest } from './chain.dto';
@@ -7,6 +11,8 @@ import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
 import { TaskOutput } from '../task/type/task.type';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AppEvent, getBlockWatcherJobName } from 'src/common/app-event.type';
 
 @Injectable()
 export class ChainService {
@@ -16,13 +22,24 @@ export class ChainService {
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   getChains(): Promise<Chain[]> {
-    return this.chainRepository.find({
-      loadEagerRelations: false,
-      order: { name: 'ASC' },
-    });
+    return this.chainRepository
+      .createQueryBuilder()
+      .select([
+        'DISTINCT ON("chainId") uuid',
+        'name',
+        '"createdAt"',
+        'version',
+        '"imageUrl"',
+        '"chainId"',
+      ])
+      .orderBy('name', 'ASC')
+      .orderBy('"chainId"', 'ASC')
+      .addOrderBy('"createdAt"', 'DESC')
+      .getRawMany();
   }
 
   async chainExist(uuid: string): Promise<boolean> {
@@ -36,6 +53,16 @@ export class ChainService {
         events: true,
       },
     });
+  }
+
+  async deleteChain(uuid: string) {
+    const chain = await this.chainRepository.findOne({
+      where: { uuid },
+    });
+
+    await this.chainRepository.delete({ uuid });
+
+    this.eventEmitter.emit(AppEvent.JOB_STOP, getBlockWatcherJobName(chain));
   }
 
   async createChain(input: CreateChainRequest): Promise<TaskOutput> {

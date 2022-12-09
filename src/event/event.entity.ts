@@ -11,7 +11,7 @@ import { GeneralTypeEnum, ObjectSchema } from '../substrate/substrate.data';
 @Entity()
 export class Event {
   @PrimaryGeneratedColumn('increment')
-  id: string;
+  id: number;
 
   @Column()
   name: string;

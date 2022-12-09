@@ -25,6 +25,13 @@ export class WorkflowService {
     private readonly taskService: TaskService,
   ) {}
 
+  async getRunningWorkflows(): Promise<Workflow[]> {
+    return (await this.getWorkflows({ status: WorkflowStatus.RUNNING }))
+      .workflows;
+  }
+
+  processWorflow()
+
   async createWorkflow(
     input: CreateWorkFlowRequest,
     userId: number,
@@ -133,8 +140,8 @@ export class WorkflowService {
       order: requestedOrder,
       search,
       status,
-    }: GetWorkflowsQueryParams,
-    userId: number,
+    }: Partial<GetWorkflowsQueryParams>,
+    userId?: number,
   ): Promise<{
     workflows: Workflow[];
     total: number;
@@ -142,12 +149,17 @@ export class WorkflowService {
     let queryBuilder = this.workflowRepository
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .where({ userId });
+      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid');
 
     if (chainUuid) {
       queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
         chainUuid,
+      });
+    }
+
+    if (userId) {
+      queryBuilder = queryBuilder.andWhere('w."userId" = :userId', {
+        userId,
       });
     }
 
@@ -163,6 +175,10 @@ export class WorkflowService {
       });
     }
 
+    if (limit && offset) {
+      queryBuilder = queryBuilder.limit(limit).offset(offset);
+    }
+
     let order;
     switch (requestedOrder) {
       case GetWorkflowsOrderBy.CREATEDAT:
@@ -175,6 +191,7 @@ export class WorkflowService {
         order = `wv."${requestedOrder}"`;
         break;
       default:
+        order = `wv."${GetWorkflowsOrderBy.NAME}"`;
         break;
     }
 
@@ -187,12 +204,10 @@ export class WorkflowService {
         'w."createdAt" AS "createdAt"',
         'wv."createdAt" AS "updatedAt"',
         'w.status AS "status"',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name) AS chain`,
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
       ])
       .addOrderBy(order, sort)
       .addOrderBy('wv."createdAt"', 'DESC')
-      .limit(limit)
-      .offset(offset)
       .getRawMany();
 
     return {

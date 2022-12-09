@@ -11,7 +11,8 @@ import { GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { ProcessTaskInput } from './task.dto';
 import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { WorkflowVersion } from 'src/workflow/entity/workflow-version.entity';
 
 @Injectable()
 export class TaskService {
@@ -39,6 +40,16 @@ export class TaskService {
     if (!input.task.dependOn) {
       return result;
     }
+  }
+
+  getTriggerTasks(chainUuid: string, eventIds: number[]) {
+    return this.taskRepository
+      .createQueryBuilder('t')
+      .innerJoin(WorkflowVersion, 'wv', 'wv.id = t."workflowVersionId"')
+      .where({ type: TaskType.TRIGGER })
+      .andWhere('wv."chainUuid = :chainUuid', { chainUuid })
+      .andWhere({ eventId: In(eventIds) })
+      .getMany();
   }
 
   getOperatorMapping(): {

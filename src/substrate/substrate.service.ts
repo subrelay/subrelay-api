@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { PortableType, Si1Field } from '@polkadot/types/interfaces';
+import {
+  EventRecord,
+  Header,
+  PortableType,
+  Si1Field,
+} from '@polkadot/types/interfaces';
 import {
   ChainInfo,
   ErrorDef,
@@ -11,9 +16,15 @@ import {
 } from './substrate.data';
 
 import { keyBy, mapValues } from 'lodash';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
+import { AppEvent } from 'src/common/app-event.type';
+import { EventData } from 'src/event-data/event-data.entity';
+import { EventRawData } from 'src/event-data/event-data.type';
 
 @Injectable()
 export class SubstrateService {
+  constructor(private eventEmitter: EventEmitter2) {}
+
   async createAPI(rpc: string): Promise<ApiPromise> {
     const wsProvider = new WsProvider(rpc);
     return await ApiPromise.create({ provider: wsProvider });
@@ -39,6 +50,17 @@ export class SubstrateService {
 
     api.disconnect();
     return chainInfo;
+  }
+
+  async subscribeNewHeads(api: ApiPromise, chainUuid: string) {
+    await api.rpc.chain.subscribeFinalizedHeads((lastHeader) => {
+      this.eventEmitter.emit(
+        AppEvent.BLOCK_CREATED,
+        api.rpc,
+        lastHeader.hash as unknown as string,
+        chainUuid,
+      );
+    });
   }
 
   isPrimitiveType(type: string) {
@@ -105,5 +127,45 @@ export class SubstrateService {
     }
 
     throw new Error('This type does not supported yet');
+  }
+
+  @OnEvent(AppEvent.BLOCK_CREATED)
+  async parseBlock(rpc: string, hash: string, chainUuid: string) {
+    const api = await this.createAPI(rpc);
+    const [signedBlock, apiAt] = await Promise.all([
+      api.rpc.chain.getBlock(hash),
+      api.at(hash),
+    ]);
+
+    const encodedLength = signedBlock.encodedLength;
+    const { header, extrinsics } = signedBlock.block || {};
+
+    const allRecords =
+      (await apiAt.query.system.events()) as unknown as EventRecord[];
+
+    const timestampArgs = extrinsics
+      .map((e) => e.method)
+      .find((m) => m.section === 'timestamp' && m.method === 'set');
+    const timestamp = Number(timestampArgs?.args[0].toString()) || Date.now();
+
+    let success = true;
+    extrinsics.forEach(({ method: { method, section } }, index) => {
+      allRecords
+        .filter(
+          ({ phase }) =>
+            phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(index),
+        )
+        .forEach(({ event }) => {
+          success = api.events.system.ExtrinsicSuccess.is(event);
+        });
+    });
+
+    this.eventEmitter.emit(AppEvent.EVENT_PROCESS, {
+      timestamp,
+      success,
+      hash,
+      records: allRecords,
+      chainUuid,
+    });
   }
 }

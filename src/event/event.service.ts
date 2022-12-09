@@ -29,7 +29,7 @@ export class EventService {
     eventId: number,
   ): Promise<EventDetail> {
     const event = await this.eventRepository.findOneBy({
-      id: eventId.toString(),
+      id: eventId,
       chainUuid,
     });
 
@@ -45,7 +45,7 @@ export class EventService {
 
   getEventsByChain(
     chainUuid: string,
-    queryParams: GetEventsQueryParams,
+    queryParams?: GetEventsQueryParams,
   ): Promise<Event[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
@@ -72,8 +72,8 @@ export class EventService {
       );
     }
 
-    const order = queryParams.order || 'name';
-    const sort = queryParams.sort || 'ASC';
+    const order = queryParams?.order || 'name';
+    const sort = queryParams?.sort || 'ASC';
 
     if (queryParams.order && queryParams.offset) {
       queryBuilder = queryBuilder

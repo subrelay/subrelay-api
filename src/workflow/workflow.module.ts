@@ -15,5 +15,6 @@ import { EventModule } from 'src/event/event.module';
   ],
   controllers: [WorkflowController],
   providers: [WorkflowService],
+  exports: [WorkflowService],
 })
 export class WorkflowModule {}

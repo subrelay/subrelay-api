@@ -10,5 +10,6 @@ import { EventModule } from 'src/event/event.module';
   imports: [TypeOrmModule.forFeature([Chain]), SubstrateModule, EventModule],
   controllers: [ChainController],
   providers: [ChainService],
+  exports: [ChainService],
 })
 export class ChainModule {}

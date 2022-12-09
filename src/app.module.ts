@@ -15,6 +15,9 @@ import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { AuthMiddleware } from './common/auth.middleware';
+import { EventDataModule } from './event-data/event-data.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -35,12 +38,15 @@ import { AuthMiddleware } from './common/auth.middleware';
         logging: true,
       }),
     }),
+    ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     UserModule,
     EventModule,
     ChainModule,
     SubstrateModule,
     TaskModule,
     WorkflowModule,
+    EventDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],
