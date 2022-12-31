@@ -28,7 +28,7 @@ export class EventService {
     return this.eventRepository
       .createQueryBuilder('event')
       .where('"chainUuid" = :chainUuid', { chainUuid })
-      .andWhere(`LOWER(CONCAT(pallet, '.', name)) IN (:names) `, { names })
+      .andWhere(`CONCAT(pallet, '.', name) IN (:names) `, { names })
       .getMany();
   }
 

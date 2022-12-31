@@ -21,7 +21,7 @@ export class BlockProcessor {
   @Process({ concurrency: 10 })
   async processNewBlock(job: Job) {
     const data: BlockJobData = job.data;
-    const eventNames = uniq(map(data.events, (e) => `${e.pallet}.${e.name}`.toLowerCase()));
+    const eventNames = uniq(map(data.events, (e) => `${e.pallet}.${e.name}`));
     const events = await this.eventService.getEventsByChainUuidAndName(
       data.chainUuid,
       eventNames,
