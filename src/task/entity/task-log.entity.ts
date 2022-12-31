@@ -13,7 +13,7 @@ import {
   TaskType,
 } from '../type/task.type';
 import { Task } from './task.entity';
-import { WorkflowLog } from 'src/workflow/entity/workflow-log.entity';
+import { WorkflowLog } from '../../workflow/entity/workflow-log.entity';
 
 @Entity()
 export class TaskLog {

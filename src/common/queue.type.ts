@@ -1,3 +1,4 @@
+import { Event } from 'src/event/event.entity';
 import { Workflow } from 'src/workflow/entity/workflow.entity';
 
 export class EventRawData {

@@ -1,4 +1,3 @@
-import { Chain } from '../../chain/chain.entity';
 import {
   Column,
   CreateDateColumn,
@@ -7,9 +6,9 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ProcessStatus } from 'src/task/type/task.type';
 import { WorkflowVersion } from './workflow-version.entity';
-import { EventData } from 'src/common/queue.type';
+import { EventData } from '../../common/queue.type';
+import { ProcessStatus } from '../../task/type/task.type';
 
 @Entity({ name: 'workflow_log' })
 export class WorkflowLog {
@@ -28,7 +27,7 @@ export class WorkflowLog {
   })
   finishedAt?: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, type: 'text' })
   status: ProcessStatus;
 
   @Column({ nullable: false, type: 'jsonb' })

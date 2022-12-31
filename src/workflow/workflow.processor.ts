@@ -1,9 +1,7 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Job } from 'bull';
-import { filter, find, get, omit, omitBy, orderBy, toPairs } from 'lodash';
-import { EventData, WorkflowJobData } from 'src/common/queue.type';
-import { EventService } from 'src/event/event.service';
-import { TaskLog } from 'src/task/entity/task-log.entity';
+import { find, get } from 'lodash';
+import { WorkflowJobData } from 'src/common/queue.type';
 import { TaskService } from 'src/task/task.service';
 import { ProcessStatus, TaskOutput, TaskType } from 'src/task/type/task.type';
 import { WorkflowService } from './workflow.service';
@@ -12,7 +10,6 @@ import { WorkflowService } from './workflow.service';
 export class BlockProcessor {
   constructor(
     private readonly workflowService: WorkflowService,
-    private readonly eventService: EventService,
     private readonly taskService: TaskService,
   ) {}
 
@@ -22,7 +19,9 @@ export class BlockProcessor {
     let outputs: {
       [key: number]: TaskOutput;
     } = {};
-    let status = ProcessStatus.SUCCESS;
+    console.log(
+      `Process event ${data.event.name} for workflow version ${data.workflowVersionId}`,
+    );
 
     const tasks = await this.taskService.getTasks(data.workflowVersionId);
     const triggerTask = find(tasks, { type: TaskType.TRIGGER });

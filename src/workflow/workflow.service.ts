@@ -122,14 +122,20 @@ export class WorkflowService {
   ): Promise<{ workflowVersionId: number; eventId: number }[]> {
     return this.workflowVersionRepository
       .createQueryBuilder('wv')
-      .innerJoin(Task, 't', 't."workflowVersionId = wv.id')
+      .innerJoin(Task, 't', 't."workflowVersionId" = wv.id')
       .innerJoin(
         Workflow,
         'w',
-        `wv."workflowId = w.id AND w.status = '${WorkflowStatus.RUNNING}'`,
+        `wv."workflowId" = w.id AND w.status = '${WorkflowStatus.RUNNING}'`,
       )
-      .where(`config ->> 'eventId' IN (:eventIds)`, eventIds)
-      .select([`wv.id AS 'workflowVersionId'`, `config ->> 'eventId'`])
+      .where(
+        `config ->> 'eventId' IN (:eventIds)`,
+        eventIds.map((e) => e.toString()),
+      )
+      .select([
+        `wv.id AS "workflowVersionId"`,
+        `config ->> 'eventId' AS "eventId"`,
+      ])
       .distinct()
       .getRawMany();
   }
