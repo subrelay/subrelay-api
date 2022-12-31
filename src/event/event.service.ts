@@ -24,6 +24,14 @@ export class EventService {
     await this.eventRepository.insert(createEventsInput);
   }
 
+  getEventsByChainUuidAndName(chainUuid: String, names: String[]) {
+    return this.eventRepository
+      .createQueryBuilder('event')
+      .where('"chainUuid" = :chainUuid', { chainUuid })
+      .andWhere(`LOWER(CONCAT(pallet, '.', name)) IN (:names) `, { names })
+      .getMany();
+  }
+
   async getEventByChain(
     chainUuid: string,
     eventId: number,

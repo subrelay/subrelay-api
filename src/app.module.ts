@@ -15,9 +15,9 @@ import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { AuthMiddleware } from './common/auth.middleware';
-import { EventDataModule } from './event-data/event-data.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
@@ -38,6 +38,15 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
         logging: true,
       }),
     }),
+    BullModule.forRoot({
+      redis: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
+    BullModule.registerQueue({
+      name: 'block',
+    }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     UserModule,
@@ -46,7 +55,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     SubstrateModule,
     TaskModule,
     WorkflowModule,
-    EventDataModule,
   ],
   controllers: [AppController],
   providers: [AppService],

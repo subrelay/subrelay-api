@@ -4,21 +4,29 @@ import {
   NotificationTaskConfig,
 } from 'src/task/type/notification.type';
 import { get, isEmpty, keyBy, mapValues } from 'lodash';
-import { TaskOutput, TaskType } from './type/task.type';
+import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
-import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
+import {
+  FilterOperator,
+  TriggerTaskConfig,
+  TriggerTaskInput,
+} from './type/trigger.type';
 import { GeneralTypeEnum } from 'src/substrate/substrate.data';
-import { ProcessTaskInput } from './task.dto';
 import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { WorkflowVersion } from 'src/workflow/entity/workflow-version.entity';
+import { TaskLog } from './entity/task-log.entity';
+import { ProcessTaskData, TaskInput } from './task.dto';
 
 @Injectable()
 export class TaskService {
   constructor(
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
+
+    @InjectRepository(TaskLog)
+    private taskLogRepository: Repository<TaskLog>,
 
     private readonly httpService: HttpService,
   ) {}
@@ -27,28 +35,63 @@ export class TaskService {
     const result = await this.taskRepository.save(input);
     return result.id;
   }
-  async processTask(input: ProcessTaskInput): Promise<TaskOutput> {
+
+  async createTaskLogs(input: Partial<TaskLog>[]) {
+    return await this.taskLogRepository.save(input);
+  }
+
+  async updateTaskLogStatus(id: number, status: ProcessStatus) {
+    return await this.taskLogRepository.update(
+      { id },
+      { status, startedAt: new Date().toUTCString() },
+    );
+  }
+
+  async finishTaskLog(id: number, data: Pick<TaskLog, 'status' | 'output'>) {
+    await this.taskLogRepository.update(
+      { id },
+      { ...data, finishedAt: new Date().toUTCString() },
+    );
+  }
+
+  async skipPendingTaskLogs(workflowLogId: number) {
+    await this.taskLogRepository.update(
+      { workflowLogId, status: ProcessStatus.PENDING },
+      { status: ProcessStatus.SKIPPED, finishedAt: new Date().toUTCString() },
+    );
+  }
+
+  getTasks(workflowVersionId: number) {
+    return this.taskRepository.find({
+      where: { workflowVersionId },
+      order: { dependOn: { direction: 'ASC', nulls: 'FIRST' } },
+    });
+  }
+
+  async processTask(
+    task: TaskInput,
+    data: ProcessTaskData,
+  ): Promise<TaskOutput> {
     let result: TaskOutput = null;
-    if (input.task.type === TaskType.NOTIFICATION) {
-      result = await this.processNotificationTask(input);
+    if (task.type === TaskType.NOTIFICATION) {
+      result = await this.processNotificationTask(task, data);
     }
 
-    if (input.task.type === TaskType.TRIGGER) {
-      result = await this.processTriggerTask(input);
+    if (task.type === TaskType.TRIGGER) {
+      result = await this.processTriggerTask(task, data);
     }
 
-    if (!input.task.dependOn) {
+    if (!task.dependOn) {
       return result;
     }
   }
 
-  getTriggerTasks(chainUuid: string, eventIds: number[]) {
+  getTriggerTasks(workflowVersionIds: number[], eventIds: number[]) {
     return this.taskRepository
       .createQueryBuilder('t')
-      .innerJoin(WorkflowVersion, 'wv', 'wv.id = t."workflowVersionId"')
       .where({ type: TaskType.TRIGGER })
-      .andWhere('wv."chainUuid = :chainUuid', { chainUuid })
-      .andWhere({ eventId: In(eventIds) })
+      .andWhereInIds(workflowVersionIds)
+      .andWhere(`config ->> 'eventId' IN (:eventIds)`, eventIds)
       .getMany();
   }
 
@@ -68,8 +111,11 @@ export class TaskService {
     };
   }
 
-  private processTriggerTask(input: ProcessTaskInput): TaskOutput {
-    const config = input.task.config as TriggerTaskConfig;
+  private processTriggerTask(
+    task: TaskInput,
+    data: ProcessTaskData,
+  ): TaskOutput {
+    const config = task.config as TriggerTaskConfig;
     if (isEmpty(config.conditions)) {
       return {
         success: true,
@@ -82,7 +128,7 @@ export class TaskService {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const acctualValue = get(input.data, condition.variable);
+          const acctualValue = get(data.event, condition.variable);
           return this.isMatchCondition(
             condition.operator,
             acctualValue,
@@ -108,11 +154,12 @@ export class TaskService {
   }
 
   private processNotificationTask(
-    input: ProcessTaskInput,
+    task: TaskInput,
+    data: ProcessTaskData,
   ): Promise<TaskOutput> {
-    const config = input.task.config as NotificationTaskConfig;
+    const config = task.config as NotificationTaskConfig;
     if (config.channel === NotificationChannel.WEBHOOK) {
-      return this.notifyWebhook(input);
+      return this.notifyWebhook(task, data);
     }
   }
 
@@ -122,11 +169,16 @@ export class TaskService {
     return mapValues(keyBy(headers, 'key'), (header) => header.value);
   }
 
-  private async notifyWebhook(input: ProcessTaskInput): Promise<TaskOutput> {
-    const config = input.task.config as NotificationTaskConfig;
+  // TODO accept custom data
+  private async notifyWebhook(
+    task: TaskInput,
+    data: ProcessTaskData,
+  ): Promise<TaskOutput> {
+    const config = task.config as NotificationTaskConfig;
 
     try {
-      await this.httpService.axiosRef.get(config.config.url, {
+      // TODO using data.prev if having custom message task
+      await this.httpService.axiosRef.post(config.config.url, data.event, {
         headers: {
           Accept: 'application/json',
           ...this.parseHeaders(config.config.headers),

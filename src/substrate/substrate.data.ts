@@ -1,3 +1,5 @@
+import { EventRecord } from '@polkadot/types/interfaces';
+
 export class ChainInfo {
   chainId: string;
   chainTokens: string[];

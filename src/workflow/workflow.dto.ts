@@ -23,7 +23,7 @@ export class GetWorkflowsQueryParams extends Pagination {
   @IsString()
   @IsOptional()
   @IsUUID()
-  chainUuid?: string;
+  chainUuid?: String;
 
   @IsEnum(WorkflowStatus, {
     message: `Invalid status. Possible values: ${Object.values(

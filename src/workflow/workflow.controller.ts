@@ -40,7 +40,8 @@ export class WorkflowController {
     @UserInfo() user: User,
   ): Promise<GetWorkflowsResponse> {
     return {
-      ...(await this.workflowService.getWorkflows(queryParams, user.id)),
+      workflows: await this.workflowService.getWorkflows(queryParams, user.id),
+      total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
       limit: queryParams.limit,
       offset: queryParams.offset,
     };

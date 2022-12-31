@@ -1,8 +1,17 @@
 import { validateSync } from 'class-validator';
+import { EventData } from 'src/common/queue.type';
 
 export enum TaskType {
   NOTIFICATION = 'notification',
   TRIGGER = 'trigger',
+}
+
+export enum ProcessStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  FAILED = 'failed',
+  SUCCESS = 'success',
+  SKIPPED = 'skipped',
 }
 
 export class TaskOutput {
