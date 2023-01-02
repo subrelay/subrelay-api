@@ -5,6 +5,14 @@ export enum TaskType {
   TRIGGER = 'trigger',
 }
 
+export enum ProcessStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  FAILED = 'failed',
+  SUCCESS = 'success',
+  SKIPPED = 'skipped',
+}
+
 export class TaskOutput {
   success: boolean;
   error?: {

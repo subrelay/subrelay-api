@@ -30,7 +30,9 @@ export class Workflow {
   userId: number;
 
   chain?: Chain;
+  chainUuid?: string;
   updatedAt?: string;
   tasks?: Task[];
   name?: string;
+  workflowVersionId: number;
 }

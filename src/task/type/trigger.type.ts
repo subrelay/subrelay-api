@@ -8,6 +8,7 @@ import {
 } from 'class-validator';
 import { AbsConfig } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
+import { EventData } from 'src/common/queue.type';
 
 export enum FilterOperator {
   GREATETHANEQUAL = 'greaterThanEqual',
@@ -50,3 +51,5 @@ export class TriggerTaskConfig extends AbsConfig {
   @IsOptional()
   conditions?: Array<TriggerCondition[]>;
 }
+
+export type TriggerTaskInput = EventData;

@@ -44,8 +44,6 @@ export class IsTaskConfigConstraint implements ValidatorConstraintInterface {
 
 export function IsTaskConfig(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
-    console.log({ object });
-
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

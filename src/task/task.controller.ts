@@ -10,13 +10,15 @@ export class TaskController {
 
   @Post('/run')
   async processTask(@Body() input: ProcessTaskRequest): Promise<TaskOutput> {
-    return this.taskService.processTask({
-      data: input.data,
-      task: {
+    return this.taskService.processTask(
+      {
         config: input.config,
         type: input.type,
       },
-    });
+      {
+        eventData: input.data,
+      },
+    );
   }
 
   @Get('/operators')

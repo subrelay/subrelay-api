@@ -40,7 +40,8 @@ export class WorkflowController {
     @UserInfo() user: User,
   ): Promise<GetWorkflowsResponse> {
     return {
-      ...(await this.workflowService.getWorkflows(queryParams, user.id)),
+      workflows: await this.workflowService.getWorkflows(queryParams, user.id),
+      total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
       limit: queryParams.limit,
       offset: queryParams.offset,
     };
@@ -51,8 +52,6 @@ export class WorkflowController {
     @Param('id', ParseIntPipe) id: number,
     @UserInfo() user: User,
   ): Promise<Workflow> {
-    console.log(user);
-
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
