@@ -20,7 +20,7 @@ export class Workflow {
   status: WorkflowStatus;
 
   @CreateDateColumn({ name: 'createdAt' })
-  createdAt: String;
+  createdAt: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'userId', referencedColumnName: 'id' }])
@@ -30,9 +30,9 @@ export class Workflow {
   userId: number;
 
   chain?: Chain;
-  chainUuid?: String;
+  chainUuid?: string;
   updatedAt?: string;
   tasks?: Task[];
-  name?: String;
+  name?: string;
   workflowVersionId: number;
 }

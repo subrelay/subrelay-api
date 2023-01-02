@@ -52,8 +52,6 @@ export class WorkflowController {
     @Param('id', ParseIntPipe) id: number,
     @UserInfo() user: User,
   ): Promise<Workflow> {
-    console.log(user);
-
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {

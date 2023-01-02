@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { findIndex, get, isEmpty, orderBy } from 'lodash';
 import { Chain } from 'src/chain/chain.entity';
@@ -11,13 +11,17 @@ import { WorkflowVersion } from './entity/workflow-version.entity';
 import { Workflow } from './entity/workflow.entity';
 import {
   CreateWorkFlowRequest,
+  GetWorkflowLogsOrderBy,
+  GetWorkflowLogsQueryParams,
   GetWorkflowsOrderBy,
   GetWorkflowsQueryParams,
+  WorkflowLogResponse,
 } from './workflow.dto';
 import { WorkflowStatus } from './workflow.type';
 
 @Injectable()
 export class WorkflowService {
+  private readonly logger = new Logger(WorkflowService.name);
   constructor(
     @InjectRepository(Workflow)
     private workflowRepository: Repository<Workflow>,
@@ -50,7 +54,7 @@ export class WorkflowService {
   async finishWorkflowLog(id: number, status: ProcessStatus) {
     await this.workflowLogRepository.update(
       { id },
-      { status, finishedAt: new Date().toUTCString() },
+      { status, finishedAt: new Date() },
     );
   }
 
@@ -104,7 +108,7 @@ export class WorkflowService {
       workflowId = workflow.id;
     } catch (err) {
       err = err;
-      console.error('Failed to create workflow');
+      this.logger.error('Failed to create workflow', err);
       await queryRunner.rollbackTransaction();
     } finally {
       await queryRunner.release();
@@ -128,13 +132,12 @@ export class WorkflowService {
         'w',
         `wv."workflowId" = w.id AND w.status = '${WorkflowStatus.RUNNING}'`,
       )
-      .where(
-        `config ->> 'eventId' IN (:eventIds)`,
-        eventIds.map((e) => e.toString()),
-      )
+      .where(`config ->> 'eventId' IN (:...eventIds)`, {
+        eventIds: eventIds.map((e) => e.toString()),
+      })
       .select([
         `wv.id AS "workflowVersionId"`,
-        `config ->> 'eventId' AS "eventId"`,
+        `CAST(coalesce(config ->> 'eventId', '0') AS integer) AS "eventId"`,
       ])
       .distinct()
       .getRawMany();
@@ -255,6 +258,114 @@ export class WorkflowService {
       .addOrderBy(order, sort)
       .addOrderBy('wv."createdAt"', 'DESC')
       .getRawMany();
+  }
+
+  async getWorkflowLogs(
+    {
+      limit,
+      offset,
+      sort: requestedSort,
+      chainUuid,
+      order: requestedOrder,
+      search,
+      status,
+    }: Partial<GetWorkflowLogsQueryParams>,
+    userId: number,
+  ): Promise<WorkflowLogResponse[]> {
+    let queryBuilder = this.workflowLogRepository
+      .createQueryBuilder('wl')
+      .innerJoin(WorkflowVersion, 'wv', 'wv.id = wl."workflowVersionId"')
+      .innerJoin(
+        Workflow,
+        'w',
+        `w.id = wv."workflowId" AND w."userId" = '${userId}'`,
+      )
+      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid');
+
+    if (chainUuid) {
+      queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
+        chainUuid,
+      });
+    }
+
+    if (status) {
+      queryBuilder = queryBuilder.andWhere('wl."status" = :status', {
+        status,
+      });
+    }
+
+    if (search) {
+      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+
+    if (limit && offset) {
+      queryBuilder = queryBuilder.limit(limit).offset(offset);
+    }
+
+    let order;
+    const sort = requestedSort || 'DESC';
+    switch (requestedOrder) {
+      case GetWorkflowLogsOrderBy.FINISHED_AT:
+        order = `wl."${requestedOrder}"`;
+        break;
+      case GetWorkflowLogsOrderBy.NAME:
+        order = `wl."${requestedOrder}"`;
+        break;
+      case GetWorkflowLogsOrderBy.CHAIN_NAME:
+        order = `c."name"`;
+        break;
+      default:
+        order = `wl."${GetWorkflowLogsOrderBy.FINISHED_AT}"`;
+        break;
+    }
+
+    return queryBuilder
+      .select([
+        'DISTINCT wl.id AS id',
+        'wv.name AS name',
+        'wl."finishedAt" AS "finishedAt"',
+        'wl.status AS "status"',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
+      ])
+      .addOrderBy(order, sort)
+      .getRawMany();
+  }
+
+  async getWorkflowLogsTotal(
+    { chainUuid, search, status }: Partial<GetWorkflowLogsQueryParams>,
+    userId: number,
+  ): Promise<number> {
+    let queryBuilder = this.workflowLogRepository
+      .createQueryBuilder('wl')
+      .innerJoin(WorkflowVersion, 'wv', 'wv.id = wl."workflowVersionId"')
+      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
+      .innerJoin(
+        Workflow,
+        'w',
+        `w.id = wv."workflowId" AND w."userId" = '${userId}'`,
+      );
+
+    if (chainUuid) {
+      queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
+        chainUuid,
+      });
+    }
+
+    if (status) {
+      queryBuilder = queryBuilder.andWhere('wl."status" = :status', {
+        status,
+      });
+    }
+
+    if (search) {
+      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+
+    return queryBuilder.getCount();
   }
 
   async getWorkflowsTotal(

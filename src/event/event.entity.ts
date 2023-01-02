@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { GeneralTypeEnum, ObjectSchema } from '../substrate/substrate.data';
+import { GeneralTypeEnum, TypeSchema } from '../substrate/substrate.data';
 
 @Entity()
 export class Event {
@@ -20,7 +20,7 @@ export class Event {
   pallet: string;
 
   @Column({ type: 'jsonb', name: 'dataSchema' })
-  dataSchema: ObjectSchema;
+  dataSchema: TypeSchema[];
 
   @Column({ nullable: true })
   description?: string;

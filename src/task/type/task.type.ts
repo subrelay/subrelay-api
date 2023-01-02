@@ -1,5 +1,4 @@
 import { validateSync } from 'class-validator';
-import { EventData } from 'src/common/queue.type';
 
 export enum TaskType {
   NOTIFICATION = 'notification',

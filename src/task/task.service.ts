@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   NotificationChannel,
   NotificationTaskConfig,
@@ -6,21 +6,17 @@ import {
 import { get, isEmpty, keyBy, mapValues } from 'lodash';
 import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
-import {
-  FilterOperator,
-  TriggerTaskConfig,
-  TriggerTaskInput,
-} from './type/trigger.type';
+import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { WorkflowVersion } from 'src/workflow/entity/workflow-version.entity';
+import { Repository } from 'typeorm';
 import { TaskLog } from './entity/task-log.entity';
 import { ProcessTaskData, TaskInput } from './task.dto';
 
 @Injectable()
 export class TaskService {
+  private readonly logger = new Logger(TaskService.name);
   constructor(
     @InjectRepository(Task)
     private taskRepository: Repository<Task>,
@@ -43,21 +39,21 @@ export class TaskService {
   async updateTaskLogStatus(id: number, status: ProcessStatus) {
     return await this.taskLogRepository.update(
       { id },
-      { status, startedAt: new Date().toUTCString() },
+      { status, startedAt: new Date() },
     );
   }
 
   async finishTaskLog(id: number, data: Pick<TaskLog, 'status' | 'output'>) {
     await this.taskLogRepository.update(
       { id },
-      { ...data, finishedAt: new Date().toUTCString() },
+      { ...data, finishedAt: new Date() },
     );
   }
 
   async skipPendingTaskLogs(workflowLogId: number) {
     await this.taskLogRepository.update(
       { workflowLogId, status: ProcessStatus.PENDING },
-      { status: ProcessStatus.SKIPPED, finishedAt: new Date().toUTCString() },
+      { status: ProcessStatus.SKIPPED, finishedAt: new Date() },
     );
   }
 
@@ -72,18 +68,20 @@ export class TaskService {
     task: TaskInput,
     data: ProcessTaskData,
   ): Promise<TaskOutput> {
-    let result: TaskOutput = null;
     if (task.type === TaskType.NOTIFICATION) {
-      result = await this.processNotificationTask(task, data);
+      return await this.processNotificationTask(task, data);
     }
 
     if (task.type === TaskType.TRIGGER) {
-      result = await this.processTriggerTask(task, data);
+      return await this.processTriggerTask(task, data);
     }
 
-    if (!task.dependOn) {
-      return result;
-    }
+    return {
+      success: false,
+      error: {
+        message: 'Invalid task type',
+      },
+    };
   }
 
   getTriggerTasks(workflowVersionIds: number[], eventIds: number[]) {
@@ -128,7 +126,7 @@ export class TaskService {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const acctualValue = get(data.event, condition.variable);
+          const acctualValue = get(data.eventData, condition.variable);
           return this.isMatchCondition(
             condition.operator,
             acctualValue,
@@ -178,7 +176,7 @@ export class TaskService {
 
     try {
       // TODO using data.prev if having custom message task
-      await this.httpService.axiosRef.post(config.config.url, data.event, {
+      await this.httpService.axiosRef.post(config.config.url, data.eventData, {
         headers: {
           Accept: 'application/json',
           ...this.parseHeaders(config.config.headers),
@@ -203,8 +201,6 @@ export class TaskService {
     acctualValue: any,
     expectedValue: any,
   ): boolean {
-    console.log(operator, acctualValue, expectedValue);
-
     switch (operator) {
       case FilterOperator.ISTRUE:
         return acctualValue === true;

@@ -1,11 +1,12 @@
 import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
-import { find, isEmpty, map, pick, uniq } from 'lodash';
+import { find, isEmpty, map, pick, reduce, uniq } from 'lodash';
 import { BlockJobData } from 'src/common/queue.type';
+import { Event } from 'src/event/event.entity';
 import { EventService } from 'src/event/event.service';
+import { formatValue } from 'src/substrate/type.util';
 import { TaskService } from 'src/task/task.service';
-import { TriggerTaskConfig } from 'src/task/type/trigger.type';
 import { WorkflowService } from './workflow.service';
 
 @Processor('block')
@@ -37,36 +38,55 @@ export class BlockProcessor {
         map(events, 'id'),
       );
 
-    if (!isEmpty(workflowVersionAndTriggerTasks)) {
-      await this.workflowQueue.addBulk(
-        workflowVersionAndTriggerTasks.map(({ workflowVersionId, eventId }) => {
-          const event = find(events, {
-            id: eventId,
-          });
-
-          const eventData = data.events.find(
-            (e) => e.name === event.name && e.pallet === event.pallet,
-          );
-
-          return {
-            data: {
-              workflowVersionId,
-              eventData: {
-                ...eventData,
-                ...pick(data, ['timestamp', 'success']),
-                block: {
-                  hash: data.hash,
-                },
-              },
-              event,
-            },
-            opts: {
-              removeOnComplete: true,
-              removeOnFail: true,
-            },
-          };
-        }),
+    if (isEmpty(workflowVersionAndTriggerTasks)) {
+      this.logger.debug(
+        `Not found running workflows: ${eventNames.join(', ')}`,
       );
+      return true;
     }
+
+    const jobOption = {
+      removeOnComplete: true,
+      removeOnFail: true,
+    };
+    const jobs = workflowVersionAndTriggerTasks.map(
+      ({ workflowVersionId, eventId }, index) => {
+        const event: Event = events.find((e) => e.id === eventId);
+        const eventData = find(
+          data.events,
+          (e) => e.name === event.name && e.pallet === event.pallet,
+        );
+
+        eventData.data = reduce(
+          eventData.data,
+          (result, value, index) => {
+            const field = event.dataSchema[index];
+            result[field.name] = formatValue(field.typeName, value);
+            return result;
+          },
+          {},
+        );
+        return {
+          data: {
+            workflowVersionId,
+            eventData: {
+              ...eventData,
+              ...pick(data, ['timestamp', 'success']),
+              block: {
+                hash: data.hash,
+              },
+            },
+            event,
+          },
+          opts: {
+            ...jobOption,
+            jobId: `${workflowVersionId}_${eventId}_${index}`,
+          },
+        };
+      },
+    );
+
+    await this.workflowQueue.addBulk(jobs);
+    this.logger.debug(`Found running workflows`);
   }
 }

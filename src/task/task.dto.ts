@@ -1,5 +1,6 @@
 import { IsEnum, ValidateNested } from 'class-validator';
 import { EventData } from 'src/common/queue.type';
+import { Event } from 'src/event/event.entity';
 import { Task } from './entity/task.entity';
 import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
 import { IsTaskConfig } from './validator/task-config.validator';
@@ -22,6 +23,7 @@ export class ProcessTaskRequest {
 export type TaskInput = Pick<Task, 'type' | 'config' | 'dependOn'>;
 
 export class ProcessTaskData {
-  event?: EventData;
+  eventData?: EventData;
+  event?: Event;
   input?: TaskOutput; // prev task output
 }

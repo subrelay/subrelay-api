@@ -9,18 +9,20 @@ import { TaskModule } from 'src/task/task.module';
 import { EventModule } from 'src/event/event.module';
 import { BlockProcessor } from './block.processor';
 import { WorkflowLog } from './entity/workflow-log.entity';
+import { WorkflowProcessor } from './workflow.processor';
+import { WorkflowLogController } from './workflow-log.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Workflow, WorkflowVersion, WorkflowLog]),
     BullModule.registerQueue({
       name: 'workflow',
     }),
+    TypeOrmModule.forFeature([Workflow, WorkflowVersion, WorkflowLog]),
     TaskModule,
     EventModule,
   ],
-  controllers: [WorkflowController],
-  providers: [WorkflowService, BlockProcessor],
+  controllers: [WorkflowController, WorkflowLogController],
+  providers: [WorkflowService, BlockProcessor, WorkflowProcessor],
   exports: [WorkflowService],
 })
 export class WorkflowModule {}

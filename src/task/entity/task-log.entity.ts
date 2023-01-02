@@ -1,4 +1,3 @@
-import { WorkflowVersion } from '../../workflow/entity/workflow-version.entity';
 import {
   Column,
   Entity,
@@ -6,12 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import {
-  AbsConfig,
-  ProcessStatus,
-  TaskOutput,
-  TaskType,
-} from '../type/task.type';
+import { ProcessStatus } from '../type/task.type';
 import { Task } from './task.entity';
 import { WorkflowLog } from '../../workflow/entity/workflow-log.entity';
 
@@ -21,18 +15,18 @@ export class TaskLog {
   id: number;
 
   @Column({
-    nullable: false,
+    nullable: true,
     name: 'startedAt',
-    type: 'time without time zone',
+    type: 'timestamptz',
   })
-  startedAt?: string;
+  startedAt?: Date;
 
   @Column({
     nullable: true,
     name: 'finishedAt',
-    type: 'time without time zone',
+    type: 'timestamptz',
   })
-  finishedAt?: string;
+  finishedAt?: Date;
 
   @Column({ nullable: false })
   status: ProcessStatus;

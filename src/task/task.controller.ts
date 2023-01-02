@@ -16,7 +16,7 @@ export class TaskController {
         type: input.type,
       },
       {
-        event: input.data,
+        eventData: input.data,
       },
     );
   }

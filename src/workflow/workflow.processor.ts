@@ -1,4 +1,5 @@
 import { Process, Processor } from '@nestjs/bull';
+import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { find, get } from 'lodash';
 import { WorkflowJobData } from 'src/common/queue.type';
@@ -7,7 +8,8 @@ import { ProcessStatus, TaskOutput, TaskType } from 'src/task/type/task.type';
 import { WorkflowService } from './workflow.service';
 
 @Processor('workflow')
-export class BlockProcessor {
+export class WorkflowProcessor {
+  private readonly logger = new Logger(WorkflowProcessor.name);
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly taskService: TaskService,
@@ -16,25 +18,30 @@ export class BlockProcessor {
   @Process({ concurrency: 10 })
   async processWorkflowJob(job: Job) {
     const data: WorkflowJobData = job.data;
-    let outputs: {
+    const outputs: {
       [key: number]: TaskOutput;
     } = {};
-    console.log(
-      `Process event ${data.event.name} for workflow version ${data.workflowVersionId}`,
+    this.logger.debug(
+      `Process event "${data.event.name}" for workflow version ${data.workflowVersionId}`,
     );
 
     const tasks = await this.taskService.getTasks(data.workflowVersionId);
+
+    // TODO refactor code
     const triggerTask = find(tasks, { type: TaskType.TRIGGER });
-    let triggerTaskOutput = await this.taskService.processTask(triggerTask, {
-      event: data.eventData,
+    const startedAt = new Date();
+    const triggerTaskOutput = await this.taskService.processTask(triggerTask, {
+      eventData: data.eventData,
+      event: data.event,
     });
 
     if (!triggerTaskOutput.output?.match) {
+      this.logger.debug(`Not match conditions. Skip!`);
       // event does not match
       return true;
     }
 
-    let workflowLogId = await this.workflowService.createWorkflowLog({
+    const workflowLogId = await this.workflowService.createWorkflowLog({
       input: data.eventData,
       workflowVersionId: data.workflowVersionId,
     });
@@ -44,6 +51,8 @@ export class BlockProcessor {
         taskId: triggerTask.id,
         workflowLogId,
         output: triggerTaskOutput,
+        startedAt,
+        finishedAt: new Date(),
       },
     ]);
     outputs[triggerTask.id] = triggerTaskOutput;
@@ -64,8 +73,9 @@ export class BlockProcessor {
         ProcessStatus.RUNNING,
       );
 
-      let output = await this.taskService.processTask(task, {
-        event: data.eventData,
+      const output = await this.taskService.processTask(task, {
+        eventData: data.eventData,
+        event: data.event,
         input: get(outputs, task.dependOn),
       });
 
@@ -95,5 +105,7 @@ export class BlockProcessor {
       workflowLogId,
       ProcessStatus.SUCCESS,
     );
+
+    this.logger.debug('Finished process workflow');
   }
 }

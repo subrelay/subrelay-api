@@ -18,14 +18,14 @@ export class WorkflowLog {
   @CreateDateColumn({
     name: 'startedAt',
   })
-  startedAt?: string;
+  startedAt?: Date;
 
   @Column({
     nullable: true,
     name: 'finishedAt',
-    type: 'time without time zone',
+    type: 'timestamptz',
   })
-  finishedAt?: string;
+  finishedAt?: Date;
 
   @Column({ nullable: false, type: 'text' })
   status: ProcessStatus;

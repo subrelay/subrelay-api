@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  OnApplicationBootstrap,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateChainRequest } from './chain.dto';
@@ -89,7 +85,7 @@ export class ChainService {
 
     return {
       success: true,
-      output: chain,
+      // output: chain,
     };
   }
 

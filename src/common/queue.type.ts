@@ -1,17 +1,16 @@
 import { Event } from 'src/event/event.entity';
-import { Workflow } from 'src/workflow/entity/workflow.entity';
 
 export class EventRawData {
-  pallet: String;
-  name: String;
+  pallet: string;
+  name: string;
   data: any;
-  hash: String;
+  hash: string;
 }
 
 export class BlockJobData {
   timestamp: number;
-  hash: String;
-  chainUuid: String;
+  hash: string;
+  chainUuid: string;
   events: EventRawData[];
   success: boolean;
 }
@@ -19,8 +18,8 @@ export class BlockJobData {
 export class EventData extends EventRawData {
   timestamp: number;
   success: boolean;
-  hash: String;
-  chainUuid: String;
+  hash: string;
+  chainUuid: string;
 }
 
 export class WorkflowJobData {

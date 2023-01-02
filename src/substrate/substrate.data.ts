@@ -1,5 +1,3 @@
-import { EventRecord } from '@polkadot/types/interfaces';
-
 export class ChainInfo {
   chainId: string;
   chainTokens: string[];
@@ -16,28 +14,35 @@ export enum GeneralTypeEnum {
   STRING = 'string',
   UNKNOWN = 'unknown',
   BOOL = 'boolean',
+  ENUM = 'enum',
 }
 
 export class EventDef {
   name: string;
-  dataSchema: ObjectSchema;
+  dataSchema?: TypeSchema[];
   description?: string;
   pallet: string;
   index: number;
 }
 
 export class PrimitiveSchema {
+  name?: string;
   type: GeneralTypeEnum;
   description?: string;
+  typeName: string;
 }
 
 export class UnknownSchema {
+  name?: string;
   type: string;
   description?: string;
+  typeName: string;
 }
 
 export class ObjectSchema {
+  name?: string;
   type: GeneralTypeEnum;
+  typeName: string;
   description?: string;
   properties?: {
     [key: string]: TypeSchema;

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { keys } from 'lodash';
+import { isEmpty } from 'lodash';
 import { EventDef, GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { SubstrateService } from 'src/substrate/substrate.service';
 import { Repository } from 'typeorm';
@@ -24,11 +24,11 @@ export class EventService {
     await this.eventRepository.insert(createEventsInput);
   }
 
-  getEventsByChainUuidAndName(chainUuid: String, names: String[]) {
+  getEventsByChainUuidAndName(chainUuid: string, names: string[]) {
     return this.eventRepository
       .createQueryBuilder('event')
       .where('"chainUuid" = :chainUuid', { chainUuid })
-      .andWhere(`CONCAT(pallet, '.', name) IN (:names) `, { names })
+      .andWhere(`CONCAT(pallet, '.', name) IN (:...names) `, { names })
       .getMany();
   }
 
@@ -92,24 +92,22 @@ export class EventService {
   }
 
   private getSupportedFields(event: Event): SupportedFilterField[] {
-    const dataFields = keys(event.dataSchema.properties).map((name) => {
-      const data = event.dataSchema.properties[name];
-      if (this.substrateService.isPrimitiveType(data.type)) {
-        return {
-          name: `data.${name}`,
-          description: data.description,
-          type: data.type as GeneralTypeEnum,
-        };
-      }
-
+    const dataFields = event.dataSchema.map((field, index) => {
+      const name = `data.${isEmpty(field.name) ? index : field.name}`;
       // Hardcode
-      if (data.type === 'T::AccountId') {
+      if (field.typeName === 'T::AccountId') {
         return {
-          name: `data.${name}`,
+          name,
           description: 'Account address',
           type: GeneralTypeEnum.STRING,
         };
       }
+
+      return {
+        name,
+        description: field.description,
+        type: field.type as GeneralTypeEnum,
+      };
     });
 
     const eventFields = [
