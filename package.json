@@ -37,6 +37,8 @@
     "@polkadot/types-codec": "^9.8.1",
     "@polkadot/util": "^10.1.14",
     "@polkadot/util-crypto": "^10.1.14",
+    "@sentry/node": "^7.28.1",
+    "@sentry/tracing": "^7.28.1",
     "@types/lodash": "^4.14.189",
     "@types/passport": "^1.0.11",
     "axios": "^1.1.3",
