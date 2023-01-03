@@ -5,12 +5,12 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
-import * as Sentry from '@sentry/node';
+import * as Rollbar from 'rollbar';
+import { ConfigService } from '@nestjs/config';
 
 @Catch()
 export class InternalServerExceptionsFilter implements ExceptionFilter {
-  constructor() {}
+  constructor(private configService: ConfigService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -21,7 +21,13 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    Sentry.captureException(exception);
+    const rollbar = new Rollbar({
+      accessToken: this.configService.get('ROLLBAR_ACCESS_TOKEN'),
+      captureUncaught: true,
+      captureUnhandledRejections: true,
+      environment: this.configService.get('NODE_ENV'),
+    });
+    rollbar.error(exception as Error);
 
     res
       .status(HttpStatus.INTERNAL_SERVER_ERROR)

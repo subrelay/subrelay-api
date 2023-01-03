@@ -37,8 +37,6 @@
     "@polkadot/types-codec": "^9.8.1",
     "@polkadot/util": "^10.1.14",
     "@polkadot/util-crypto": "^10.1.14",
-    "@sentry/node": "^7.28.1",
-    "@sentry/tracing": "^7.28.1",
     "@types/lodash": "^4.14.189",
     "@types/passport": "^1.0.11",
     "axios": "^1.1.3",
@@ -50,6 +48,7 @@
     "pg": "^8.8.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
+    "rollbar": "^2.26.0",
     "rxjs": "^7.2.0",
     "typeorm": "^0.3.10"
   },
