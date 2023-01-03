@@ -18,6 +18,8 @@ import { AuthMiddleware } from './common/auth.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bull';
+import { APP_FILTER } from '@nestjs/core';
+import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 
 @Module({
   imports: [
@@ -57,7 +59,13 @@ import { BullModule } from '@nestjs/bull';
     WorkflowModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      useClass: InternalServerExceptionsFilter,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   public configure(consumer: MiddlewareConsumer): void {

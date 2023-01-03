@@ -48,6 +48,7 @@
     "pg": "^8.8.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
+    "rollbar": "^2.26.0",
     "rxjs": "^7.2.0",
     "typeorm": "^0.3.10"
   },
