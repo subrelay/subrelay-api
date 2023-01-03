@@ -326,6 +326,7 @@ export class WorkflowService {
         'DISTINCT wl.id AS id',
         'wv.name AS name',
         'wl."finishedAt" AS "finishedAt"',
+        'wl."startedAt" AS "startedAt"',
         'wl.status AS "status"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
       ])
