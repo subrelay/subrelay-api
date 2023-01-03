@@ -30,9 +30,9 @@ function getAuthInfo(base64Token: string): AuthInfo {
 
 function authorize(authInfo: AuthInfo, req: Request) {
   // Token expiration is 10 minutes
-  // if (Date.now() - authInfo.timestamp > 10 * 60 * 1000) {
-  //   throw new ForbiddenException('Token expired');
-  // }
+  if (Date.now() - authInfo.timestamp > 10 * 60 * 1000) {
+    throw new ForbiddenException('Token expired');
+  }
 
   const data = {
     endpoint: req.originalUrl,
@@ -40,13 +40,10 @@ function authorize(authInfo: AuthInfo, req: Request) {
     body: req.body,
     timestamp: authInfo.timestamp,
   };
-  console.log({ data });
 
   const message = stringToU8a(JSON.stringify(data));
-  console.log({ message });
-
   const { isValid } = signatureVerify(
-    stringToU8a(JSON.stringify(data)),
+    message,
     authInfo.signature,
     authInfo.address,
   );
