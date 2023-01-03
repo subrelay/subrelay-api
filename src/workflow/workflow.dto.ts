@@ -80,6 +80,7 @@ export class WorkflowLogResponse {
   id: number;
   name: string;
   finishedAt: Date;
+  startedAt: Date;
   chain: {
     uuid: string;
     name: string;

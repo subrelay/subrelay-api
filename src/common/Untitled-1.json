@@ -1,0 +1,6 @@
+{
+    "endpoint": "/workflows?search=foo",
+    "method": "GET",
+    "body": {},
+    "timestamp": 1669702265438
+}

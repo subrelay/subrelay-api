@@ -2,6 +2,8 @@ import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
 import { IsNumber, IsString } from 'class-validator';
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from 'src/user/user.service';
+import { signatureVerify } from '@polkadot/util-crypto';
+import { stringToU8a } from '@polkadot/util';
 
 class AuthInfo {
   @IsNumber()
@@ -25,6 +27,34 @@ function getAuthInfo(base64Token: string): AuthInfo {
     throw new ForbiddenException();
   }
 }
+
+function authorize(authInfo: AuthInfo, req: Request) {
+  // Token expiration is 10 minutes
+  // if (Date.now() - authInfo.timestamp > 10 * 60 * 1000) {
+  //   throw new ForbiddenException('Token expired');
+  // }
+
+  const data = {
+    endpoint: req.originalUrl,
+    method: req.method,
+    body: req.body,
+    timestamp: authInfo.timestamp,
+  };
+  console.log({ data });
+
+  const message = stringToU8a(JSON.stringify(data));
+  console.log({ message });
+
+  const { isValid } = signatureVerify(
+    stringToU8a(JSON.stringify(data)),
+    authInfo.signature,
+    authInfo.address,
+  );
+
+  if (!isValid) {
+    throw new ForbiddenException('Token invalid');
+  }
+}
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   constructor(private readonly userService: UserService) {}
@@ -36,10 +66,12 @@ export class AuthMiddleware implements NestMiddleware {
     }
 
     const authInfo = getAuthInfo(authorization);
+    authorize(authInfo, req);
     const user =
       (await this.userService.getUser(authInfo.address)) ||
       (await this.userService.createUser({ address: authInfo.address }));
     req.user = user;
+
     next();
   }
 }
