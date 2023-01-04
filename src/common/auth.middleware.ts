@@ -3,7 +3,7 @@ import { IsNumber, IsString } from 'class-validator';
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from 'src/user/user.service';
 import { signatureVerify } from '@polkadot/util-crypto';
-import { stringToU8a } from '@polkadot/util';
+import { stringToHex } from '@polkadot/util';
 
 class AuthInfo {
   @IsNumber()
@@ -41,7 +41,7 @@ function authorize(authInfo: AuthInfo, req: Request) {
     timestamp: authInfo.timestamp,
   };
 
-  const message = stringToU8a(JSON.stringify(data));
+  const message = stringToHex(JSON.stringify(data));
   const { isValid } = signatureVerify(
     message,
     authInfo.signature,
