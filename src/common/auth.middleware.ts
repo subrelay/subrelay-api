@@ -30,7 +30,7 @@ function getAuthInfo(base64Token: string): AuthInfo {
 
 function authorize(authInfo: AuthInfo, req: Request) {
   // Token expiration is 10 minutes
-  if (Date.now() - authInfo.timestamp > 10 * 60 * 1000) {
+  if (Date.now() - authInfo.timestamp > 24 * 60 * 60 * 1000) {
     throw new ForbiddenException('Token expired');
   }
 
@@ -40,6 +40,10 @@ function authorize(authInfo: AuthInfo, req: Request) {
     body: req.body,
     timestamp: authInfo.timestamp,
   };
+
+  if (req.method.toLowerCase() === 'get') {
+    data.endpoint = `${req.path}*`;
+  }
 
   const message = stringToHex(JSON.stringify(data));
   const { isValid } = signatureVerify(
