@@ -29,7 +29,7 @@ function getAuthInfo(base64Token: string): AuthInfo {
 }
 
 function authorize(authInfo: AuthInfo, req: Request) {
-  // Token expiration is 10 minutes
+  // Token expiration is 1 day
   if (Date.now() - authInfo.timestamp > 24 * 60 * 60 * 1000) {
     throw new ForbiddenException('Token expired');
   }
