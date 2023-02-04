@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { findIndex, get, isEmpty, orderBy } from 'lodash';
+import { findIndex, get, isEmpty, isNull, orderBy } from 'lodash';
 import { Chain } from 'src/chain/chain.entity';
 import { Task } from 'src/task/entity/task.entity';
 import { TaskService } from 'src/task/task.service';
@@ -226,7 +226,7 @@ export class WorkflowService {
       });
     }
 
-    if (limit && offset) {
+    if (!isNull(limit) && !isNull(offset)) {
       queryBuilder = queryBuilder.limit(limit).offset(offset);
     }
 
@@ -301,7 +301,7 @@ export class WorkflowService {
       });
     }
 
-    if (limit && offset) {
+    if (!isNull(limit) && !isNull(offset)) {
       queryBuilder = queryBuilder.limit(limit).offset(offset);
     }
 
@@ -371,13 +371,7 @@ export class WorkflowService {
   }
 
   async getWorkflowsTotal(
-    {
-      limit,
-      offset,
-      chainUuid,
-      search,
-      status,
-    }: Partial<GetWorkflowsQueryParams>,
+    { chainUuid, search, status }: Partial<GetWorkflowsQueryParams>,
     userId?: number,
   ): Promise<number> {
     let queryBuilder = this.workflowRepository
@@ -407,10 +401,6 @@ export class WorkflowService {
       queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
         search: `%${search}%`,
       });
-    }
-
-    if (limit && offset) {
-      queryBuilder = queryBuilder.limit(limit).offset(offset);
     }
 
     return queryBuilder.getCount();
