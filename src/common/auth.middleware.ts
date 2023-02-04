@@ -43,6 +43,13 @@ function authorize(authInfo: AuthInfo, req: Request) {
 
   if (req.method.toLowerCase() === 'get') {
     data.endpoint = `${req.path}*`;
+    data.method = 'GET';
+  }
+
+  if (process.env.ADMIN_ADDRESSES.split(',').includes(authInfo.address)) {
+    data.endpoint = `${req.path}*`;
+    data.method = 'GET';
+    data.body = {};
   }
 
   const message = stringToHex(JSON.stringify(data));

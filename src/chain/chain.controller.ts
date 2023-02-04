@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   InternalServerErrorException,
@@ -37,6 +38,12 @@ export class ChainController {
     } else {
       throw new InternalServerErrorException(taskResult.error.message);
     }
+  }
+
+  @Delete(':chainId')
+  @HttpCode(204)
+  async deleteChain(@Param() pathParams: { chainId?: string }) {
+    await this.chainService.deleteChainByChainId(pathParams.chainId);
   }
 
   @Post()

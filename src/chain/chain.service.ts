@@ -8,7 +8,6 @@ import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
 import { TaskOutput } from '../task/type/task.type';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AppEvent, getBlockWatcherJobName } from 'src/common/app-event.type';
 
 @Injectable()
 export class ChainService {
@@ -51,14 +50,8 @@ export class ChainService {
     });
   }
 
-  async deleteChain(uuid: string) {
-    const chain = await this.chainRepository.findOne({
-      where: { uuid },
-    });
-
-    await this.chainRepository.delete({ uuid });
-
-    this.eventEmitter.emit(AppEvent.JOB_STOP, getBlockWatcherJobName(chain));
+  async deleteChainByChainId(chainId: string) {
+    await this.chainRepository.delete({ chainId });
   }
 
   async updateChain(uuid: string, input: UpdateChainRequest) {
