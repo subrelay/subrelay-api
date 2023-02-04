@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   InternalServerErrorException,
   NotFoundException,
   Param,
@@ -12,7 +13,7 @@ import {
 import { GetEventsQueryParams } from 'src/event/event.dto';
 import { Event, EventDetail } from 'src/event/event.entity';
 import { EventService } from 'src/event/event.service';
-import { CreateChainRequest } from './chain.dto';
+import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
 import { ChainService } from './chain.service';
 
@@ -36,6 +37,19 @@ export class ChainController {
     } else {
       throw new InternalServerErrorException(taskResult.error.message);
     }
+  }
+
+  @Post()
+  @HttpCode(204)
+  async patchChain(
+    @Param() pathParams: { uuid?: string },
+    @Body() input: UpdateChainRequest,
+  ) {
+    if (!(await this.chainService.chainExist(pathParams.uuid))) {
+      throw new NotFoundException('Chain not found');
+    }
+
+    await this.chainService.updateChain(pathParams.uuid, input);
   }
 
   @Get(':uuid/events')

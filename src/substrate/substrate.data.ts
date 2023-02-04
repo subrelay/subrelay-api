@@ -30,6 +30,7 @@ export class PrimitiveSchema {
   type: GeneralTypeEnum;
   description?: string;
   typeName: string;
+  example?: any;
 }
 
 export class UnknownSchema {
@@ -37,6 +38,7 @@ export class UnknownSchema {
   type: string;
   description?: string;
   typeName: string;
+  example?: any;
 }
 
 export class ObjectSchema {
@@ -47,6 +49,7 @@ export class ObjectSchema {
   properties?: {
     [key: string]: TypeSchema;
   };
+  example?: any;
 }
 
 export type ErrorDef = EventDef;

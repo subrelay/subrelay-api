@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { isEmpty } from 'lodash';
+import { set } from 'lodash';
 import { EventDef, GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { SubstrateService } from 'src/substrate/substrate.service';
 import { Repository } from 'typeorm';
 import { GetEventsQueryParams } from './event.dto';
 import { Event, EventDetail, SupportedFilterField } from './event.entity';
+import { EventData } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -39,6 +40,36 @@ export class EventService {
     const event = await this.eventRepository.findOneBy({
       id: eventId,
       chainUuid,
+    });
+
+    if (!event) {
+      return null;
+    }
+
+    return {
+      ...event,
+      fields: this.getSupportedFields(event),
+    };
+  }
+
+  async generateEventSample(eventId): Promise<EventData> {
+    const event = await this.getEventById(eventId);
+    if (!event) {
+      return null;
+    }
+
+    const eventData = {
+      timestamp: Date.now(),
+      hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf', // TODO need to function to random a hash
+      chainUuid: event.chainUuid,
+    };
+    event.fields.forEach((f) => set(eventData, f.name, f.example));
+    return eventData;
+  }
+
+  async getEventById(eventId: number): Promise<EventDetail> {
+    const event = await this.eventRepository.findOneBy({
+      id: eventId,
     });
 
     if (!event) {
@@ -92,21 +123,14 @@ export class EventService {
   }
 
   private getSupportedFields(event: Event): SupportedFilterField[] {
-    const dataFields = event.dataSchema.map((field, index) => {
-      const name = `data.${isEmpty(field.name) ? index : field.name}`;
-      // Hardcode
-      if (field.typeName === 'T::AccountId') {
-        return {
-          name,
-          description: 'Account address',
-          type: GeneralTypeEnum.STRING,
-        };
-      }
+    const dataFields = event.dataSchema.map((field) => {
+      const name = `data.${field.name}`;
 
       return {
         name,
         description: field.description,
         type: field.type as GeneralTypeEnum,
+        example: field.example,
       };
     });
 
@@ -115,6 +139,7 @@ export class EventService {
         name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
+        example: true,
       },
     ];
 

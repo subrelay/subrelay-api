@@ -13,3 +13,13 @@ export class CreateChainRequest {
   @IsNotEmpty()
   rpcs: string[];
 }
+
+export class UpdateChainRequest {
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
+  @IsNotEmpty()
+  @IsUrl()
+  imageUrl: string;
+}

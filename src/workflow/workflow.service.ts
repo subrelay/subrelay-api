@@ -167,7 +167,8 @@ export class WorkflowService {
         'w."createdAt" AS "createdAt"',
         'wv."createdAt" AS "updatedAt"',
         'w.status AS status',
-        `JSONB_BUILD_OBJECT('uuid', c."uuid", 'name', c.name) AS chain`,
+        'c.uuid AS "chainUuid"',
+        'c.name AS "chainName"',
         `ARRAY_AGG(JSONB_BUILD_OBJECT('id', t.id, 'type', t.type, 'name', t.name, 'config', t.config, 'dependOn', t."dependOn")) AS tasks`,
       ])
       .where('w.id = :id', { id })

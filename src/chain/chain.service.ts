@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateChainRequest } from './chain.dto';
+import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
@@ -59,6 +59,10 @@ export class ChainService {
     await this.chainRepository.delete({ uuid });
 
     this.eventEmitter.emit(AppEvent.JOB_STOP, getBlockWatcherJobName(chain));
+  }
+
+  async updateChain(uuid: string, input: UpdateChainRequest) {
+    await this.chainRepository.update({ uuid }, input);
   }
 
   async createChain(input: CreateChainRequest): Promise<TaskOutput> {

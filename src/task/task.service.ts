@@ -170,13 +170,23 @@ export class TaskService {
   // TODO accept custom data
   private async notifyWebhook(
     task: TaskInput,
-    data: ProcessTaskData,
+    { event, eventData }: ProcessTaskData,
   ): Promise<TaskOutput> {
     const config = task.config as NotificationTaskConfig;
 
     try {
       // TODO using data.prev if having custom message task
-      await this.httpService.axiosRef.post(config.config.url, data.eventData, {
+      const response = {
+        eventId: event.id,
+        name: `${event.pallet}.${event.name}`,
+        description: event.description,
+        timestamp: eventData.timestamp,
+        time: new Date(eventData.timestamp),
+        data: eventData.data,
+        hash: eventData.hash,
+        success: eventData.success,
+      };
+      await this.httpService.axiosRef.post(config.config.url, response, {
         headers: {
           Accept: 'application/json',
           ...this.parseHeaders(config.config.headers),
