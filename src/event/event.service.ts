@@ -122,17 +122,6 @@ export class EventService {
     return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
   }
 
-  // public async getEventSample(eventId: number) {
-  //   const event = await this.eventRepository.findOneBy({ id: eventId });
-  //   const sample = {
-  //     success: true,
-  //   };
-  //   event.dataSchema.forEach((field) => {
-  //     if field.typeName
-  //     set(sample, `data.${field.name}`);
-  //   });
-  // }
-
   private getSupportedFields(event: Event): SupportedFilterField[] {
     const dataFields = event.dataSchema.map((field) => {
       const name = `data.${field.name}`;
