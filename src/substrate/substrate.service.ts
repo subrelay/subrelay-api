@@ -12,7 +12,6 @@ import {
 import { isEmpty, map } from 'lodash';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AppEvent } from 'src/common/app-event.type';
-import { writeFileSync } from 'fs';
 
 @Injectable()
 export class SubstrateService {
@@ -30,8 +29,6 @@ export class SubstrateService {
     const metadata = await api.runtimeMetadata;
     const allTypes = metadata.asLatest.lookup
       .types as unknown as PortableType[];
-    writeFileSync('events.json', JSON.stringify(allTypes));
-    writeFileSync('chain-event.json', JSON.stringify(apiAt.events));
     const events: EventDef[] = this.parseEventsDef(allTypes, apiAt.events);
 
     const chainInfo = {
