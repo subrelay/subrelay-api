@@ -43,5 +43,6 @@ export class EventDetail extends Event {
 export class SupportedFilterField {
   name: string;
   description?: string;
+  example?: any;
   type: GeneralTypeEnum;
 }

@@ -6,7 +6,7 @@ import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
 import { IsTaskConfig } from './validator/task-config.validator';
 
 export class ProcessTaskRequest {
-  data: any; // TODO it shoul be event data
+  data: any;
 
   @ValidateNested()
   @IsTaskConfig()

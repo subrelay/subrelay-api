@@ -9,9 +9,10 @@ import {
   TypeSchema,
 } from './substrate.data';
 
-import { map } from 'lodash';
+import { isEmpty, map } from 'lodash';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AppEvent } from 'src/common/app-event.type';
+import { writeFileSync } from 'fs';
 
 @Injectable()
 export class SubstrateService {
@@ -29,6 +30,8 @@ export class SubstrateService {
     const metadata = await api.runtimeMetadata;
     const allTypes = metadata.asLatest.lookup
       .types as unknown as PortableType[];
+    writeFileSync('events.json', JSON.stringify(allTypes));
+    writeFileSync('chain-event.json', JSON.stringify(apiAt.events));
     const events: EventDef[] = this.parseEventsDef(allTypes, apiAt.events);
 
     const chainInfo = {
@@ -73,12 +76,23 @@ export class SubstrateService {
 
         let dataSchema: TypeSchema[];
         if (eventMeta.fields) {
-          dataSchema = map(eventMeta.fields, (field) =>
-            this.parseFieldSchema(
+          let fieldsString = eventMeta.docs.join(' ').match(/\[(.)+\]/);
+          fieldsString = fieldsString && fieldsString[0].replace(/ /g, '');
+          const fieldNames = fieldsString
+            ? fieldsString.substring(1, fieldsString.length - 1).split(',')
+            : [];
+
+          dataSchema = map(eventMeta.fields, (field, index) => {
+            const result = this.parseFieldSchema(
               field,
-              types.find((type) => type.id.eq(field.type)),
-            ),
-          );
+              eventMeta.args[index].toString(),
+            );
+            if (isEmpty(result.name)) {
+              result.name = fieldNames[index] || index;
+            }
+
+            return result;
+          });
         }
 
         return {
@@ -92,8 +106,8 @@ export class SubstrateService {
     });
   }
 
-  private parseFieldSchema(field: Si1Field, typeDef: PortableType): TypeSchema {
-    const schema = this.parseTypeSchema(typeDef);
+  private parseFieldSchema(field: Si1Field, arg: string): TypeSchema {
+    const schema = this.parseArgType(arg);
 
     return {
       ...schema,
@@ -103,45 +117,63 @@ export class SubstrateService {
     };
   }
 
-  private parseTypeSchema(typeDef: PortableType): TypeSchema {
-    if (typeDef.type.def.isPrimitive) {
+  private parseArgType(arg: string): {
+    type: GeneralTypeEnum;
+    example?: any;
+  } {
+    if (arg === 'Bool') {
       return {
-        ...this.parsePrimitiveType(typeDef),
-        description: typeDef.type.docs.join(''),
+        type: GeneralTypeEnum.BOOL,
+        example: true,
+      };
+    }
+
+    if (arg === 'Str') {
+      return {
+        type: GeneralTypeEnum.STRING,
+        example: 'This is an example',
+      };
+    }
+
+    const number_regex = new RegExp('^(u|i|U|I)(8|16|32|64|128|256)$');
+    if (number_regex.test(arg)) {
+      return {
+        type: GeneralTypeEnum.NUMBER,
+        example: this.generateSampleForNumber(arg),
+      };
+    }
+
+    console.log({ arg });
+
+    if (arg === 'AccountId32') {
+      return {
+        type: GeneralTypeEnum.STRING,
+        example: '13SDfVdrBaUrnoV7tMfvrGrxxANr1iJNEcPCmqZzF9FCpX8c',
+      };
+    }
+
+    if (arg === 'H256') {
+      return {
+        type: GeneralTypeEnum.STRING,
+        example:
+          '0xdf018e32a08be6b0ad789c166410497f844d1077b40bea08073cedae58216aa5',
       };
     }
 
     return {
       type: GeneralTypeEnum.UNKNOWN,
-      typeName: typeDef.type.def.type,
-      description: typeDef.type.docs.join(''),
     };
   }
 
-  private parsePrimitiveType(typeDef: PortableType): {
-    type: GeneralTypeEnum;
-    typeName: string;
-  } {
-    let type: GeneralTypeEnum = GeneralTypeEnum.UNKNOWN;
-    if (
-      typeDef.type.def.asPrimitive.isStr ||
-      typeDef.type.def.asPrimitive.isChar
-    ) {
-      type = GeneralTypeEnum.STRING;
-    }
-
-    if (typeDef.type.def.asPrimitive.isBool) {
-      type = GeneralTypeEnum.BOOL;
-    }
-
-    const number_regex = new RegExp('^(U|I)(8|16|32|64|128|256)$');
-    if (number_regex.test(typeDef.type.def.asPrimitive.type)) {
-      type = GeneralTypeEnum.NUMBER;
-    }
-
-    return {
-      type,
-      typeName: typeDef.type.def.asPrimitive.type,
+  generateSampleForNumber(arg) {
+    const mapping = {
+      u8: 10,
+      u16: 1_000,
+      u32: 100_000_000,
+      u64: 100_000_000,
+      u128: 100_000_000,
+      u256: 100_000_000,
     };
+    return mapping[arg];
   }
 }
