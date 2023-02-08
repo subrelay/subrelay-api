@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { validateSync } from 'class-validator';
 
 export enum TaskType {
@@ -14,10 +15,21 @@ export enum ProcessStatus {
 }
 
 export class TaskOutput {
+  @ApiProperty({
+    example: true,
+  })
   success: boolean;
+  @ApiPropertyOptional({
+    example: null,
+  })
   error?: {
     message: string;
   };
+  @ApiPropertyOptional({
+    example: {
+      match: true,
+    },
+  })
   output?: any;
 }
 

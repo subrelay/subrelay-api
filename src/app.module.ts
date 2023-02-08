@@ -35,16 +35,21 @@ import { InternalServerExceptionsFilter } from './common/internal-server-error.f
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         entities: ['dist/**/*.entity.js'],
+        migrations: ['dist/migration/*.js'],
         synchronize: false,
         migrationsRun: true,
         logging: true,
       }),
     }),
-    BullModule.forRoot({
-      redis: {
-        host: 'localhost',
-        port: 6379,
-      },
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST'),
+          port: 6379,
+        },
+      }),
     }),
     BullModule.registerQueue({
       name: 'block',
@@ -73,6 +78,7 @@ export class AppModule implements NestModule {
       .apply(AuthMiddleware)
       .exclude(
         { method: RequestMethod.GET, path: '/' },
+        { method: RequestMethod.GET, path: '/api' },
         { method: RequestMethod.GET, path: '/chains' },
         { method: RequestMethod.GET, path: '/tasks/operators' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },

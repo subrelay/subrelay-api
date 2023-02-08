@@ -15,7 +15,9 @@ import {
   GetWorkflowLogsQueryParams,
   GetWorkflowsOrderBy,
   GetWorkflowsQueryParams,
+  WorkflowDetail,
   WorkflowLogResponse,
+  WorkflowSummary,
 } from './workflow.dto';
 import { WorkflowStatus } from './workflow.type';
 
@@ -143,8 +145,8 @@ export class WorkflowService {
       .getRawMany();
   }
 
-  getWorkflowSummary(id: number, userId: number): Promise<Workflow> {
-    return this.workflowRepository.findOneBy({ id, userId });
+  async workflowExists(id: number, userId: number): Promise<boolean> {
+    return (await this.workflowRepository.countBy({ id, userId })) > 0;
   }
 
   deleteWorkflow(id: number, userId: number) {
@@ -155,7 +157,7 @@ export class WorkflowService {
     await this.workflowRepository.update({ id }, { status });
   }
 
-  async getWorkflow(id: number, userId?: number): Promise<Workflow> {
+  async getWorkflow(id: number, userId?: number): Promise<WorkflowDetail> {
     const queryBuilder = this.workflowRepository
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
@@ -196,7 +198,7 @@ export class WorkflowService {
       status,
     }: Partial<GetWorkflowsQueryParams>,
     userId?: number,
-  ): Promise<Workflow[]> {
+  ): Promise<WorkflowSummary[]> {
     let queryBuilder = this.workflowRepository
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')

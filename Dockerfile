@@ -1,16 +1,16 @@
 FROM node:18 As development
 
-# Required for Prisma Client to work in container
-RUN apt-get update && apt-get install -y openssl
+WORKDIR /app
 
-WORKDIR /usr/src/app
+COPY package*.json ./
 
-COPY --chown=node:node package*.json ./
+# Install dependencies
+RUN npm install
 
-RUN npm ci
+# Copy the rest of the project files to the container
+COPY . .
 
-COPY --chown=node:node . .
-
+# Build the project
 RUN npm run build
 
 USER node

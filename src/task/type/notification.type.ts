@@ -1,3 +1,4 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsEnum,
@@ -30,23 +31,27 @@ export class NotificationTaskConfig extends AbsConfig {
   }
 }
 
+export class WebhookHeader {
+  @ApiProperty({ example: 'Header 1' })
+  @IsString()
+  @IsNotEmpty()
+  key: string;
+
+  @ApiProperty({ example: 'Value 1' })
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+}
+
 export class WebhookConfig extends AbsConfig {
+  @ApiPropertyOptional({ type: WebhookHeader, isArray: true })
   @IsArray()
   @IsOptional()
   @ValidateNested()
   headers: WebhookHeader[];
 
+  @ApiProperty({ example: 'https://example.com' })
   @IsNotEmpty()
   @IsUrl()
   url: string;
-}
-
-export class WebhookHeader {
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
 }

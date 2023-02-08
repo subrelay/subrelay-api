@@ -9,6 +9,7 @@ import {
 import { AbsConfig } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
 import { EventData } from 'src/common/queue.type';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum FilterOperator {
   GREATETHANEQUAL = 'greaterThanEqual',
@@ -22,10 +23,12 @@ export enum FilterOperator {
 }
 
 export class TriggerCondition {
+  @ApiProperty({ example: 'data.amount' })
   @IsString()
   @IsNotEmpty()
   variable: string;
 
+  @ApiProperty({ example: FilterOperator.GREATETHAN, enum: FilterOperator })
   @IsString()
   @IsEnum(FilterOperator, {
     message: `operator should be one of values: ${Object.values(
@@ -34,6 +37,7 @@ export class TriggerCondition {
   })
   operator: FilterOperator;
 
+  @ApiProperty({ example: 1 })
   @ValidateIf(
     (o) =>
       o.operator !== FilterOperator.ISFALSE &&
@@ -44,9 +48,11 @@ export class TriggerCondition {
 }
 
 export class TriggerTaskConfig extends AbsConfig {
+  @ApiProperty({ example: 9 })
   @IsNumber()
   eventId: number;
 
+  @ApiPropertyOptional({ isArray: true, type: TriggerCondition })
   @IsTriggerConditions()
   @IsOptional()
   conditions?: Array<TriggerCondition[]>;

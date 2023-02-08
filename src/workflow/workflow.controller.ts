@@ -12,22 +12,31 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import {
+  ApiBasicAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { findIndex, get, orderBy } from 'lodash';
 import { UserInfo } from 'src/common/user-info.decorator';
 import { EventService } from 'src/event/event.service';
 import { TaskType } from 'src/task/type/task.type';
 import { User } from 'src/user/user.entity';
-import { Workflow } from './entity/workflow.entity';
 import {
   CreateWorkFlowRequest,
   CreateWorkFlowTask,
   GetWorkflowsQueryParams,
-  GetWorkflowsResponse,
+  WorkflowsResponse,
   UpdateWorkFlowRequest,
+  WorkflowDetail,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 
 @Controller('workflows')
+@ApiTags('Workflow')
 export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
@@ -35,10 +44,18 @@ export class WorkflowController {
   ) {}
 
   @Get()
+  @ApiOkResponse({
+    description: 'Return data if request is successful',
+    type: WorkflowsResponse,
+  })
+  @ApiOperation({
+    summary: 'Get all workflows',
+  })
+  @ApiBasicAuth()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
     @UserInfo() user: User,
-  ): Promise<GetWorkflowsResponse> {
+  ): Promise<WorkflowsResponse> {
     return {
       workflows: await this.workflowService.getWorkflows(queryParams, user.id),
       total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
@@ -48,10 +65,18 @@ export class WorkflowController {
   }
 
   @Get(':id')
+  @ApiOkResponse({
+    description: 'Return data if request is successful',
+    type: WorkflowDetail,
+  })
+  @ApiBasicAuth()
+  @ApiOperation({
+    summary: 'Get a workflow details',
+  })
   async getWorkflow(
     @Param('id', ParseIntPipe) id: number,
     @UserInfo() user: User,
-  ): Promise<Workflow> {
+  ): Promise<WorkflowDetail> {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
@@ -62,37 +87,42 @@ export class WorkflowController {
   }
 
   @Patch(':id')
-  @HttpCode(200)
+  @HttpCode(204)
+  @ApiBasicAuth()
+  @ApiNoContentResponse({
+    description: 'Return data if request is successful',
+  })
+  @ApiOperation({
+    summary: 'Update a workflow',
+  })
   async updateWorkflow(
     @Param('id', ParseIntPipe) id: number,
     @Body() input: UpdateWorkFlowRequest,
     @UserInfo() user: User,
   ) {
-    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
-
-    if (!workflow) {
+    if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
 
     if (input.status) {
-      await this.workflowService.updateWorkflowStatus(
-        workflow.id,
-        input.status,
-      );
+      await this.workflowService.updateWorkflowStatus(id, input.status);
     }
-
-    return this.workflowService.getWorkflowSummary(id, user.id);
   }
 
   @Delete(':id')
-  @HttpCode(200)
+  @HttpCode(204)
+  @ApiBasicAuth()
+  @ApiNoContentResponse({
+    description: 'Return data if request is successful',
+  })
+  @ApiOperation({
+    summary: 'Delete a workflow',
+  })
   async deleteWorkflow(
     @Param('id', ParseIntPipe) id: number,
     @UserInfo() user: User,
   ) {
-    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
-
-    if (!workflow) {
+    if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
 
@@ -100,10 +130,18 @@ export class WorkflowController {
   }
 
   @Post()
+  @ApiCreatedResponse({
+    description: 'Return data if request is successful',
+    type: WorkflowDetail,
+  })
+  @ApiOperation({
+    summary: 'Create a workflow',
+  })
+  @ApiBasicAuth()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
-  ): Promise<Workflow> {
+  ): Promise<WorkflowDetail> {
     input.tasks = orderBy(
       input.tasks.map((task) => ({
         ...task,
