@@ -1,4 +1,10 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import {
+  ApiBasicAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { UserInfo } from 'src/common/user-info.decorator';
 import { User } from 'src/user/user.entity';
 import {
@@ -8,10 +14,19 @@ import {
 import { WorkflowService } from './workflow.service';
 
 @Controller('workflow-logs')
+@ApiTags('Workflow Log')
 export class WorkflowLogController {
   constructor(private readonly workflowService: WorkflowService) {}
 
   @Get()
+  @ApiOkResponse({
+    description: 'Return data if request is successful',
+    type: GetWorkflowLogsResponse,
+  })
+  @ApiOperation({
+    summary: 'Get all workflow logs',
+  })
+  @ApiBasicAuth()
   async getWorkflowLogs(
     @Query() queryParams: GetWorkflowLogsQueryParams,
     @UserInfo() user: User,

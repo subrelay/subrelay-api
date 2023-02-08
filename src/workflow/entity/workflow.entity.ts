@@ -8,17 +8,19 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
-import { Chain } from 'src/chain/chain.entity';
-import { Task } from 'src/task/entity/task.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
 export class Workflow {
+  @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   id: number;
 
+  @ApiProperty({ enum: WorkflowStatus, example: WorkflowStatus.RUNNING })
   @Column({ type: 'text' })
   status: WorkflowStatus;
 
+  @ApiProperty({ example: '2022-11-18T00:52:30.082Z' })
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: string;
 
@@ -28,11 +30,4 @@ export class Workflow {
 
   @Column({ name: 'userId' })
   userId: number;
-
-  chain?: Chain;
-  chainUuid?: string;
-  updatedAt?: string;
-  tasks?: Task[];
-  name?: string;
-  workflowVersionId: number;
 }
