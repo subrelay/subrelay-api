@@ -75,7 +75,7 @@ export class ChainController {
     await this.chainService.deleteChainByChainId(pathParams.chainId);
   }
 
-  @Put()
+  @Put(':uuid')
   @HttpCode(204)
   @ApiBasicAuth('admin')
   @ApiNoContentResponse({
@@ -85,7 +85,7 @@ export class ChainController {
     summary: 'Update name and image of a chain',
     description: 'Only admin can access this endpoint',
   })
-  async patchChain(
+  async updateChain(
     @Param() pathParams: { uuid?: string },
     @Body() input: UpdateChainRequest,
   ) {
