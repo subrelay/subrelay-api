@@ -31,8 +31,6 @@ export class WorkflowLogController {
     @Query() queryParams: GetWorkflowLogsQueryParams,
     @UserInfo() user: User,
   ): Promise<GetWorkflowLogsResponse> {
-    console.log(queryParams);
-
     return {
       workflowLogs: await this.workflowService.getWorkflowLogs(
         queryParams,
