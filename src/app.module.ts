@@ -14,12 +14,13 @@ import { ChainModule } from './chain/chain.module';
 import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { AuthMiddleware } from './common/auth.middleware';
+import { AdminAuthMiddleware } from './common/admin-auth.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
+import { AuthMiddleware } from './common/auth.middleware';
 
 @Module({
   imports: [
@@ -75,6 +76,13 @@ import { InternalServerExceptionsFilter } from './common/internal-server-error.f
 export class AppModule implements NestModule {
   public configure(consumer: MiddlewareConsumer): void {
     consumer
+      .apply(AdminAuthMiddleware)
+      .forRoutes(
+        { method: RequestMethod.POST, path: '/chains' },
+        { method: RequestMethod.PUT, path: '/chains/:uuid' },
+      );
+
+    consumer
       .apply(AuthMiddleware)
       .exclude(
         { method: RequestMethod.GET, path: '/' },
@@ -83,6 +91,8 @@ export class AppModule implements NestModule {
         { method: RequestMethod.GET, path: '/tasks/operators' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
+        { method: RequestMethod.POST, path: '/chains' },
+        { method: RequestMethod.PUT, path: '/chains/:uuid' },
       )
       .forRoutes('*');
   }

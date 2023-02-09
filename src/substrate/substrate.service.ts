@@ -140,8 +140,6 @@ export class SubstrateService {
       };
     }
 
-    console.log({ arg });
-
     if (arg === 'AccountId32') {
       return {
         type: GeneralTypeEnum.STRING,
