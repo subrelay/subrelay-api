@@ -68,12 +68,10 @@ export class GetWorkflowLogsQueryParams extends Pagination {
 
   @ApiPropertyOptional({
     example: WorkflowStatus.RUNNING,
-    enum: WorkflowStatus,
+    enum: [ProcessStatus.FAILED, ProcessStatus.RUNNING],
   })
-  @IsEnum(WorkflowStatus, {
-    message: `Invalid status. Possible values: ${Object.values(
-      WorkflowStatus,
-    ).join(', ')}`,
+  @IsEnum(ProcessStatus, {
+    message: `Invalid status. Possible values: ${ProcessStatus.FAILED}, ${ProcessStatus.SUCCESS}`,
   })
   @IsOptional()
   status?: ProcessStatus;
