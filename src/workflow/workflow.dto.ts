@@ -24,7 +24,7 @@ export enum GetWorkflowsOrderBy {
 
 export enum GetWorkflowLogsOrderBy {
   FINISHED_AT = 'finishedAt',
-  CHAIN_NAME = 'chainName',
+  STARTED_AT = 'startedAt',
   NAME = 'name',
 }
 
