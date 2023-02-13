@@ -87,6 +87,7 @@ export class AppModule implements NestModule {
       .exclude(
         { method: RequestMethod.GET, path: '/' },
         { method: RequestMethod.GET, path: '/api' },
+        { method: RequestMethod.GET, path: '/api/*' },
         { method: RequestMethod.GET, path: '/chains' },
         { method: RequestMethod.GET, path: '/tasks/operators' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },
