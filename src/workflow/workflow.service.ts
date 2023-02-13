@@ -314,10 +314,10 @@ export class WorkflowService {
         order = `wl."${requestedOrder}"`;
         break;
       case GetWorkflowLogsOrderBy.NAME:
-        order = `wl."${requestedOrder}"`;
+        order = `wv."${requestedOrder}"`;
         break;
-      case GetWorkflowLogsOrderBy.CHAIN_NAME:
-        order = `c."name"`;
+      case GetWorkflowLogsOrderBy.STARTED_AT:
+        order = `wl."${requestedOrder}"`;
         break;
       default:
         order = `wl."${GetWorkflowLogsOrderBy.FINISHED_AT}"`;
