@@ -9,7 +9,7 @@ import {
 import { AbsConfig } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventData } from '../../event/event.type';
+import { EventData } from '../../common/queue.type';
 
 export enum FilterOperator {
   GREATETHANEQUAL = 'greaterThanEqual',
