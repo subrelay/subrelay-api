@@ -1,18 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  NotificationChannel,
-  NotificationTaskConfig,
-} from 'src/task/type/notification.type';
 import { get, isEmpty, keyBy, mapValues } from 'lodash';
 import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
-import { GeneralTypeEnum } from 'src/substrate/substrate.data';
 import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLog } from './entity/task-log.entity';
 import { ProcessTaskData, TaskInput } from './task.dto';
+import { GeneralTypeEnum } from '../substrate/substrate.data';
+import {
+  NotificationChannel,
+  NotificationTaskConfig,
+} from './type/notification.type';
 
 @Injectable()
 export class TaskService {

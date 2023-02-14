@@ -1,4 +1,4 @@
-import { Chain } from 'src/chain/chain.entity';
+import { Chain } from '../chain/chain.entity';
 
 export enum AppEvent {
   BLOCK_WATCHER_START = 'block.watcher.start',

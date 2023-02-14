@@ -5,8 +5,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { UserInfo } from 'src/common/user-info.decorator';
-import { User } from 'src/user/user.entity';
+import { UserInfo } from '../common/user-info.decorator';
+import { User } from '../user/user.entity';
 import {
   GetWorkflowLogsQueryParams,
   GetWorkflowLogsResponse,

@@ -1,6 +1,6 @@
 import { IsEnum, ValidateNested } from 'class-validator';
-import { EventData } from 'src/common/queue.type';
-import { Event } from 'src/event/event.entity';
+import { EventData } from '../common/queue.type';
+import { Event } from '../event/event.entity';
 import { Task } from './entity/task.entity';
 import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
 import { IsTaskConfig } from './validator/task-config.validator';

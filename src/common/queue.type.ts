@@ -1,4 +1,4 @@
-import { Event } from 'src/event/event.entity';
+import { Event } from '../event/event.entity';
 
 export class EventRawData {
   pallet: string;

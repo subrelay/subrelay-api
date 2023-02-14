@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
-import { EventDef, GeneralTypeEnum } from 'src/substrate/substrate.data';
-import { SubstrateService } from 'src/substrate/substrate.service';
 import { Repository } from 'typeorm';
+import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
+import { SubstrateService } from '../substrate/substrate.service';
 import { GetEventsQueryParams } from './event.dto';
 import { Event, EventDetail, SupportedFilterField } from './event.entity';
 import { EventData } from './event.type';

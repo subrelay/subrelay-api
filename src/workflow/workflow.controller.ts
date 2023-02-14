@@ -21,10 +21,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { findIndex, get, orderBy } from 'lodash';
-import { UserInfo } from 'src/common/user-info.decorator';
-import { EventService } from 'src/event/event.service';
-import { TaskType } from 'src/task/type/task.type';
-import { User } from 'src/user/user.entity';
+import { UserInfo } from '../common/user-info.decorator';
+import { EventService } from '../event/event.service';
+import { TaskType } from '../task/type/task.type';
+import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
   CreateWorkFlowTask,

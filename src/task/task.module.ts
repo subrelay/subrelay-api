@@ -5,7 +5,7 @@ import { TaskController } from './task.controller';
 import { Task } from './entity/task.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TaskLog } from './entity/task-log.entity';
-import { EventModule } from 'src/event/event.module';
+import { EventModule } from '../event/event.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Task, TaskLog]), HttpModule, EventModule],
