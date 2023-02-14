@@ -8,11 +8,11 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { Chain } from 'src/chain/chain.entity';
-import { Pagination } from 'src/common/pagination.type';
-import { Task } from 'src/task/entity/task.entity';
-import { AbsConfig, ProcessStatus, TaskType } from 'src/task/type/task.type';
-import { IsTaskConfig } from 'src/task/validator/task-config.validator';
+import { Chain } from '../chain/chain.entity';
+import { Pagination } from '../common/pagination.type';
+import { Task } from '../task/entity/task.entity';
+import { AbsConfig, ProcessStatus, TaskType } from '../task/type/task.type';
+import { IsTaskConfig } from '../task/validator/task-config.validator';
 import { Workflow } from './entity/workflow.entity';
 import { WorkflowStatus } from './workflow.type';
 

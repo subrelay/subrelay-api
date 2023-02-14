@@ -20,9 +20,9 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { GetEventsQueryParams } from 'src/event/event.dto';
-import { Event, EventDetail } from 'src/event/event.entity';
-import { EventService } from 'src/event/event.service';
+import { GetEventsQueryParams } from '../event/event.dto';
+import { Event, EventDetail } from '../event/event.entity';
+import { EventService } from '../event/event.service';
 import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
 import { Chain } from './chain.entity';
 import { ChainService } from './chain.service';

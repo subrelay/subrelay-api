@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { UserService } from 'src/user/user.service';
+import { UserService } from '../user/user.service';
 import { AuthInfo, getAuthInfo, verifyUser } from './auth';
 
 function isAdmin(authInfo: AuthInfo) {

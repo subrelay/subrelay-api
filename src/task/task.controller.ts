@@ -1,7 +1,7 @@
 import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { mapValues, startCase } from 'lodash';
-import { EventService } from 'src/event/event.service';
+import { EventService } from '../event/event.service';
 import { ProcessTaskRequest } from './task.dto';
 import { TaskService } from './task.service';
 import { TaskOutput } from './type/task.type';

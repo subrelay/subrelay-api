@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { findIndex, get, isEmpty, isNull, orderBy } from 'lodash';
-import { Chain } from 'src/chain/chain.entity';
-import { Task } from 'src/task/entity/task.entity';
-import { TaskService } from 'src/task/task.service';
-import { ProcessStatus } from 'src/task/type/task.type';
 import { DataSource, Repository } from 'typeorm';
+import { Chain } from '../chain/chain.entity';
+import { Task } from '../task/entity/task.entity';
+import { TaskService } from '../task/task.service';
+import { ProcessStatus } from '../task/type/task.type';
 import { WorkflowLog } from './entity/workflow-log.entity';
 import { WorkflowVersion } from './entity/workflow-version.entity';
 import { Workflow } from './entity/workflow.entity';

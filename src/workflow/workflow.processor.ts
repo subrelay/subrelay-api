@@ -2,9 +2,9 @@ import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { find, get } from 'lodash';
-import { WorkflowJobData } from 'src/common/queue.type';
-import { TaskService } from 'src/task/task.service';
-import { ProcessStatus, TaskOutput, TaskType } from 'src/task/type/task.type';
+import { WorkflowJobData } from '../common/queue.type';
+import { TaskService } from '../task/task.service';
+import { ProcessStatus, TaskOutput, TaskType } from '../task/type/task.type';
 import { WorkflowService } from './workflow.service';
 
 @Processor('workflow')

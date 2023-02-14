@@ -8,8 +8,8 @@ import {
 } from 'class-validator';
 import { AbsConfig } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
-import { EventData } from 'src/common/queue.type';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EventData } from '../../event/event.type';
 
 export enum FilterOperator {
   GREATETHANEQUAL = 'greaterThanEqual',

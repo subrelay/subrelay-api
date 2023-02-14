@@ -2,11 +2,11 @@ import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
 import { find, isEmpty, map, pick, reduce, uniq } from 'lodash';
-import { BlockJobData } from 'src/common/queue.type';
-import { Event } from 'src/event/event.entity';
-import { EventService } from 'src/event/event.service';
-import { formatValue } from 'src/substrate/type.util';
-import { TaskService } from 'src/task/task.service';
+import { BlockJobData } from '../common/queue.type';
+import { Event } from '../event/event.entity';
+import { EventService } from '../event/event.service';
+import { formatValue } from '../substrate/type.util';
+import { TaskService } from '../task/task.service';
 import { WorkflowService } from './workflow.service';
 
 @Processor('block')
