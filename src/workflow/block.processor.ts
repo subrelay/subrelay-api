@@ -87,6 +87,10 @@ export class BlockProcessor {
     );
 
     await this.workflowQueue.addBulk(jobs);
-    this.logger.debug(`Found running workflows`);
+    this.logger.debug(
+      `Found running workflows, ${JSON.stringify(
+        workflowVersionAndTriggerTasks,
+      )}`,
+    );
   }
 }
