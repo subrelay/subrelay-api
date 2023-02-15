@@ -5,6 +5,9 @@ export class EventRawData {
   name: string;
   data: any;
   hash: string;
+  block: {
+    hash: string;
+  };
 }
 
 export class BlockJobData {

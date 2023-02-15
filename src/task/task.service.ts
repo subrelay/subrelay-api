@@ -183,7 +183,7 @@ export class TaskService {
         timestamp: eventData.timestamp,
         time: new Date(eventData.timestamp),
         data: eventData.data,
-        hash: eventData.hash,
+        block: eventData.block,
         success: eventData.success,
       };
       await this.httpService.axiosRef.post(config.config.url, response, {
