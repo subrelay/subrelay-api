@@ -187,6 +187,32 @@ export class WorkflowService {
     return queryBuilder.getRawOne();
   }
 
+  async getWorkflowSummaryByVersionId(
+    workflowVersionId: number,
+  ): Promise<WorkflowSummary> {
+    const queryBuilder = this.workflowRepository
+      .createQueryBuilder('w')
+      .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
+      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
+      .select([
+        'w.id AS id',
+        'wv.name AS name',
+        'w."createdAt" AS "createdAt"',
+        'wv."createdAt" AS "updatedAt"',
+        'w.status AS status',
+        'c.uuid AS "chainUuid"',
+        'c.name AS "chainName"',
+      ])
+      .where('wv.id = :id', { id: workflowVersionId })
+
+      .groupBy(
+        'w.id, "wv"."name", wv."createdAt", w."createdAt", "w"."status", c.uuid',
+      )
+      .orderBy('wv."createdAt"', 'DESC');
+
+    return queryBuilder.getRawOne();
+  }
+
   async getWorkflows(
     {
       limit,

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { get, isEmpty, keyBy, mapValues } from 'lodash';
+import { get, isEmpty, keyBy, mapValues, pick } from 'lodash';
 import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
@@ -170,7 +170,14 @@ export class TaskService {
   // TODO accept custom data
   private async notifyWebhook(
     task: TaskInput,
-    { event, eventData }: ProcessTaskData,
+    {
+      event,
+      eventData,
+      workflow = {
+        id: 0,
+        name: 'Example',
+      },
+    }: ProcessTaskData,
   ): Promise<TaskOutput> {
     const config = task.config as NotificationTaskConfig;
 
@@ -185,6 +192,7 @@ export class TaskService {
         data: eventData.data,
         block: eventData.block,
         success: eventData.success,
+        workflow: pick(workflow, ['id', 'name']),
       };
       await this.httpService.axiosRef.post(config.config.url, response, {
         headers: {

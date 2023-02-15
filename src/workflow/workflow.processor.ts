@@ -66,6 +66,10 @@ export class WorkflowProcessor {
       })),
     );
 
+    const workflow = await this.workflowService.getWorkflowSummaryByVersionId(
+      data.workflowVersionId,
+    );
+
     for (const task of otherTasks) {
       const taskLog = find(taskLogs, { taskId: task.id });
       await this.taskService.updateTaskLogStatus(
@@ -77,6 +81,7 @@ export class WorkflowProcessor {
         eventData: data.eventData,
         event: data.event,
         input: get(outputs, task.dependOn),
+        workflow,
       });
 
       outputs[task.id] = output;
