@@ -60,7 +60,9 @@ export class EventService {
 
     const eventData = {
       timestamp: Date.now(),
-      hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf', // TODO need to function to random a hash
+      block: {
+        hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
+      }, // TODO need to function to random a hash
       chainUuid: event.chainUuid,
     };
     event.fields.forEach((f) => set(eventData, f.name, f.example));

@@ -1,6 +1,7 @@
 import { IsEnum, ValidateNested } from 'class-validator';
 import { EventData } from '../common/queue.type';
 import { Event } from '../event/event.entity';
+import { WorkflowSummary } from '../workflow/workflow.dto';
 import { Task } from './entity/task.entity';
 import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
 import { IsTaskConfig } from './validator/task-config.validator';
@@ -26,4 +27,5 @@ export class ProcessTaskData {
   eventData?: EventData;
   event?: Event;
   input?: TaskOutput; // prev task output
+  workflow?: Pick<WorkflowSummary, 'id' | 'name'>;
 }
