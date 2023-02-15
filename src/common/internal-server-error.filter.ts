@@ -21,13 +21,16 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    const rollbar = new Rollbar({
-      accessToken: this.configService.get('ROLLBAR_ACCESS_TOKEN'),
-      captureUncaught: true,
-      captureUnhandledRejections: true,
-      environment: this.configService.get('NODE_ENV'),
-    });
-    rollbar.error(exception as Error);
+    const rollbarAccessToken = this.configService.get('ROLLBAR_ACCESS_TOKEN');
+    if (rollbarAccessToken) {
+      const rollbar = new Rollbar({
+        accessToken: rollbarAccessToken,
+        captureUncaught: true,
+        captureUnhandledRejections: true,
+        environment: this.configService.get('NODE_ENV'),
+      });
+      rollbar.error(exception as Error);
+    }
 
     res
       .status(HttpStatus.INTERNAL_SERVER_ERROR)
