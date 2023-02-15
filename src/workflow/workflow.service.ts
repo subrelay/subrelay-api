@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { findIndex, get, isEmpty, isNull, orderBy } from 'lodash';
+import { findIndex, get, isNil, isNull, orderBy } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { Chain } from '../chain/chain.entity';
 import { Task } from '../task/entity/task.entity';
@@ -180,7 +180,7 @@ export class WorkflowService {
       )
       .orderBy('wv."createdAt"', 'DESC');
 
-    if (!isEmpty(userId)) {
+    if (!isNil(userId)) {
       queryBuilder.andWhere('w."userId" = :userId', { userId });
     }
 
