@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Polkadot",
+        "imageUrl": "https://raw.githubusercontent.com/paritytech/polkadot-staking-dashboard/29c060c49518c060561b7bac008a0059bbf1145f/src/img/polkadot_icon.svg",
+        "rpcs": [
+            "wss://rpc.polkadot.io"
+        ]
+    },
+    {
+        "name": "Westend",
+        "imageUrl": "https://raw.githubusercontent.com/paritytech/polkadot-staking-dashboard/29c060c49518c060561b7bac008a0059bbf1145f/src/img/westend_icon.svg",
+        "rpcs": [
+            "wss://westend-rpc.polkadot.io"
+        ]
+    },
+    {
+        "name": "Kusama",
+        "imageUrl": "https://raw.githubusercontent.com/paritytech/polkadot-staking-dashboard/29c060c49518c060561b7bac008a0059bbf1145f/src/img/kusama_icon.svg",
+        "rpcs": [
+            "wss://kusama-rpc.polkadot.io"
+        ]
+    }
+]

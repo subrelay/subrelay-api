@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
@@ -7,18 +7,28 @@ import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
 import { TaskOutput } from '../task/type/task.type';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { isEmpty } from 'lodash';
+import * as defaultChains from './chains.json';
 
 @Injectable()
-export class ChainService {
+export class ChainService implements OnModuleInit {
+  private readonly logger = new Logger(ChainService.name);
+
   constructor(
     @InjectRepository(Chain)
     private chainRepository: Repository<Chain>,
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
-    private eventEmitter: EventEmitter2,
   ) {}
+
+  async onModuleInit() {
+    const chains = await this.getChains();
+    if (isEmpty(chains)) {
+      await Promise.all(defaultChains.map((data) => this.createChain(data)));
+      this.logger.debug(`Inserted default chains`);
+    }
+  }
 
   getChains(): Promise<Chain[]> {
     return this.chainRepository
