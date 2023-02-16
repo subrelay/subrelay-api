@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
 import { Repository } from 'typeorm';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import { SubstrateService } from '../substrate/substrate.service';
 import { GetEventsQueryParams } from './event.dto';
 import { Event, EventDetail, SupportedFilterField } from './event.entity';
 import { EventData } from './event.type';
@@ -13,8 +12,6 @@ export class EventService {
   constructor(
     @InjectRepository(Event)
     private eventRepository: Repository<Event>,
-
-    private readonly substrateService: SubstrateService,
   ) {}
 
   async createEvents(events: EventDef[], chainUuid: string) {
