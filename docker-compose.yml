@@ -43,6 +43,7 @@ services:
     depends_on:
       - redis
       - postgres
+      - api
   
   api:
     build:
@@ -53,10 +54,12 @@ services:
     ports:
       - 3000:3000
     restart: always
+    volumes:
+      - api:/app
     depends_on:
       - postgres
       - redis
-      - event-service
 
 volumes:
   pgdata:
+  api:
