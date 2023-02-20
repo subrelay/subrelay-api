@@ -15,4 +15,4 @@ RUN npm run build
 
 USER node
 
-CMD [ "node", "dist/main" ]
+CMD [ "npm", "start" ]
