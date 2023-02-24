@@ -18,11 +18,14 @@ export class BlockJobData {
   success: boolean;
 }
 
-export class EventData extends EventRawData {
+export class EventData {
   timestamp: number;
   success: boolean;
-  hash: string;
   chainUuid: string;
+  block: {
+    hash: string;
+  };
+  data: any;
 }
 
 export class WorkflowJobData {

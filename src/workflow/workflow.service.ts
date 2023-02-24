@@ -1,11 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { findIndex, get, isNil, isNull, orderBy } from 'lodash';
+import {
+  findIndex,
+  get,
+  groupBy,
+  isNil,
+  isNull,
+  mapValues,
+  orderBy,
+} from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { Chain } from '../chain/chain.entity';
 import { Task } from '../task/entity/task.entity';
+import { ProcessTaskInput } from '../task/task.dto';
 import { TaskService } from '../task/task.service';
-import { ProcessStatus } from '../task/type/task.type';
+import {
+  BaseTask,
+  ProcessStatus,
+  ProcessTaskLog,
+  TaskOutput,
+} from '../task/type/task.type';
 import { WorkflowLog } from './entity/workflow-log.entity';
 import { WorkflowVersion } from './entity/workflow-version.entity';
 import { Workflow } from './entity/workflow.entity';
@@ -38,6 +52,28 @@ export class WorkflowService {
 
     private readonly taskService: TaskService,
   ) {}
+
+  async processWorkflow(
+    taskId: number,
+    input: ProcessTaskInput,
+    schema: { [dependTaskId: number]: BaseTask },
+    output: { [key: number]: ProcessTaskLog },
+  ): Promise<{ [key: number]: ProcessTaskLog }> {
+    const task = schema[taskId];
+
+    const result = await this.taskService.processTask(task, input);
+    if (result.output.success && !result.output?.output?.match === false) {
+      // Trigger case
+      return output;
+    }
+
+    output[task.id] = result;
+    if (!result.output.success || !schema[task.id]) {
+      return output;
+    }
+
+    return this.processWorkflow(schema[task.id].id, input, schema, output);
+  }
 
   async getRunningWorkflows(): Promise<Workflow[]> {
     return await this.getWorkflows({ status: WorkflowStatus.RUNNING });

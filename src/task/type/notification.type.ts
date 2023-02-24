@@ -3,31 +3,67 @@ import {
   IsArray,
   IsEnum,
   IsNotEmpty,
+  IsNotEmptyObject,
   IsOptional,
   IsString,
   IsUrl,
   ValidateNested,
+  validateSync,
 } from 'class-validator';
-import { AbsConfig, TaskOutput } from './task.type';
+import { isEmpty } from 'lodash';
+import { TaskValidationError } from './task.type';
 
 export enum NotificationChannel {
   WEBHOOK = 'webhook',
+  TELEGRAM = 'telegram',
 }
 
-export class NotificationTaskConfig extends AbsConfig {
-  @IsEnum(NotificationChannel)
+export class NotificationTaskConfig {
+  @IsEnum([NotificationChannel])
   channel: NotificationChannel;
 
-  config: WebhookConfig; // Can not using ValidateNested here
+  @IsNotEmptyObject()
+  private config: any;
 
-  validate(): TaskOutput {
-    const result = super.validate();
+  constructor(taskConfig: any) {
+    Object.assign(this, taskConfig);
 
-    if (!result.success) {
-      return result;
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
     }
 
-    return new WebhookConfig(this.config).validate();
+    switch (this.channel) {
+      case NotificationChannel.WEBHOOK:
+        this.config = new WebhookConfig(this.config);
+        break;
+      case NotificationChannel.TELEGRAM:
+        this.config = new TelegramConfig(this.config);
+        break;
+      default:
+        throw new TaskValidationError(
+          `Unsupported channel: ${this.config.channel}`,
+        );
+    }
+  }
+
+  isWebhookChannel(): boolean {
+    return this.channel === NotificationChannel.WEBHOOK;
+  }
+
+  getWebhookConfig(): WebhookConfig {
+    return this.config;
+  }
+
+  getTelegramConfig(): TelegramConfig {
+    return this.config;
+  }
+
+  isTelegramChannel(): boolean {
+    return this.channel === NotificationChannel.TELEGRAM;
   }
 }
 
@@ -43,7 +79,7 @@ export class WebhookHeader {
   value: string;
 }
 
-export class WebhookConfig extends AbsConfig {
+export class WebhookConfig {
   @ApiPropertyOptional({ type: WebhookHeader, isArray: true })
   @IsArray()
   @IsOptional()
@@ -54,4 +90,38 @@ export class WebhookConfig extends AbsConfig {
   @IsNotEmpty()
   @IsUrl()
   url: string;
+
+  constructor(config: any) {
+    Object.assign(this, config);
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
+    }
+  }
+}
+
+export class TelegramConfig {
+  @ApiProperty({ type: 'string', example: '123sdfs21423' })
+  @IsString()
+  @IsNotEmpty()
+  chatId: string;
+
+  constructor(config: any) {
+    Object.assign(this, config);
+
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
+    }
+  }
+}
+
+export class ProcessNotificationTaskInput {
+  message: any;
 }

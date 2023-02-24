@@ -1,17 +1,21 @@
-import { IsEnum, ValidateNested } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, ValidateNested } from 'class-validator';
 import { EventData } from '../common/queue.type';
 import { Event } from '../event/event.entity';
 import { WorkflowSummary } from '../workflow/workflow.dto';
-import { Task } from './entity/task.entity';
-import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
-import { IsTaskConfig } from './validator/task-config.validator';
+import { TaskType } from './type/task.type';
+
+export class ProcessTaskRequestData {
+  @IsInt()
+  @IsNotEmpty()
+  eventId: number;
+}
 
 export class ProcessTaskRequest {
-  data: any;
+  @ValidateNested()
+  data: ProcessTaskRequestData;
 
   @ValidateNested()
-  @IsTaskConfig()
-  config: AbsConfig;
+  config: any;
 
   @IsEnum(TaskType, {
     message: `Invalid status. Possible values: ${Object.values(TaskType).join(
@@ -21,11 +25,8 @@ export class ProcessTaskRequest {
   type: TaskType;
 }
 
-export type TaskInput = Pick<Task, 'type' | 'config' | 'dependOn'>;
-
-export class ProcessTaskData {
-  eventData?: EventData;
-  event?: Event;
-  input?: TaskOutput; // prev task output
-  workflow?: Pick<WorkflowSummary, 'id' | 'name'>;
-}
+export type ProcessTaskInput = {
+  event: Event;
+  eventData: EventData;
+  workflow: Pick<WorkflowSummary, 'id' | 'name'>;
+};

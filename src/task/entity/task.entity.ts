@@ -6,7 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { AbsConfig, TaskType } from '../type/task.type';
+import { TaskType } from '../type/task.type';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 @Entity()
@@ -28,7 +28,7 @@ export class Task {
   dependOn?: number;
 
   @Column({ nullable: false, type: 'jsonb' })
-  config: AbsConfig;
+  config: any;
 
   @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])

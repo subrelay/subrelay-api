@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { validateSync } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmptyObject,
+  IsNumber,
+  IsOptional,
+  validateSync,
+} from 'class-validator';
+import { isEmpty } from 'lodash';
+import { NotificationTaskConfig } from './notification.type';
+import { TriggerTaskConfig } from './trigger.type';
 
 export enum TaskType {
   NOTIFICATION = 'notification',
@@ -33,28 +42,63 @@ export class TaskOutput {
   output?: any;
 }
 
-export abstract class AbsConfig {
-  constructor(obj: any) {
-    Object.assign(this, obj);
-  }
-
-  validate(): TaskOutput {
-    const errors = validateSync(this);
-    if (errors.length > 0) {
-      return {
-        success: false,
-        error: {
-          message: errors
-            .map((e) => Object.values(e.constraints).join('. '))
-            .join('. '),
-        },
-      };
-    }
-
-    return {
-      success: true,
-    };
-  }
+export class ProcessTaskLog {
+  output: TaskOutput;
+  startedAt: Date;
+  finishedAt: Date;
 }
 
 export class TaskValidationError extends Error {}
+
+export class BaseTask {
+  @IsNumber()
+  id: number;
+
+  @IsOptional()
+  @IsNumber()
+  dependOn?: number;
+
+  @IsEnum(TaskType)
+  type: TaskType;
+
+  @IsNotEmptyObject()
+  private config: any;
+
+  constructor(task: any) {
+    Object.assign(this, task);
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
+    }
+
+    switch (this.type) {
+      case TaskType.TRIGGER:
+        this.config = new TriggerTaskConfig(this.config);
+        break;
+      case TaskType.NOTIFICATION:
+        this.config = new NotificationTaskConfig(this.config);
+        break;
+      default:
+        throw new Error(`Unsupported type: ${this.type}`);
+    }
+  }
+
+  isTriggerTask(): boolean {
+    return this.type === TaskType.TRIGGER;
+  }
+
+  getTriggerConfig(): TriggerTaskConfig {
+    return this.config;
+  }
+
+  getNotificationTaskConfig(): NotificationTaskConfig {
+    return this.config;
+  }
+
+  isNotificationTask(): boolean {
+    return this.type === TaskType.NOTIFICATION;
+  }
+}

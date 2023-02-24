@@ -11,8 +11,7 @@ import {
 import { Chain } from '../chain/chain.entity';
 import { Pagination } from '../common/pagination.type';
 import { Task } from '../task/entity/task.entity';
-import { AbsConfig, ProcessStatus, TaskType } from '../task/type/task.type';
-import { IsTaskConfig } from '../task/validator/task-config.validator';
+import { ProcessStatus, TaskType } from '../task/type/task.type';
 import { Workflow } from './entity/workflow.entity';
 import { WorkflowStatus } from './workflow.type';
 
@@ -191,16 +190,14 @@ export class WorkflowLogResponse {
   status: ProcessStatus;
 }
 
-export class CreateWorkFlowTask {
+export class CreateWorkflowTask {
   @ApiProperty({ example: 'Task 1' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
   @ApiProperty()
-  @ValidateNested()
-  @IsTaskConfig()
-  config: AbsConfig;
+  config: any;
 
   @ApiProperty({
     enum: TaskType,
@@ -242,7 +239,7 @@ export class CreateWorkFlowRequest {
   name: string;
 
   @ApiProperty({
-    type: CreateWorkFlowTask,
+    type: CreateWorkflowTask,
     isArray: true,
     example: [
       {
@@ -278,7 +275,7 @@ export class CreateWorkFlowRequest {
   })
   @IsArray()
   @ValidateNested()
-  tasks: CreateWorkFlowTask[];
+  tasks: CreateWorkflowTask[];
 
   @ApiProperty({
     example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',

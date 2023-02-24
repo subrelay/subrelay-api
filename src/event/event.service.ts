@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
 import { Repository } from 'typeorm';
+import { EventData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
 import { GetEventsQueryParams } from './event.dto';
 import { Event, EventDetail, SupportedFilterField } from './event.entity';
-import { EventData } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -55,14 +55,17 @@ export class EventService {
       return null;
     }
 
-    const eventData = {
+    const eventData: EventData = {
       timestamp: Date.now(),
       block: {
         hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
-      }, // TODO need to function to random a hash
+      },
       chainUuid: event.chainUuid,
+      success: true,
+      data: null,
     };
     event.fields.forEach((f) => set(eventData, f.name, f.example));
+
     return eventData;
   }
 

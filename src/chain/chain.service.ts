@@ -51,6 +51,10 @@ export class ChainService implements OnModuleInit {
     return (await this.chainRepository.countBy({ uuid })) > 0;
   }
 
+  async chainExistByChainId(chainId: string): Promise<boolean> {
+    return (await this.chainRepository.countBy({ chainId })) > 0;
+  }
+
   getChain(uuid: string): Promise<Chain> {
     return this.chainRepository.findOne({
       where: { uuid },
@@ -73,6 +77,10 @@ export class ChainService implements OnModuleInit {
 
     if (!chainInfo) {
       throw new Error('Cannot connect to provider by urls in rpcs');
+    }
+
+    if (!(await this.chainExistByChainId(chainInfo.chainId))) {
+      throw new Error(`"${chainInfo.chainId}" exists`);
     }
 
     const chain = await this.insertChain({
