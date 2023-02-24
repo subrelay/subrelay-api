@@ -35,11 +35,10 @@ import { AuthMiddleware } from './common/auth.middleware';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        entities: ['dist/**/*.entity.js'],
-        migrations: ['dist/migration/*.js'],
-        synchronize: false,
+        synchronize: true,
         migrationsRun: true,
         logging: true,
+        autoLoadEntities: true,
       }),
     }),
     BullModule.forRootAsync({
