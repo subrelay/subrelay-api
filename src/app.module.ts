@@ -35,8 +35,7 @@ import { AuthMiddleware } from './common/auth.middleware';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        synchronize: true,
-        migrationsRun: true,
+        synchronize: true, // TODO Should not automatically synchronize in prod
         logging: true,
         autoLoadEntities: true,
       }),
