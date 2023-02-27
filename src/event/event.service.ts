@@ -4,8 +4,13 @@ import { set } from 'lodash';
 import { Repository } from 'typeorm';
 import { EventData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import { GetEventsQueryParams } from './event.dto';
-import { Event, EventDetail, SupportedFilterField } from './event.entity';
+import {
+  EventDetail,
+  EventSummary,
+  GetEventsQueryParams,
+  SupportedFilterField,
+} from './event.dto';
+import { Event } from './event.entity';
 
 @Injectable()
 export class EventService {
@@ -87,7 +92,7 @@ export class EventService {
   getEventsByChain(
     chainUuid: string,
     queryParams?: GetEventsQueryParams,
-  ): Promise<Event[]> {
+  ): Promise<EventSummary[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
       .select([

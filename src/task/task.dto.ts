@@ -1,5 +1,6 @@
 import { IsEnum, IsInt, IsNotEmpty, ValidateNested } from 'class-validator';
 import { EventData } from '../common/queue.type';
+import { EventDetail } from '../event/event.dto';
 import { Event } from '../event/event.entity';
 import { WorkflowSummary } from '../workflow/workflow.dto';
 import { TaskType } from './type/task.type';
@@ -26,7 +27,7 @@ export class ProcessTaskRequest {
 }
 
 export type ProcessTaskInput = {
-  event: Event;
+  event: EventDetail;
   eventData: EventData;
   workflow: Pick<WorkflowSummary, 'id' | 'name'>;
 };

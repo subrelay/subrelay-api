@@ -20,10 +20,19 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { GetEventsQueryParams } from '../event/event.dto';
-import { Event, EventDetail } from '../event/event.entity';
+import {
+  EventDetail,
+  EventSummary,
+  GetEventsQueryParams,
+} from '../event/event.dto';
+import { Event } from '../event/event.entity';
 import { EventService } from '../event/event.service';
-import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
+import { TaskOutput } from '../task/type/task.type';
+import {
+  ChainSummary,
+  CreateChainRequest,
+  UpdateChainRequest,
+} from './chain.dto';
 import { Chain } from './chain.entity';
 import { ChainService } from './chain.service';
 
@@ -39,13 +48,13 @@ export class ChainController {
   @ApiOkResponse({
     description: 'Return data if request is successful',
     isArray: true,
-    type: Chain,
+    type: ChainSummary,
   })
   @ApiOperation({
     summary: 'Get all supported chains',
     description: 'This is a public endpoint',
   })
-  async getChains(): Promise<Chain[]> {
+  async getChains(): Promise<ChainSummary[]> {
     return this.chainService.getChains();
   }
 
@@ -53,19 +62,14 @@ export class ChainController {
   @ApiBasicAuth('admin')
   @ApiCreatedResponse({
     description: 'Return chain data if request is successful',
-    type: Chain,
+    type: TaskOutput,
   })
   @ApiOperation({
     summary: 'Create a new chain',
     description: 'Only admin can access this endpoint',
   })
-  async createChain(@Body() input: CreateChainRequest): Promise<Chain> {
-    const taskResult = await this.chainService.createChain(input);
-    if (taskResult.success) {
-      return taskResult.output;
-    } else {
-      throw new InternalServerErrorException(taskResult.error.message);
-    }
+  async createChain(@Body() input: CreateChainRequest): Promise<TaskOutput> {
+    return await this.chainService.createChain(input);
   }
 
   @Delete(':chainId')
@@ -109,7 +113,7 @@ export class ChainController {
   async getEvents(
     @Param() pathParams: { uuid?: string },
     @Query() queryParams: GetEventsQueryParams,
-  ): Promise<Event[]> {
+  ): Promise<EventSummary[]> {
     if (!(await this.chainService.chainExist(pathParams.uuid))) {
       throw new NotFoundException('Chain not found');
     }

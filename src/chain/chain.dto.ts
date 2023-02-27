@@ -35,3 +35,27 @@ export class UpdateChainRequest {
   @IsUrl()
   imageUrl: string;
 }
+
+export class ChainSummary {
+  @ApiProperty({
+    example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',
+  })
+  uuid: string;
+
+  @ApiProperty({ example: 'polkadot' })
+  chainId: string;
+
+  @ApiProperty({ example: '2022-11-18T00: 51: 30.082Z' })
+  createdAt: string;
+
+  @ApiProperty({ example: '9300' })
+  version: string;
+
+  @ApiProperty({ example: 'Polkadot' })
+  name: string;
+
+  @ApiProperty({
+    example: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png?v=023',
+  })
+  imageUrl: string;
+}
