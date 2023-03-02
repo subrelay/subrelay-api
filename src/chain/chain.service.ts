@@ -103,48 +103,6 @@ export class ChainService implements OnModuleInit {
     };
   }
 
-  private async upgradeChain(chainId: string): Promise<TaskOutput> {
-    const latestVersion = await this.chainRepository.findOne({
-      where: {
-        chainId,
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-    });
-
-    const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(
-      latestVersion.config.rpcs,
-    );
-
-    if (chainInfo.runtimeVersion === latestVersion.version) {
-      const chain = await this.insertChain({
-        name: latestVersion.name,
-        imageUrl: latestVersion.imageUrl,
-        version: chainInfo.runtimeVersion,
-        chainId: chainInfo.chainId,
-        config: {
-          chainDecimals: chainInfo.chainDecimals,
-          chainTokens: chainInfo.chainTokens,
-          metadataVersion: chainInfo.metadataVersion,
-          rpcs: validRpcs,
-        },
-      });
-
-      return {
-        success: true,
-        output: chain,
-      };
-    } else {
-      return {
-        success: false,
-        error: {
-          message: 'Latest version',
-        },
-      };
-    }
-  }
-
   private insertChain(input: Partial<Chain>): Promise<Chain> {
     return this.chainRepository.save(input);
   }
