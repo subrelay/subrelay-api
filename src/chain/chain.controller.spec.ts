@@ -108,7 +108,7 @@ describe('ChainController', () => {
           provide: EventService,
           useValue: {
             getEventsByChain: jest.fn(() => []),
-            getEventByChain: jest.fn(() => {}),
+            getEventByChain: jest.fn(),
           },
         },
       ],

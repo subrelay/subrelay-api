@@ -4,7 +4,7 @@ import { mapValues, startCase } from 'lodash';
 import { EventService } from '../event/event.service';
 import { ProcessTaskRequest } from './task.dto';
 import { TaskService } from './task.service';
-import { BaseTask, TaskOutput, TaskType } from './type/task.type';
+import { BaseTask, TaskOutput } from './type/task.type';
 
 @Controller('tasks')
 @ApiTags('Task')

@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { GeneralTypeEnum, TypeSchema } from '../substrate/substrate.data';
+import { TypeSchema } from '../substrate/substrate.data';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()

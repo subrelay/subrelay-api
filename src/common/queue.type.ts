@@ -1,4 +1,4 @@
-import { Event } from '../event/event.entity';
+import { EventDetail } from '../event/event.dto';
 
 export class EventRawData {
   pallet: string;
@@ -30,6 +30,6 @@ export class EventData {
 
 export class WorkflowJobData {
   workflowVersionId: number;
-  event: Event;
+  event: EventDetail;
   eventData: EventData;
 }

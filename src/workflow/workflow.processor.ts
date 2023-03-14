@@ -1,25 +1,10 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
-import {
-  find,
-  get,
-  groupBy,
-  isEmpty,
-  keys,
-  map,
-  mapValues,
-  zipObject,
-} from 'lodash';
+import { isEmpty, map } from 'lodash';
 import { WorkflowJobData } from '../common/queue.type';
-import { TaskLog } from '../task/entity/task-log.entity';
 import { TaskService } from '../task/task.service';
-import {
-  BaseTask,
-  ProcessStatus,
-  TaskOutput,
-  TaskType,
-} from '../task/type/task.type';
+import { ProcessStatus } from '../task/type/task.type';
 import { WorkflowService } from './workflow.service';
 
 @Processor('workflow')
@@ -33,9 +18,6 @@ export class WorkflowProcessor {
   @Process({ concurrency: 10 })
   async processWorkflowJob(job: Job) {
     const { event, eventData, workflowVersionId }: WorkflowJobData = job.data;
-    const outputs: {
-      [key: number]: TaskOutput;
-    } = {};
     this.logger.debug(
       `Process event "${event.name}" for workflow version ${workflowVersionId}`,
     );
@@ -87,7 +69,7 @@ export class WorkflowProcessor {
 
     await this.workflowService.finishWorkflowLog(
       workflowLogId,
-      ProcessStatus.SUCCESS,
+      workflowLogStatus,
     );
 
     this.logger.debug('Finished process workflow');

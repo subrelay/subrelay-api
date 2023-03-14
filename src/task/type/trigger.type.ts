@@ -1,6 +1,5 @@
 import {
   IsEnum,
-  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -11,7 +10,6 @@ import {
 import { TaskValidationError } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventData } from '../../common/queue.type';
 import { isEmpty } from 'lodash';
 
 export enum FilterOperator {

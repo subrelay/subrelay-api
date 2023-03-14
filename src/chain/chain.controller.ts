@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   HttpCode,
-  InternalServerErrorException,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -33,7 +32,6 @@ import {
   CreateChainRequest,
   UpdateChainRequest,
 } from './chain.dto';
-import { Chain } from './chain.entity';
 import { ChainService } from './chain.service';
 
 @ApiTags('Chain')

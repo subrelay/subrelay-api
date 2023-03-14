@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 import { Pagination } from '../common/pagination.type';
-import { GeneralTypeEnum, TypeSchema } from '../substrate/substrate.data';
+import { GeneralTypeEnum } from '../substrate/substrate.data';
 
 export class GetEventsQueryParams extends Pagination {
   @ApiPropertyOptional({

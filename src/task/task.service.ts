@@ -87,7 +87,7 @@ export class TaskService {
       const message = this.buildWebhookMessage(input);
       output = await this.processNotificationTask(
         new NotificationTaskConfig(task.getNotificationTaskConfig()),
-        { message: 'doo' },
+        { message },
       );
     }
 
