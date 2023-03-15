@@ -43,7 +43,7 @@ jobs:
         username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          cd /subrelay-backend/subrelay-api/
+          cd subrelay-backend/subrelay-api/
           git reset --hard
           git pull origin main
           docker-compose up -d --build
