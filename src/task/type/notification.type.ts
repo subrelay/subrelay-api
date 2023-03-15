@@ -19,11 +19,11 @@ export enum NotificationChannel {
 }
 
 export class NotificationTaskConfig {
-  @IsEnum([NotificationChannel])
+  @IsEnum(NotificationChannel)
   channel: NotificationChannel;
 
   @IsNotEmptyObject()
-  private config: any;
+  config: any;
 
   constructor(taskConfig: any) {
     Object.assign(this, taskConfig);
