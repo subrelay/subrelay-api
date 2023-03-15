@@ -4,7 +4,7 @@ import { mapValues, startCase } from 'lodash';
 import { EventService } from '../event/event.service';
 import { ProcessTaskRequest } from './task.dto';
 import { TaskService } from './task.service';
-import { TaskOutput } from './type/task.type';
+import { BaseTask, TaskOutput } from './type/task.type';
 
 @Controller('tasks')
 @ApiTags('Task')
@@ -44,29 +44,28 @@ export class TaskController {
     },
   })
   async processTask(@Body() input: ProcessTaskRequest): Promise<TaskOutput> {
-    let data;
     const event = await this.eventService.getEventById(input.data.eventId);
-    if (input.data.eventId) {
-      const eventSample = await this.eventService.generateEventSample(
-        input.data.eventId,
-      );
-      if (!eventSample) {
-        throw new NotFoundException('Event not found');
-      }
-
-      data = eventSample;
+    if (!event) {
+      throw new NotFoundException('Event not found');
     }
-
-    return this.taskService.processTask(
-      {
-        config: input.config,
-        type: input.type,
-      },
-      {
-        eventData: data,
-        event,
-      },
+    const eventData = await this.eventService.generateEventSample(
+      input.data.eventId,
     );
+    const baseTask = new BaseTask({
+      type: input.type,
+      config: input.config,
+      id: 0,
+    });
+    const result = await this.taskService.processTask(baseTask, {
+      eventData,
+      event,
+      workflow: {
+        id: 0,
+        name: 'This workflow only for testing',
+      },
+    });
+
+    return result.output;
   }
 
   @Get('/operators')

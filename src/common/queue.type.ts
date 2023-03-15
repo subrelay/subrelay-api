@@ -1,4 +1,4 @@
-import { Event } from '../event/event.entity';
+import { EventDetail } from '../event/event.dto';
 
 export class EventRawData {
   pallet: string;
@@ -18,15 +18,18 @@ export class BlockJobData {
   success: boolean;
 }
 
-export class EventData extends EventRawData {
+export class EventData {
   timestamp: number;
   success: boolean;
-  hash: string;
   chainUuid: string;
+  block: {
+    hash: string;
+  };
+  data: any;
 }
 
 export class WorkflowJobData {
   workflowVersionId: number;
-  event: Event;
+  event: EventDetail;
   eventData: EventData;
 }

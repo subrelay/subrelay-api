@@ -1,17 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { get, isEmpty, keyBy, mapValues, pick } from 'lodash';
-import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
+import {
+  BaseTask,
+  ProcessStatus,
+  ProcessTaskLog,
+  TaskOutput,
+  TaskType,
+} from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLog } from './entity/task-log.entity';
-import { ProcessTaskData, TaskInput } from './task.dto';
+import { ProcessTaskInput, TaskLogDetail } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import {
-  NotificationChannel,
   NotificationTaskConfig,
+  ProcessNotificationTaskInput,
+  WebhookConfig,
 } from './type/notification.type';
 
 @Injectable()
@@ -65,22 +72,36 @@ export class TaskService {
   }
 
   async processTask(
-    task: TaskInput,
-    data: ProcessTaskData,
-  ): Promise<TaskOutput> {
-    if (task.type === TaskType.NOTIFICATION) {
-      return await this.processNotificationTask(task, data);
+    task: BaseTask,
+    input: ProcessTaskInput,
+  ): Promise<ProcessTaskLog> {
+    const startedAt = new Date();
+    let output: TaskOutput = {
+      success: false,
+      error: {
+        message: `Unsupported task: ${task.type}`,
+      },
+    };
+
+    if (task.isNotificationTask()) {
+      const message = this.buildWebhookMessage(input);
+      output = await this.processNotificationTask(
+        new NotificationTaskConfig(task.getNotificationTaskConfig()),
+        { message },
+      );
     }
 
-    if (task.type === TaskType.TRIGGER) {
-      return await this.processTriggerTask(task, data);
+    if (task.isTriggerTask()) {
+      output = await this.processTriggerTask(
+        new TriggerTaskConfig(task.getTriggerConfig()),
+        input as ProcessTaskInput,
+      );
     }
 
     return {
-      success: false,
-      error: {
-        message: 'Invalid task type',
-      },
+      output,
+      startedAt,
+      finishedAt: new Date(),
     };
   }
 
@@ -97,23 +118,22 @@ export class TaskService {
     [key: string]: FilterOperator[];
   } {
     return {
-      [GeneralTypeEnum.BOOL]: [FilterOperator.ISFALSE, FilterOperator.ISTRUE],
+      [GeneralTypeEnum.BOOL]: [FilterOperator.IS_FALSE, FilterOperator.IS_TRUE],
       [GeneralTypeEnum.STRING]: [FilterOperator.EQUAL, FilterOperator.CONTAINS],
       [GeneralTypeEnum.NUMBER]: [
         FilterOperator.EQUAL,
-        FilterOperator.GREATETHAN,
-        FilterOperator.GREATETHANEQUAL,
-        FilterOperator.LESSTHAN,
-        FilterOperator.LESSTHANEQUAL,
+        FilterOperator.GREATER_THAN,
+        FilterOperator.GREATER_THAN_EQUAL,
+        FilterOperator.LESS_THAN,
+        FilterOperator.LESS_THAN_EQUAL,
       ],
     };
   }
 
   private processTriggerTask(
-    task: TaskInput,
-    data: ProcessTaskData,
+    config: TriggerTaskConfig,
+    { eventData }: ProcessTaskInput,
   ): TaskOutput {
-    const config = task.config as TriggerTaskConfig;
     if (isEmpty(config.conditions)) {
       return {
         success: true,
@@ -126,10 +146,10 @@ export class TaskService {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const acctualValue = get(data.eventData, condition.variable);
+          const actualValue = get(eventData, condition.variable);
           return this.isMatchCondition(
             condition.operator,
-            acctualValue,
+            actualValue,
             condition.value,
           );
         }),
@@ -152,13 +172,25 @@ export class TaskService {
   }
 
   private processNotificationTask(
-    task: TaskInput,
-    data: ProcessTaskData,
+    config: NotificationTaskConfig,
+    { message }: ProcessNotificationTaskInput,
   ): Promise<TaskOutput> {
-    const config = task.config as NotificationTaskConfig;
-    if (config.channel === NotificationChannel.WEBHOOK) {
-      return this.notifyWebhook(task, data);
+    if (config.isWebhookChannel()) {
+      return this.notifyWebhook(config.getWebhookConfig(), message);
     }
+
+    throw new Error(`Unsupported channel: ${config.channel}`);
+  }
+
+  async getTaskLogs(workflowLogId: number): Promise<TaskLogDetail[]> {
+    const taskLogs = await this.taskLogRepository.find({
+      where: { workflowLogId },
+      relations: {
+        task: true,
+      },
+    });
+
+    return taskLogs;
   }
 
   private parseHeaders(headers: { key: string; value: string }[]): {
@@ -167,37 +199,29 @@ export class TaskService {
     return mapValues(keyBy(headers, 'key'), (header) => header.value);
   }
 
-  // TODO accept custom data
-  private async notifyWebhook(
-    task: TaskInput,
-    {
-      event,
-      eventData,
-      workflow = {
-        id: 0,
-        name: 'Example',
-      },
-    }: ProcessTaskData,
-  ): Promise<TaskOutput> {
-    const config = task.config as NotificationTaskConfig;
+  buildWebhookMessage({ event, eventData, workflow }: ProcessTaskInput) {
+    return {
+      eventId: event.id,
+      name: `${event.pallet}.${event.name}`,
+      description: event.description,
+      timestamp: eventData.timestamp,
+      time: new Date(eventData.timestamp),
+      data: eventData.data,
+      block: eventData.block,
+      success: eventData.success,
+      workflow: pick(workflow, ['id', 'name']),
+    };
+  }
 
+  private async notifyWebhook(
+    { url, headers }: WebhookConfig,
+    message: any,
+  ): Promise<TaskOutput> {
     try {
-      // TODO using data.prev if having custom message task
-      const response = {
-        eventId: event.id,
-        name: `${event.pallet}.${event.name}`,
-        description: event.description,
-        timestamp: eventData.timestamp,
-        time: new Date(eventData.timestamp),
-        data: eventData.data,
-        block: eventData.block,
-        success: eventData.success,
-        workflow: pick(workflow, ['id', 'name']),
-      };
-      await this.httpService.axiosRef.post(config.config.url, response, {
+      await this.httpService.axiosRef.post(url, message, {
         headers: {
           Accept: 'application/json',
-          ...this.parseHeaders(config.config.headers),
+          ...this.parseHeaders(headers),
         },
       });
 
@@ -220,21 +244,21 @@ export class TaskService {
     expectedValue: any,
   ): boolean {
     switch (operator) {
-      case FilterOperator.ISTRUE:
+      case FilterOperator.IS_TRUE:
         return acctualValue === true;
-      case FilterOperator.ISFALSE:
+      case FilterOperator.IS_FALSE:
         return acctualValue === false;
       case FilterOperator.CONTAINS:
         return (acctualValue as string)
           .toLowerCase()
           .includes((expectedValue as string).toLowerCase());
-      case FilterOperator.GREATETHAN:
+      case FilterOperator.GREATER_THAN:
         return (acctualValue as number) > (expectedValue as number);
-      case FilterOperator.GREATETHANEQUAL:
+      case FilterOperator.GREATER_THAN_EQUAL:
         return (acctualValue as number) >= (expectedValue as number);
-      case FilterOperator.LESSTHAN:
+      case FilterOperator.LESS_THAN:
         return (acctualValue as number) < (expectedValue as number);
-      case FilterOperator.LESSTHANEQUAL:
+      case FilterOperator.LESS_THAN_EQUAL:
         return (acctualValue as number) <= (expectedValue as number);
       case FilterOperator.EQUAL:
         return acctualValue == expectedValue;

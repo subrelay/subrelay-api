@@ -27,7 +27,7 @@ import { TaskType } from '../task/type/task.type';
 import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
-  CreateWorkFlowTask,
+  CreateWorkflowTask,
   GetWorkflowsQueryParams,
   WorkflowsResponse,
   UpdateWorkFlowRequest,
@@ -105,7 +105,7 @@ export class WorkflowController {
     }
 
     if (input.status) {
-      await this.workflowService.updateWorkflowStatus(id, input.status);
+      await this.workflowService.updateWorkflowStatus(id, input);
     }
   }
 
@@ -160,7 +160,7 @@ export class WorkflowController {
     return this.workflowService.getWorkflow(workflowId, user.id);
   }
 
-  private async validateTasks(chainUuid: string, tasks: CreateWorkFlowTask[]) {
+  private async validateTasks(chainUuid: string, tasks: CreateWorkflowTask[]) {
     const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
 
     if (!triggerTask) {

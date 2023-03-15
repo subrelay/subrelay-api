@@ -1,7 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateChainRequest, UpdateChainRequest } from './chain.dto';
+import {
+  ChainSummary,
+  CreateChainRequest,
+  UpdateChainRequest,
+} from './chain.dto';
 import { Chain } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
@@ -30,7 +34,7 @@ export class ChainService implements OnModuleInit {
     }
   }
 
-  getChains(): Promise<Chain[]> {
+  getChains(): Promise<ChainSummary[]> {
     return this.chainRepository
       .createQueryBuilder()
       .select([
@@ -49,6 +53,10 @@ export class ChainService implements OnModuleInit {
 
   async chainExist(uuid: string): Promise<boolean> {
     return (await this.chainRepository.countBy({ uuid })) > 0;
+  }
+
+  async chainExistByChainId(chainId: string): Promise<boolean> {
+    return (await this.chainRepository.countBy({ chainId })) > 0;
   }
 
   getChain(uuid: string): Promise<Chain> {
@@ -75,6 +83,10 @@ export class ChainService implements OnModuleInit {
       throw new Error('Cannot connect to provider by urls in rpcs');
     }
 
+    if (!(await this.chainExistByChainId(chainInfo.chainId))) {
+      throw new Error(`"${chainInfo.chainId}" exists`);
+    }
+
     const chain = await this.insertChain({
       name: input.name,
       imageUrl: input.imageUrl,
@@ -92,50 +104,8 @@ export class ChainService implements OnModuleInit {
 
     return {
       success: true,
-      // output: chain,
+      output: chain,
     };
-  }
-
-  private async upgradeChain(chainId: string): Promise<TaskOutput> {
-    const latestVersion = await this.chainRepository.findOne({
-      where: {
-        chainId,
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-    });
-
-    const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(
-      latestVersion.config.rpcs,
-    );
-
-    if (chainInfo.runtimeVersion === latestVersion.version) {
-      const chain = await this.insertChain({
-        name: latestVersion.name,
-        imageUrl: latestVersion.imageUrl,
-        version: chainInfo.runtimeVersion,
-        chainId: chainInfo.chainId,
-        config: {
-          chainDecimals: chainInfo.chainDecimals,
-          chainTokens: chainInfo.chainTokens,
-          metadataVersion: chainInfo.metadataVersion,
-          rpcs: validRpcs,
-        },
-      });
-
-      return {
-        success: true,
-        output: chain,
-      };
-    } else {
-      return {
-        success: false,
-        error: {
-          message: 'Latest version',
-        },
-      };
-    }
   }
 
   private insertChain(input: Partial<Chain>): Promise<Chain> {

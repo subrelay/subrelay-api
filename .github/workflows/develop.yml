@@ -1,12 +1,10 @@
-name: Main
+name: Develop
 
 on:
   push:
-    branches: [ main ]
-    tags:
-      - v[0-9]*
+    branches: [ develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ develop ]
   release:
     types: [ created ]
 
@@ -31,21 +29,21 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: npm run build
-  deploy-stg:
+  deploy-alpha:
     needs: [build, lint]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
     - name: SSH and deploy node app
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.SSH_HOST }}
+        host: ${{ secrets.DEV_SSH_HOST }}
         username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
           cd /subrelay-backend/subrelay-api/
           git reset --hard
-          git pull origin main
+          git pull origin develop
           export NVM_DIR=~/.nvm
           source ~/.nvm/nvm.sh
           npm install

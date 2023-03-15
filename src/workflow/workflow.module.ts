@@ -11,6 +11,7 @@ import { WorkflowProcessor } from './workflow.processor';
 import { WorkflowLogController } from './workflow-log.controller';
 import { TaskModule } from '../task/task.module';
 import { EventModule } from '../event/event.module';
+import { ChainModule } from '../chain/chain.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { EventModule } from '../event/event.module';
     TypeOrmModule.forFeature([Workflow, WorkflowVersion, WorkflowLog]),
     TaskModule,
     EventModule,
+    ChainModule,
   ],
   controllers: [WorkflowController, WorkflowLogController],
   providers: [WorkflowService, BlockProcessor, WorkflowProcessor],

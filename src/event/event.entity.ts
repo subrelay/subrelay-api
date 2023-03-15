@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { GeneralTypeEnum, TypeSchema } from '../substrate/substrate.data';
+import { TypeSchema } from '../substrate/substrate.data';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
@@ -41,23 +41,4 @@ export class Event {
   @ManyToOne(() => Chain, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'chainUuid', referencedColumnName: 'uuid' }])
   chain: Chain;
-}
-
-export class SupportedFilterField {
-  @ApiProperty({ example: 'data.from' })
-  name: string;
-  @ApiProperty({ example: 'Amount sent' })
-  description?: string;
-  @ApiProperty({ example: 1 })
-  example?: any;
-  @ApiProperty({
-    enum: Object.values(GeneralTypeEnum),
-    example: GeneralTypeEnum.NUMBER,
-  })
-  type: GeneralTypeEnum;
-}
-
-export class EventDetail extends Event {
-  @ApiProperty({ type: SupportedFilterField, isArray: true })
-  fields: SupportedFilterField[];
 }
