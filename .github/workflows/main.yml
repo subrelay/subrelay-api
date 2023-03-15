@@ -46,8 +46,4 @@ jobs:
           cd /subrelay-backend/subrelay-api/
           git reset --hard
           git pull origin main
-          export NVM_DIR=~/.nvm
-          source ~/.nvm/nvm.sh
-          npm install
-          npm run build
           docker-compose up -d --build
