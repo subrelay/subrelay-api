@@ -105,7 +105,7 @@ export class WorkflowController {
     }
 
     if (input.status) {
-      await this.workflowService.updateWorkflowStatus(id, input.status);
+      await this.workflowService.updateWorkflowStatus(id, input);
     }
   }
 

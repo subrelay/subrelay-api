@@ -28,6 +28,8 @@ services:
 
   redis:
     image: redis
+    volumes:
+      - redis_data:/data
 
   event-service:
     image: subrelay-event-service
@@ -54,12 +56,10 @@ services:
     ports:
       - 3000:3000
     restart: always
-    volumes:
-      - api:/app
     depends_on:
       - postgres
       - redis
 
 volumes:
   pgdata:
-  api:
+  redis_data:

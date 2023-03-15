@@ -10,7 +10,9 @@ import {
 } from 'class-validator';
 import { Chain } from '../chain/chain.entity';
 import { Pagination } from '../common/pagination.type';
+import { EventData } from '../common/queue.type';
 import { Task } from '../task/entity/task.entity';
+import { TaskLogDetail } from '../task/task.dto';
 import { ProcessStatus, TaskType } from '../task/type/task.type';
 import { Workflow } from './entity/workflow.entity';
 import { WorkflowStatus } from './workflow.type';
@@ -74,6 +76,13 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   })
   @IsOptional()
   status?: ProcessStatus;
+
+  @ApiPropertyOptional({ example: 2 })
+  @IsOptional()
+  workflowId?: number;
+
+  @IsOptional()
+  id?: number;
 
   @ApiPropertyOptional({
     example: GetWorkflowLogsOrderBy.FINISHED_AT,
@@ -173,12 +182,16 @@ export class WorkflowsResponse {
 export class WorkflowLogResponse {
   @ApiProperty({ example: 1 })
   id: number;
+
   @ApiProperty({ example: 'Workflow 1' })
   name: string;
+
   @ApiProperty({ example: '2022-11-18T00:52:30.082Z' })
   finishedAt: Date;
+
   @ApiProperty({ example: '2022-11-18T00:51:30.082Z' })
   startedAt: Date;
+
   @ApiProperty({
     example: { uuid: '3342b0eb-ab4f-40c0-870c-6587de6b009a', name: 'Polkadot' },
   })
@@ -186,8 +199,22 @@ export class WorkflowLogResponse {
     uuid: string;
     name: string;
   };
+
   @ApiProperty({ example: ProcessStatus.SUCCESS, enum: ProcessStatus })
   status: ProcessStatus;
+
+  @ApiProperty({ example: 1 })
+  workflowId: number;
+
+  @ApiProperty({ example: 2 })
+  workflowVersionId: number;
+}
+
+export class WorkflowLogDetail extends WorkflowLogResponse {
+  @ApiProperty({ type: TaskLogDetail, isArray: true })
+  taskLogs: TaskLogDetail[];
+
+  input?: EventData;
 }
 
 export class CreateWorkflowTask {
@@ -296,4 +323,10 @@ export class UpdateWorkFlowRequest {
   })
   @IsOptional()
   status: WorkflowStatus;
+
+  @ApiPropertyOptional({
+    example: 'Updated workflow',
+  })
+  @IsOptional()
+  name: string;
 }

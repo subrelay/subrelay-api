@@ -13,7 +13,7 @@ import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLog } from './entity/task-log.entity';
-import { ProcessTaskInput } from './task.dto';
+import { ProcessTaskInput, TaskLogDetail } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import {
   NotificationTaskConfig,
@@ -180,6 +180,17 @@ export class TaskService {
     }
 
     throw new Error(`Unsupported channel: ${config.channel}`);
+  }
+
+  async getTaskLogs(workflowLogId: number): Promise<TaskLogDetail[]> {
+    const taskLogs = await this.taskLogRepository.find({
+      where: { workflowLogId },
+      relations: {
+        task: true,
+      },
+    });
+
+    return taskLogs;
   }
 
   private parseHeaders(headers: { key: string; value: string }[]): {
