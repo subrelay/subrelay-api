@@ -76,26 +76,36 @@ export class TaskService {
     input: ProcessTaskInput,
   ): Promise<ProcessTaskLog> {
     const startedAt = new Date();
-    let output: TaskOutput = {
-      success: false,
-      error: {
-        message: `Unsupported task: ${task.type}`,
-      },
-    };
+    let output: TaskOutput;
 
-    if (task.isNotificationTask()) {
-      const message = this.buildWebhookMessage(input);
-      output = await this.processNotificationTask(
-        new NotificationTaskConfig(task.getNotificationTaskConfig()),
-        { message },
-      );
-    }
+    try {
+      if (task.isNotificationTask()) {
+        const message = this.buildWebhookMessage(input);
 
-    if (task.isTriggerTask()) {
-      output = await this.processTriggerTask(
-        new TriggerTaskConfig(task.getTriggerConfig()),
-        input as ProcessTaskInput,
-      );
+        output = await this.processNotificationTask(
+          new NotificationTaskConfig(task.getNotificationTaskConfig()),
+          { message },
+        );
+      } else if (task.isTriggerTask()) {
+        output = await this.processTriggerTask(
+          new TriggerTaskConfig(task.getTriggerConfig()),
+          input as ProcessTaskInput,
+        );
+      } else {
+        output = {
+          success: false,
+          error: {
+            message: `Unsupported type: ${task.type}`,
+          },
+        };
+      }
+    } catch (error) {
+      output = {
+        success: false,
+        error: {
+          message: error.message,
+        },
+      };
     }
 
     return {
