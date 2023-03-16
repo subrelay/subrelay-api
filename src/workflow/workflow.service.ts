@@ -243,7 +243,7 @@ export class WorkflowService {
       .innerJoin(
         Workflow,
         'w',
-        `w.id = wv."workflowId" AND w."userId" = '${userId}'`,
+        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
       )
       .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
       .select([
@@ -380,7 +380,7 @@ export class WorkflowService {
       .innerJoin(
         Workflow,
         'w',
-        `w.id = wv."workflowId" AND w."userId" = '${userId}'`,
+        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
       )
       .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
       .where('wl.status IN (:...statuses) ', {
@@ -470,7 +470,7 @@ export class WorkflowService {
       .innerJoin(
         Workflow,
         'w',
-        `w.id = wv."workflowId" AND w."userId" = '${userId}'`,
+        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
       )
       .where('wl.status IN (:...statuses) ', {
         statuses: [ProcessStatus.FAILED, ProcessStatus.SUCCESS],
