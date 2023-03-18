@@ -21,7 +21,6 @@ export class BlockJobData {
 export class EventData {
   timestamp: number;
   success: boolean;
-  chainUuid: string;
   block: {
     hash: string;
   };

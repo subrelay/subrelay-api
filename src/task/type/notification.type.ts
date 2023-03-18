@@ -16,6 +16,7 @@ import { TaskValidationError } from './task.type';
 export enum NotificationChannel {
   WEBHOOK = 'webhook',
   TELEGRAM = 'telegram',
+  EMAIL = 'email',
 }
 
 export class NotificationTaskConfig {
@@ -43,6 +44,9 @@ export class NotificationTaskConfig {
       case NotificationChannel.TELEGRAM:
         this.config = new TelegramConfig(this.config);
         break;
+      case NotificationChannel.EMAIL:
+        this.config = new EmailConfig(this.config);
+        break;
       default:
         throw new TaskValidationError(
           `Unsupported channel: ${this.config.channel}`,
@@ -64,6 +68,14 @@ export class NotificationTaskConfig {
 
   isTelegramChannel(): boolean {
     return this.channel === NotificationChannel.TELEGRAM;
+  }
+
+  getEmailConfig(): EmailConfig {
+    return this.config;
+  }
+
+  isEmailChannel(): boolean {
+    return this.channel === NotificationChannel.EMAIL;
   }
 }
 
@@ -122,6 +134,50 @@ export class TelegramConfig {
   }
 }
 
-export class ProcessNotificationTaskInput {
-  message: any;
+export class EmailConfig {
+  @ApiProperty({
+    type: 'string',
+    isArray: true,
+    example: ['example@gmail.com'],
+  })
+  @IsArray()
+  @IsNotEmpty()
+  addresses: string[];
+
+  @ApiProperty({
+    type: 'string',
+    isArray: true,
+    example: ['data.from', 'data.to'],
+  })
+  @IsArray()
+  @IsNotEmpty()
+  variables: string[];
+
+  @ApiProperty({
+    type: 'string',
+    example: 'Your email subject',
+  })
+  @IsString()
+  @IsNotEmpty()
+  subjectTemplate: string;
+
+  @ApiProperty({
+    type: 'string',
+    example: 'Your email content',
+  })
+  @IsString()
+  @IsNotEmpty()
+  contentTemplate: string;
+
+  constructor(config: any) {
+    Object.assign(this, config);
+
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
+    }
+  }
 }

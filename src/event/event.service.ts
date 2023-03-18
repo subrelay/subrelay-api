@@ -65,7 +65,6 @@ export class EventService {
       block: {
         hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
       },
-      chainUuid: event.chainUuid,
       success: true,
       data: null,
     };

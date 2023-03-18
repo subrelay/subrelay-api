@@ -33,7 +33,7 @@ export class WorkflowProcessor {
     );
     const workflowResult = await this.workflowService.processWorkflow(
       0,
-      { event, eventData, workflow },
+      { eventInfo: event, eventData, workflow },
       schema,
       {},
     );

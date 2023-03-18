@@ -298,6 +298,21 @@ export class CreateWorkFlowRequest {
         },
         dependOnName: 'Task1',
       },
+      {
+        name: 'Notify email',
+        type: 'notification',
+        config: {
+          channel: 'email',
+          config: {
+            addresses: ['example@gmail.com'],
+            subjectTemplate: 'Your event has been triggered',
+            contentTemplate:
+              '#{data.from} sent to #{data.to} #{data.amount} DOT',
+            variables: ['data.from', 'data.to', 'data.amount'],
+          },
+        },
+        dependOnName: 'Notify webhook',
+      },
     ],
   })
   @IsArray()
