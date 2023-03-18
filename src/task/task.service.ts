@@ -1,5 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { get, isEmpty, keyBy, mapValues, pick } from 'lodash';
+import {
+  camelCase,
+  get,
+  isEmpty,
+  keyBy,
+  mapKeys,
+  mapValues,
+  replace,
+} from 'lodash';
 import {
   BaseTask,
   ProcessStatus,
@@ -13,13 +21,20 @@ import { Task } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLog } from './entity/task-log.entity';
-import { ProcessTaskInput, TaskLogDetail } from './task.dto';
+import {
+  ProcessCustomMessageInput,
+  ProcessTaskInput,
+  TaskLogDetail,
+} from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import {
+  EmailConfig,
   NotificationTaskConfig,
-  ProcessNotificationTaskInput,
   WebhookConfig,
 } from './type/notification.type';
+import { MailerService } from '@nestjs-modules/mailer';
+import { compile } from 'pug';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TaskService {
@@ -32,6 +47,8 @@ export class TaskService {
     private taskLogRepository: Repository<TaskLog>,
 
     private readonly httpService: HttpService,
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createTask(input: Partial<Task>): Promise<number> {
@@ -80,12 +97,13 @@ export class TaskService {
 
     try {
       if (task.isNotificationTask()) {
-        const message = this.buildWebhookMessage(input);
-
-        output = await this.processNotificationTask(
+        await this.processNotificationTask(
           new NotificationTaskConfig(task.getNotificationTaskConfig()),
-          { message },
+          input,
         );
+        output = {
+          success: true,
+        };
       } else if (task.isTriggerTask()) {
         output = await this.processTriggerTask(
           new TriggerTaskConfig(task.getTriggerConfig()),
@@ -100,6 +118,7 @@ export class TaskService {
         };
       }
     } catch (error) {
+      this.logger.error(`Failed to process task: ${JSON.stringify(error)}`);
       output = {
         success: false,
         error: {
@@ -181,15 +200,19 @@ export class TaskService {
     }
   }
 
-  private processNotificationTask(
+  private async processNotificationTask(
     config: NotificationTaskConfig,
-    { message }: ProcessNotificationTaskInput,
-  ): Promise<TaskOutput> {
+    input: ProcessTaskInput,
+  ) {
+    const customMessageInput = new ProcessCustomMessageInput(input);
+
     if (config.isWebhookChannel()) {
-      return this.notifyWebhook(config.getWebhookConfig(), message);
+      await this.notifyWebhook(config.getWebhookConfig(), customMessageInput);
     }
 
-    throw new Error(`Unsupported channel: ${config.channel}`);
+    if (config.isEmailChannel()) {
+      await this.notifyEmail(config.getEmailConfig(), customMessageInput);
+    }
   }
 
   async getTaskLogs(workflowLogId: number): Promise<TaskLogDetail[]> {
@@ -209,43 +232,43 @@ export class TaskService {
     return mapValues(keyBy(headers, 'key'), (header) => header.value);
   }
 
-  buildWebhookMessage({ event, eventData, workflow }: ProcessTaskInput) {
-    return {
-      eventId: event.id,
-      name: `${event.pallet}.${event.name}`,
-      description: event.description,
-      timestamp: eventData.timestamp,
-      time: new Date(eventData.timestamp),
-      data: eventData.data,
-      block: eventData.block,
-      success: eventData.success,
-      workflow: pick(workflow, ['id', 'name']),
-    };
+  private async notifyWebhook({ url, headers }: WebhookConfig, message: any) {
+    await this.httpService.axiosRef.post(url, message, {
+      headers: {
+        Accept: 'application/json',
+        ...this.parseHeaders(headers),
+      },
+    });
   }
 
-  private async notifyWebhook(
-    { url, headers }: WebhookConfig,
-    message: any,
-  ): Promise<TaskOutput> {
-    try {
-      await this.httpService.axiosRef.post(url, message, {
-        headers: {
-          Accept: 'application/json',
-          ...this.parseHeaders(headers),
-        },
-      });
+  private async notifyEmail(
+    { addresses, subjectTemplate, contentTemplate, variables }: EmailConfig,
+    input: ProcessCustomMessageInput,
+  ) {
+    const context = mapValues(keyBy(variables), (val) => get(input, val));
+    const updatedContext = mapKeys(context, (_, key) => camelCase(key));
 
-      return {
-        success: true,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: {
-          message: error.message,
-        },
-      };
-    }
+    const renderSubject = compile(`p ${subjectTemplate}`);
+    const subjectHtml = renderSubject(context);
+    const subject = subjectHtml.substring(
+      subjectHtml.indexOf('>') + 1,
+      subjectHtml.lastIndexOf('<'),
+    );
+
+    const replacedContentTemplate = replace(
+      contentTemplate,
+      /#{[a-zA-Z0-9]+\.[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*}/,
+      (val) => `#{${camelCase(val)}}`,
+    );
+    const renderContent = compile(replacedContentTemplate);
+    const contentHtml = renderContent(updatedContext);
+
+    await this.mailerService.sendMail({
+      from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
+      to: addresses,
+      subject: subject,
+      html: contentHtml,
+    });
   }
 
   private isMatchCondition(

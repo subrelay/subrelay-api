@@ -44,13 +44,15 @@ export class TaskController {
     },
   })
   async processTask(@Body() input: ProcessTaskRequest): Promise<TaskOutput> {
-    const event = await this.eventService.getEventById(input.data.eventId);
-    if (!event) {
+    const eventInfo = await this.eventService.getEventById(input.data.eventId);
+    if (!eventInfo) {
       throw new NotFoundException('Event not found');
     }
+
     const eventData = await this.eventService.generateEventSample(
       input.data.eventId,
     );
+
     const baseTask = new BaseTask({
       type: input.type,
       config: input.config,
@@ -58,7 +60,7 @@ export class TaskController {
     });
     const result = await this.taskService.processTask(baseTask, {
       eventData,
-      event,
+      eventInfo,
       workflow: {
         id: 0,
         name: 'This workflow only for testing',
