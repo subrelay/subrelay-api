@@ -89,9 +89,7 @@ export class WorkflowController {
   @Patch(':id')
   @HttpCode(204)
   @ApiBasicAuth()
-  @ApiNoContentResponse({
-    description: 'Return data if request is successful',
-  })
+  @ApiNoContentResponse()
   @ApiOperation({
     summary: 'Update a workflow',
   })
@@ -104,9 +102,7 @@ export class WorkflowController {
       throw new NotFoundException('Workflow not found');
     }
 
-    if (input.status) {
-      await this.workflowService.updateWorkflowStatus(id, input);
-    }
+    await this.workflowService.updateWorkflowStatus(id, input);
   }
 
   @Delete(':id')

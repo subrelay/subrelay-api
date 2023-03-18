@@ -4,7 +4,7 @@ import { Job } from 'bull';
 import { isEmpty, map } from 'lodash';
 import { WorkflowJobData } from '../common/queue.type';
 import { TaskService } from '../task/task.service';
-import { ProcessStatus } from '../task/type/task.type';
+import { BaseTask, ProcessStatus } from '../task/type/task.type';
 import { WorkflowService } from './workflow.service';
 
 @Processor('workflow')
@@ -25,13 +25,12 @@ export class WorkflowProcessor {
     const tasks = await this.taskService.getTasks(workflowVersionId);
     const schema = {};
     tasks.forEach((task) => {
-      schema[task.dependOn || 0] = task;
+      schema[task.dependOn || 0] = new BaseTask(task);
     });
 
     const workflow = await this.workflowService.getWorkflowSummaryByVersionId(
       workflowVersionId,
     );
-
     const workflowResult = await this.workflowService.processWorkflow(
       0,
       { event, eventData, workflow },

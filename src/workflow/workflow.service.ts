@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { findIndex, get, isNil, isNull, orderBy } from 'lodash';
+import { findIndex, get, isEmpty, isNil, isNull, orderBy } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { Chain } from '../chain/chain.entity';
 import { Task } from '../task/entity/task.entity';
@@ -47,25 +47,26 @@ export class WorkflowService {
   ) {}
 
   async processWorkflow(
-    taskId: number,
+    parentTaskId: number,
     input: ProcessTaskInput,
     schema: { [dependTaskId: number]: BaseTask },
     output: { [key: number]: ProcessTaskLog },
   ): Promise<{ [key: number]: ProcessTaskLog }> {
-    const task = schema[taskId];
+    const task = schema[parentTaskId];
 
     const result = await this.taskService.processTask(task, input);
-    if (result.output.success && !result.output?.output?.match === false) {
-      // Trigger case
+    if (result.output.success && result.output?.output?.match === false) {
+      // Trigger task does not match
       return output;
     }
 
     output[task.id] = result;
     if (!result.output.success || !schema[task.id]) {
+      // Task is failed
       return output;
     }
 
-    return this.processWorkflow(schema[task.id].id, input, schema, output);
+    return this.processWorkflow(task.id, input, schema, output);
   }
 
   async getRunningWorkflows(): Promise<Workflow[]> {
@@ -183,11 +184,11 @@ export class WorkflowService {
   }
 
   async updateWorkflowStatus(id: number, input: UpdateWorkFlowRequest) {
-    if (!isNull(input.status)) {
+    if (!isEmpty(input.status)) {
       await this.workflowRepository.update({ id }, { status: input.status });
     }
 
-    if (!isNull(input.name)) {
+    if (!isEmpty(input.name)) {
       const workflowVersion = await this.workflowVersionRepository.findOne({
         where: { workflowId: id },
         order: { createdAt: 'DESC' },
