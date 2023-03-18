@@ -83,7 +83,7 @@ export class ChainService implements OnModuleInit {
       throw new Error('Cannot connect to provider by urls in rpcs');
     }
 
-    if (!(await this.chainExistByChainId(chainInfo.chainId))) {
+    if ((await this.chainExistByChainId(chainInfo.chainId))) {
       throw new Error(`"${chainInfo.chainId}" exists`);
     }
 
