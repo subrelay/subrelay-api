@@ -123,16 +123,7 @@ export class TelegramConfig {
 
   @ApiProperty({
     type: 'string',
-    isArray: true,
-    example: ['data.from', 'data.to', 'data.amount'],
-  })
-  @IsArray()
-  @IsNotEmpty()
-  variables: string[];
-
-  @ApiProperty({
-    type: 'string',
-    example: '#{data.from} sent #{data.to} #{data.from} DOT',
+    example: '${data.from} sent ${data.to} ${data.from} DOT',
   })
   @IsString()
   @IsNotEmpty()
@@ -163,16 +154,7 @@ export class EmailConfig {
 
   @ApiProperty({
     type: 'string',
-    isArray: true,
-    example: ['data.from', 'data.to'],
-  })
-  @IsArray()
-  @IsNotEmpty()
-  variables: string[];
-
-  @ApiProperty({
-    type: 'string',
-    example: 'Your event has been triggered #{eventId}',
+    example: 'Your event has been triggered ${eventId}',
   })
   @IsString()
   @IsNotEmpty()
@@ -180,7 +162,7 @@ export class EmailConfig {
 
   @ApiProperty({
     type: 'string',
-    example: '#{data.from} sent #{data.to} #{data.from} DOT',
+    example: '${data.from} sent ${data.to} ${data.from} DOT',
   })
   @IsString()
   @IsNotEmpty()

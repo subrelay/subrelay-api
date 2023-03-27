@@ -6,7 +6,7 @@ import {
   keyBy,
   mapKeys,
   mapValues,
-  replace,
+  template,
 } from 'lodash';
 import {
   BaseTask,
@@ -37,7 +37,6 @@ import {
   TelegramError,
 } from './type/notification.type';
 import { MailerService } from '@nestjs-modules/mailer';
-import { compile } from 'pug';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
@@ -298,19 +297,12 @@ export class TaskService {
     });
   }
 
-  private buildCustomMessage(template: string, context: object) {
-    const replacedTemplate = replace(
-      `p ${template}`,
-      /#{[a-zA-Z0-9]+\.[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*}/g,
-      (val) => `#{${camelCase(val)}}`,
-    );
-
-    const renderContent = compile(replacedTemplate);
-    const message = renderContent(context);
-    return message.substring(
-      message.indexOf('>') + 1,
-      message.lastIndexOf('<'),
-    );
+  private buildCustomMessage(
+    messageTemplate: string,
+    input: CustomMessageInput,
+  ) {
+    const compiled = template(messageTemplate);
+    return compiled(input);
   }
 
   private buildMessageContext(input: CustomMessageInput, variables: string[]) {
@@ -319,12 +311,11 @@ export class TaskService {
   }
 
   private buildNotificationEmailInput(
-    { addresses, subjectTemplate, bodyTemplate, variables }: EmailConfig,
+    { addresses, subjectTemplate, bodyTemplate }: EmailConfig,
     input: CustomMessageInput,
   ): NotificationEmailInput {
-    const context = this.buildMessageContext(input, variables);
-    const subject = this.buildCustomMessage(subjectTemplate, context);
-    const body = this.buildCustomMessage(bodyTemplate, context);
+    const subject = this.buildCustomMessage(subjectTemplate, input);
+    const body = this.buildCustomMessage(bodyTemplate, input);
 
     return {
       addresses,
@@ -353,13 +344,11 @@ export class TaskService {
   }
 
   private buildNotificationTelegramInput(
-    { chatId, messageTemplate, variables }: TelegramConfig,
+    { chatId, messageTemplate }: TelegramConfig,
     input: CustomMessageInput,
   ): NotificationTelegramInput {
-    const context = this.buildMessageContext(input, variables);
-
     return {
-      message: this.buildCustomMessage(messageTemplate, context),
+      message: this.buildCustomMessage(messageTemplate, input),
       chatId,
     };
   }
