@@ -307,7 +307,7 @@ export class CreateWorkFlowRequest {
             addresses: ['example@gmail.com'],
             subjectTemplate: 'Your event has been triggered',
             contentTemplate:
-              '#{data.from} sent to #{data.to} #{data.amount} DOT',
+              '${data.from} sent to ${data.to} ${data.amount} DOT',
             variables: ['data.from', 'data.to', 'data.amount'],
           },
         },
