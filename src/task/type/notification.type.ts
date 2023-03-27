@@ -121,6 +121,23 @@ export class TelegramConfig {
   @IsNotEmpty()
   chatId: string;
 
+  @ApiProperty({
+    type: 'string',
+    isArray: true,
+    example: ['data.from', 'data.to', 'data.amount'],
+  })
+  @IsArray()
+  @IsNotEmpty()
+  variables: string[];
+
+  @ApiProperty({
+    type: 'string',
+    example: '#{data.from} sent #{data.to} #{data.from} DOT',
+  })
+  @IsString()
+  @IsNotEmpty()
+  messageTemplate: string;
+
   constructor(config: any) {
     Object.assign(this, config);
 
@@ -155,7 +172,7 @@ export class EmailConfig {
 
   @ApiProperty({
     type: 'string',
-    example: 'Your email subject',
+    example: 'Your event has been triggered #{eventId}',
   })
   @IsString()
   @IsNotEmpty()
@@ -163,11 +180,11 @@ export class EmailConfig {
 
   @ApiProperty({
     type: 'string',
-    example: 'Your email content',
+    example: '#{data.from} sent #{data.to} #{data.from} DOT',
   })
   @IsString()
   @IsNotEmpty()
-  contentTemplate: string;
+  bodyTemplate: string;
 
   constructor(config: any) {
     Object.assign(this, config);
@@ -181,3 +198,16 @@ export class EmailConfig {
     }
   }
 }
+
+export class NotificationEmailInput {
+  addresses: EmailConfig['addresses'];
+  subject: string;
+  body: string;
+}
+
+export class NotificationTelegramInput {
+  message: string;
+  chatId: TelegramConfig['chatId'];
+}
+
+export class TelegramError extends Error {}

@@ -26,7 +26,6 @@ import {
 } from '../event/event.dto';
 import { Event } from '../event/event.entity';
 import { EventService } from '../event/event.service';
-import { TaskOutput } from '../task/type/task.type';
 import {
   ChainSummary,
   CreateChainRequest,
@@ -60,13 +59,13 @@ export class ChainController {
   @ApiBasicAuth('admin')
   @ApiCreatedResponse({
     description: 'Return chain data if request is successful',
-    type: TaskOutput,
+    type: ChainSummary,
   })
   @ApiOperation({
     summary: 'Create a new chain',
     description: 'Only admin can access this endpoint',
   })
-  async createChain(@Body() input: CreateChainRequest): Promise<TaskOutput> {
+  async createChain(@Body() input: CreateChainRequest): Promise<ChainSummary> {
     return await this.chainService.createChain(input);
   }
 

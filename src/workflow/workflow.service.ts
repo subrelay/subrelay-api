@@ -3,14 +3,10 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { findIndex, get, isEmpty, isNil, isNull, orderBy } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { Chain } from '../chain/chain.entity';
-import { Task } from '../task/entity/task.entity';
+import { TaskEntity } from '../task/entity/task.entity';
 import { ProcessTaskInput } from '../task/task.dto';
 import { TaskService } from '../task/task.service';
-import {
-  BaseTask,
-  ProcessStatus,
-  ProcessTaskLog,
-} from '../task/type/task.type';
+import { BaseTask, ProcessStatus, TaskLog } from '../task/type/task.type';
 import { WorkflowLog } from './entity/workflow-log.entity';
 import { WorkflowVersion } from './entity/workflow-version.entity';
 import { Workflow } from './entity/workflow.entity';
@@ -50,18 +46,18 @@ export class WorkflowService {
     parentTaskId: number,
     input: ProcessTaskInput,
     schema: { [dependTaskId: number]: BaseTask },
-    output: { [key: number]: ProcessTaskLog },
-  ): Promise<{ [key: number]: ProcessTaskLog }> {
+    output: { [key: number]: TaskLog },
+  ): Promise<{ [key: number]: TaskLog }> {
     const task = schema[parentTaskId];
 
     const result = await this.taskService.processTask(task, input);
-    if (result.output.success && result.output?.output?.match === false) {
+    if (result.success && result.output?.match === false) {
       // Trigger task does not match
-      return output;
+      return {};
     }
 
     output[task.id] = result;
-    if (!result.output.success || !schema[task.id]) {
+    if (!result.success || !schema[task.id]) {
       // Task is failed
       return output;
     }
@@ -124,7 +120,7 @@ export class WorkflowService {
         });
 
       const tasksObject: { [key: string]: number } = {};
-      const taskRepo = queryRunner.manager.getRepository(Task);
+      const taskRepo = queryRunner.manager.getRepository(TaskEntity);
       for (const taskInput of tasksInput) {
         const { id: taskId } = await taskRepo.save({
           name: taskInput.name,
@@ -158,7 +154,7 @@ export class WorkflowService {
   ): Promise<{ workflowVersionId: number; eventId: number }[]> {
     return this.workflowVersionRepository
       .createQueryBuilder('wv')
-      .innerJoin(Task, 't', 't."workflowVersionId" = wv.id')
+      .innerJoin(TaskEntity, 't', 't."workflowVersionId" = wv.id')
       .innerJoin(
         Workflow,
         'w',
@@ -205,7 +201,7 @@ export class WorkflowService {
       .createQueryBuilder('w')
       .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
       .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .innerJoin(Task, 't', 't."workflowVersionId" = wv.id')
+      .innerJoin(TaskEntity, 't', 't."workflowVersionId" = wv.id')
       .select([
         'w.id AS id',
         'wv.name AS name',
@@ -255,6 +251,7 @@ export class WorkflowService {
         'wl.status AS "status"',
         'wl.input AS "input"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
+        `JSONB_BUILD_OBJECT('id', w.id) AS workflow`,
       ])
       .getRawOne();
   }

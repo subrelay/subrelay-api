@@ -11,18 +11,18 @@ import {
 import {
   BaseTask,
   ProcessStatus,
-  ProcessTaskLog,
-  TaskOutput,
+  TaskLog,
+  TaskResult,
   TaskType,
 } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
-import { Task } from './entity/task.entity';
+import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TaskLog } from './entity/task-log.entity';
+import { TaskLogEntity } from './entity/task-log.entity';
 import {
-  ProcessCustomMessageInput,
+  CustomMessageInput,
   ProcessTaskInput,
   TaskLogDetail,
 } from './task.dto';
@@ -30,28 +30,37 @@ import { GeneralTypeEnum } from '../substrate/substrate.data';
 import {
   EmailConfig,
   NotificationTaskConfig,
+  NotificationEmailInput,
+  TelegramConfig,
   WebhookConfig,
+  NotificationTelegramInput,
+  TelegramError,
 } from './type/notification.type';
 import { MailerService } from '@nestjs-modules/mailer';
 import { compile } from 'pug';
 import { ConfigService } from '@nestjs/config';
+import { InjectBot } from 'nestjs-telegraf';
+import { Telegraf } from 'telegraf';
 
 @Injectable()
 export class TaskService {
   private readonly logger = new Logger(TaskService.name);
   constructor(
-    @InjectRepository(Task)
-    private taskRepository: Repository<Task>,
+    @InjectRepository(TaskEntity)
+    private taskRepository: Repository<TaskEntity>,
 
-    @InjectRepository(TaskLog)
-    private taskLogRepository: Repository<TaskLog>,
+    @InjectRepository(TaskLogEntity)
+    private taskLogRepository: Repository<TaskLogEntity>,
+
+    @InjectBot()
+    private bot: Telegraf,
 
     private readonly httpService: HttpService,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
   ) {}
 
-  async createTask(input: Partial<Task>): Promise<number> {
+  async createTask(input: Partial<TaskEntity>): Promise<number> {
     const result = await this.taskRepository.save(input);
     return result.id;
   }
@@ -67,7 +76,10 @@ export class TaskService {
     );
   }
 
-  async finishTaskLog(id: number, data: Pick<TaskLog, 'status' | 'output'>) {
+  async finishTaskLog(
+    id: number,
+    data: Pick<TaskLogEntity, 'status' | 'output'>,
+  ) {
     await this.taskLogRepository.update(
       { id },
       { ...data, finishedAt: new Date() },
@@ -88,50 +100,48 @@ export class TaskService {
     });
   }
 
-  async processTask(
-    task: BaseTask,
-    input: ProcessTaskInput,
-  ): Promise<ProcessTaskLog> {
+  async processTask(task: BaseTask, input: ProcessTaskInput): Promise<TaskLog> {
     const startedAt = new Date();
-    let output: TaskOutput;
+    let result;
 
     try {
       if (task.isNotificationTask()) {
-        await this.processNotificationTask(
+        result = await this.processNotificationTask(
           new NotificationTaskConfig(task.getNotificationTaskConfig()),
           input,
         );
-        output = {
-          success: true,
-        };
       } else if (task.isTriggerTask()) {
-        output = await this.processTriggerTask(
+        result = await this.processTriggerTask(
           new TriggerTaskConfig(task.getTriggerConfig()),
-          input as ProcessTaskInput,
+          input,
         );
       } else {
-        output = {
+        result = {
+          input,
           success: false,
           error: {
             message: `Unsupported type: ${task.type}`,
           },
         };
       }
+
+      return {
+        ...result,
+        startedAt,
+        finishedAt: new Date(),
+      };
     } catch (error) {
       this.logger.error(`Failed to process task: ${JSON.stringify(error)}`);
-      output = {
+      return {
+        input,
         success: false,
         error: {
           message: error.message,
         },
+        startedAt,
+        finishedAt: new Date(),
       };
     }
-
-    return {
-      output,
-      startedAt,
-      finishedAt: new Date(),
-    };
   }
 
   getTriggerTasks(workflowVersionIds: number[], eventIds: number[]) {
@@ -162,9 +172,10 @@ export class TaskService {
   private processTriggerTask(
     config: TriggerTaskConfig,
     { eventData }: ProcessTaskInput,
-  ): TaskOutput {
+  ): TaskResult {
     if (isEmpty(config.conditions)) {
       return {
+        input: eventData,
         success: true,
         output: {
           match: true,
@@ -185,6 +196,7 @@ export class TaskService {
       );
 
       return {
+        input: eventData,
         success: true,
         output: {
           match,
@@ -192,6 +204,7 @@ export class TaskService {
       };
     } catch (error) {
       return {
+        input: eventData,
         success: false,
         error: {
           message: error.message,
@@ -203,15 +216,59 @@ export class TaskService {
   private async processNotificationTask(
     config: NotificationTaskConfig,
     input: ProcessTaskInput,
-  ) {
-    const customMessageInput = new ProcessCustomMessageInput(input);
+  ): Promise<TaskResult> {
+    try {
+      const customMessageInput = new CustomMessageInput(input);
 
-    if (config.isWebhookChannel()) {
-      await this.notifyWebhook(config.getWebhookConfig(), customMessageInput);
-    }
+      if (config.isWebhookChannel()) {
+        await this.notifyWebhook(config.getWebhookConfig(), customMessageInput);
+        return {
+          input: customMessageInput,
+          success: true,
+        };
+      }
 
-    if (config.isEmailChannel()) {
-      await this.notifyEmail(config.getEmailConfig(), customMessageInput);
+      if (config.isEmailChannel()) {
+        const input = this.buildNotificationEmailInput(
+          config.getEmailConfig(),
+          customMessageInput,
+        );
+
+        await this.notifyEmail(input);
+
+        return {
+          input: input,
+          success: true,
+        };
+      }
+
+      if (config.isTelegramChannel()) {
+        const telegramConfig = config.getTelegramConfig();
+        await this.telegramChatIdExists(telegramConfig.chatId);
+
+        const input = this.buildNotificationTelegramInput(
+          telegramConfig,
+          customMessageInput,
+        );
+
+        console.log({ input });
+
+        await this.notifyTelegram(input);
+
+        return {
+          input: input,
+          success: true,
+        };
+      }
+    } catch (error) {
+      this.logger.error('Failed to process notification task', error);
+      return {
+        input,
+        success: false,
+        error: {
+          message: error.message,
+        },
+      };
     }
   }
 
@@ -241,34 +298,92 @@ export class TaskService {
     });
   }
 
-  private async notifyEmail(
-    { addresses, subjectTemplate, contentTemplate, variables }: EmailConfig,
-    input: ProcessCustomMessageInput,
-  ) {
-    const context = mapValues(keyBy(variables), (val) => get(input, val));
-    const updatedContext = mapKeys(context, (_, key) => camelCase(key));
-
-    const renderSubject = compile(`p ${subjectTemplate}`);
-    const subjectHtml = renderSubject(context);
-    const subject = subjectHtml.substring(
-      subjectHtml.indexOf('>') + 1,
-      subjectHtml.lastIndexOf('<'),
-    );
-
-    const replacedContentTemplate = replace(
-      contentTemplate,
-      /#{[a-zA-Z0-9]+\.[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*}/,
+  private buildCustomMessage(template: string, context: object) {
+    const replacedTemplate = replace(
+      `p ${template}`,
+      /#{[a-zA-Z0-9]+\.[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*}/g,
       (val) => `#{${camelCase(val)}}`,
     );
-    const renderContent = compile(replacedContentTemplate);
-    const contentHtml = renderContent(updatedContext);
 
+    const renderContent = compile(replacedTemplate);
+    const message = renderContent(context);
+    return message.substring(
+      message.indexOf('>') + 1,
+      message.lastIndexOf('<'),
+    );
+  }
+
+  private buildMessageContext(input: CustomMessageInput, variables: string[]) {
+    const context = mapValues(keyBy(variables), (val) => get(input, val));
+    return mapKeys(context, (_, key) => camelCase(key));
+  }
+
+  private buildNotificationEmailInput(
+    { addresses, subjectTemplate, bodyTemplate, variables }: EmailConfig,
+    input: CustomMessageInput,
+  ): NotificationEmailInput {
+    const context = this.buildMessageContext(input, variables);
+    const subject = this.buildCustomMessage(subjectTemplate, context);
+    const body = this.buildCustomMessage(bodyTemplate, context);
+
+    return {
+      addresses,
+      subject,
+      body,
+    };
+  }
+
+  private async notifyEmail({
+    addresses,
+    body,
+    subject,
+  }: NotificationEmailInput) {
     await this.mailerService.sendMail({
       from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
       to: addresses,
-      subject: subject,
-      html: contentHtml,
+      subject,
+      html: body,
     });
+
+    return {
+      addresses,
+      subject,
+      body,
+    };
+  }
+
+  private buildNotificationTelegramInput(
+    { chatId, messageTemplate, variables }: TelegramConfig,
+    input: CustomMessageInput,
+  ): NotificationTelegramInput {
+    const context = this.buildMessageContext(input, variables);
+
+    return {
+      message: this.buildCustomMessage(messageTemplate, context),
+      chatId,
+    };
+  }
+
+  private async notifyTelegram({ chatId, message }: NotificationTelegramInput) {
+    await this.bot.telegram.sendMessage(chatId, message, {
+      parse_mode: 'HTML',
+    });
+  }
+
+  private async telegramChatIdExists(chatId: string) {
+    try {
+      await this.bot.telegram.getChat(chatId);
+    } catch (error) {
+      if (error.response.error_code === 400) {
+        throw new TelegramError('Chat not found');
+      }
+
+      this.logger.debug(
+        'Failed to check telegram chatId:',
+        JSON.stringify(error),
+      );
+      throw new Error('Failed to check chat ID');
+    }
   }
 
   private isMatchCondition(

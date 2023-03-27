@@ -2,16 +2,18 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { TaskService } from './task.service';
 import { TaskController } from './task.controller';
-import { Task } from './entity/task.entity';
+import { TaskEntity } from './entity/task.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TaskLog } from './entity/task-log.entity';
+import { TaskLogEntity } from './entity/task-log.entity';
 import { EventModule } from '../event/event.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TelegrafModule } from 'nestjs-telegraf';
+import { TelegramBotService } from './telegram-bot.update';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskLog]),
+    TypeOrmModule.forFeature([TaskEntity, TaskLogEntity]),
     HttpModule,
     EventModule,
     MailerModule.forRootAsync({
@@ -29,8 +31,21 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         },
       }),
     }),
+    TelegrafModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        token: configService.get('TELEGRAM_BOT_TOKEN'),
+        launchOptions: {
+          webhook: {
+            domain: configService.get('API_BASE_URL'),
+            hookPath: '/telegram-bot',
+          },
+        },
+      }),
+    }),
   ],
-  providers: [TaskService],
+  providers: [TaskService, TelegramBotService],
   controllers: [TaskController],
   exports: [TaskService],
 })

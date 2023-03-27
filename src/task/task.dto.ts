@@ -1,13 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsNotEmpty, ValidateNested } from 'class-validator';
+import { pick } from 'lodash';
 import { EventData } from '../common/queue.type';
 import { EventDetail } from '../event/event.dto';
 import { Event } from '../event/event.entity';
 import { WorkflowVersion } from '../workflow/entity/workflow-version.entity';
 import { Workflow } from '../workflow/entity/workflow.entity';
 import { WorkflowSummary } from '../workflow/workflow.dto';
-import { Task } from './entity/task.entity';
-import { ProcessStatus, TaskOutput, TaskType } from './type/task.type';
+import { TaskEntity } from './entity/task.entity';
+import { ProcessStatus, TaskType } from './type/task.type';
 
 export class ProcessTaskRequestData {
   @IsInt()
@@ -36,7 +37,7 @@ export type ProcessTaskInput = {
   workflow: Pick<WorkflowSummary, 'id' | 'name'>;
 };
 
-export class ProcessCustomMessageInput {
+export class CustomMessageInput {
   eventId: Event['id'];
   fullName: string;
   description: Event['description'];
@@ -50,7 +51,7 @@ export class ProcessCustomMessageInput {
   };
 
   constructor({ workflow, eventData, eventInfo }: ProcessTaskInput) {
-    this.workflow = workflow;
+    this.workflow = pick(workflow, ['id', 'name']);
 
     this.block = eventData.block;
     this.eventId = eventInfo.id;
@@ -75,11 +76,11 @@ export class TaskLogDetail {
   @ApiProperty({ example: ProcessStatus.SUCCESS, enum: ProcessStatus })
   status: ProcessStatus;
 
-  @ApiProperty({ type: Task })
-  task: Task;
+  @ApiProperty({ type: TaskEntity })
+  task: TaskEntity;
 
-  @ApiProperty({ type: TaskOutput })
-  output: TaskOutput;
+  @ApiProperty()
+  output: any;
 
   @ApiProperty({ type: EventData })
   input?: EventData;

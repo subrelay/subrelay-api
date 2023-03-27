@@ -23,7 +23,14 @@ export enum ProcessStatus {
   SKIPPED = 'skipped',
 }
 
-export class TaskOutput {
+export class TaskError {
+  @ApiPropertyOptional({
+    example: null,
+  })
+  message: string;
+}
+
+export class TaskResult {
   @ApiProperty({
     example: true,
   })
@@ -31,19 +38,17 @@ export class TaskOutput {
   @ApiPropertyOptional({
     example: null,
   })
-  error?: {
-    message: string;
-  };
+  error?: TaskError;
   @ApiPropertyOptional({
     example: {
       match: true,
     },
   })
   output?: any;
+  input?: any;
 }
 
-export class ProcessTaskLog {
-  output: TaskOutput;
+export class TaskLog extends TaskResult {
   startedAt: Date;
   finishedAt: Date;
 }

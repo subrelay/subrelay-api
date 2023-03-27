@@ -6,11 +6,11 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ProcessStatus } from '../type/task.type';
-import { Task } from './task.entity';
+import { TaskEntity } from './task.entity';
 import { WorkflowLog } from '../../workflow/entity/workflow-log.entity';
 
-@Entity()
-export class TaskLog {
+@Entity('task_log')
+export class TaskLogEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -38,13 +38,19 @@ export class TaskLog {
   @Column({ name: 'workflowLogId' })
   workflowLogId: number;
 
-  @ManyToOne(() => Task, { onDelete: 'CASCADE' })
+  @ManyToOne(() => TaskEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'taskId', referencedColumnName: 'id' }])
-  task: Task;
+  task: TaskEntity;
 
   @Column({ name: 'taskId' })
   taskId: number;
 
   @Column({ type: 'jsonb', nullable: true })
   output: any;
+
+  @Column({ type: 'jsonb', nullable: true })
+  input: any;
+
+  @Column({ type: 'jsonb', nullable: true })
+  error: any;
 }

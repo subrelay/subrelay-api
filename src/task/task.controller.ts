@@ -1,10 +1,17 @@
-import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Post,
+} from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { mapValues, startCase } from 'lodash';
 import { EventService } from '../event/event.service';
 import { ProcessTaskRequest } from './task.dto';
 import { TaskService } from './task.service';
-import { BaseTask, TaskOutput } from './type/task.type';
+import { BaseTask, TaskLog } from './type/task.type';
 
 @Controller('tasks')
 @ApiTags('Task')
@@ -15,9 +22,9 @@ export class TaskController {
   ) {}
 
   @Post('/run')
+  @HttpCode(200)
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: TaskOutput,
   })
   @ApiOperation({
     summary: 'Run a task',
@@ -43,7 +50,11 @@ export class TaskController {
       },
     },
   })
-  async processTask(@Body() input: ProcessTaskRequest): Promise<TaskOutput> {
+  async processTask(@Body() input: ProcessTaskRequest): Promise<{
+    success: TaskLog['success'];
+    error: TaskLog['error'];
+    output: TaskLog['output'];
+  }> {
     const eventInfo = await this.eventService.getEventById(input.data.eventId);
     if (!eventInfo) {
       throw new NotFoundException('Event not found');
@@ -67,7 +78,11 @@ export class TaskController {
       },
     });
 
-    return result.output;
+    return {
+      success: result.success,
+      error: result.error,
+      output: result.output,
+    };
   }
 
   @Get('/operators')
@@ -100,6 +115,21 @@ export class TaskController {
     summary: 'Return supported operators for condition filter',
   })
   async getTriggerOperators() {
+    const mapping = this.taskService.getOperatorMapping();
+    return mapValues(mapping, (operatorList) =>
+      operatorList.map((operator) => ({
+        value: operator,
+        name: startCase(operator).toLowerCase(),
+      })),
+    );
+  }
+
+  @Get('/telegram-info')
+  @ApiOkResponse({})
+  @ApiOperation({
+    summary: 'Return chat ID',
+  })
+  async getTelegramInfo() {
     const mapping = this.taskService.getOperatorMapping();
     return mapValues(mapping, (operatorList) =>
       operatorList.map((operator) => ({

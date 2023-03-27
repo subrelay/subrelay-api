@@ -9,8 +9,8 @@ import {
 import { TaskType } from '../type/task.type';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-@Entity()
-export class Task {
+@Entity('task')
+export class TaskEntity {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn()
   id: number;

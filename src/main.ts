@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import 'reflect-metadata';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { getBotToken } from 'nestjs-telegraf';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,6 +28,10 @@ async function bootstrap() {
   });
   SwaggerModule.setup('api', app, document);
 
+  const bot = app.get(getBotToken());
+  app.use(bot.webhookCallback('/telegram-bot'));
+
   await app.listen(3000);
 }
+
 bootstrap();
