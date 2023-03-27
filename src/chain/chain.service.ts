@@ -10,7 +10,6 @@ import { Chain } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
-import { TaskOutput } from '../task/type/task.type';
 import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
 
@@ -76,7 +75,7 @@ export class ChainService implements OnModuleInit {
     await this.chainRepository.update({ uuid }, input);
   }
 
-  async createChain(input: CreateChainRequest): Promise<TaskOutput> {
+  async createChain(input: CreateChainRequest): Promise<ChainSummary> {
     const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(input.rpcs);
 
     if (!chainInfo) {
@@ -102,10 +101,7 @@ export class ChainService implements OnModuleInit {
 
     await this.eventService.createEvents(chainInfo.events, chain.uuid);
 
-    return {
-      success: true,
-      output: chain,
-    };
+    return chain;
   }
 
   private insertChain(input: Partial<Chain>): Promise<Chain> {

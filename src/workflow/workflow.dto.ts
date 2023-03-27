@@ -11,7 +11,7 @@ import {
 import { Chain } from '../chain/chain.entity';
 import { Pagination } from '../common/pagination.type';
 import { EventData } from '../common/queue.type';
-import { Task } from '../task/entity/task.entity';
+import { TaskEntity } from '../task/entity/task.entity';
 import { TaskLogDetail } from '../task/task.dto';
 import { ProcessStatus, TaskType } from '../task/type/task.type';
 import { Workflow } from './entity/workflow.entity';
@@ -98,7 +98,7 @@ export class GetWorkflowLogsQueryParams extends Pagination {
 
 export class WorkflowDetail extends Workflow {
   @ApiProperty({
-    type: Task,
+    type: TaskEntity,
     isArray: true,
     example: [
       {
@@ -134,7 +134,7 @@ export class WorkflowDetail extends Workflow {
       },
     ],
   })
-  tasks: Task[];
+  tasks: TaskEntity[];
 
   @ApiProperty({ example: '2022-11-18T00:53:30.082Z' })
   updatedAt?: string;

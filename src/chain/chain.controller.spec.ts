@@ -8,7 +8,6 @@ import {
   UpdateChainRequest,
 } from './chain.dto';
 import { EventDetail, EventSummary } from '../event/event.dto';
-import { TaskOutput } from '../task/type/task.type';
 import { NotFoundException } from '@nestjs/common';
 import { SortType } from '../common/pagination.type';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
@@ -69,7 +68,7 @@ describe('ChainController', () => {
         name: 'data.to',
         description: '',
         type: GeneralTypeEnum.STRING,
-        example: '13SDfVdrBaUrnoV7tMfvrGrxxANr1iJNEcPCmqZzF9FCpX8c',
+        example: '13Dt6a1kgsrDQMScM5uBoVFm45gb6wAi6CAnYnBAwUy2q2cp',
       },
       {
         name: 'data.amount',
@@ -142,12 +141,13 @@ describe('ChainController', () => {
         imageUrl: chainDetail.imageUrl,
         rpcs: chainDetail.config.rpcs,
       };
-      const output: TaskOutput = { success: true, output: {} };
-      jest.spyOn(chainService, 'createChain').mockResolvedValue(output);
+      jest
+        .spyOn(chainService, 'createChain')
+        .mockResolvedValue(chainSummaries[0]);
 
       const result = await controller.createChain(input);
 
-      expect(result).toBe(output);
+      expect(result).toBe(chainSummaries[0]);
       expect(chainService.createChain).toHaveBeenCalledWith(input);
     });
   });

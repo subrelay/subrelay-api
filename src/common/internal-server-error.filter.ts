@@ -4,12 +4,17 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import * as Rollbar from 'rollbar';
 import { ConfigService } from '@nestjs/config';
+import { TaskValidationError } from '../task/type/task.type';
+import { TelegramError } from '../task/type/notification.type';
 
 @Catch()
 export class InternalServerExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(InternalServerExceptionsFilter.name);
+
   constructor(private configService: ConfigService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
@@ -18,6 +23,14 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       res.status(exception.getStatus()).json(exception.getResponse());
+      return;
+    }
+
+    if (
+      exception instanceof TaskValidationError ||
+      exception instanceof TelegramError
+    ) {
+      res.status(HttpStatus.BAD_REQUEST).json({ message: exception.message });
       return;
     }
 

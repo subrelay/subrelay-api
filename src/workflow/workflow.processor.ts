@@ -49,21 +49,22 @@ export class WorkflowProcessor {
       workflowVersionId: workflowVersionId,
     });
     const taskLogs = map(workflowResult, (log, taskId) => {
-      if (!log.output.success) {
+      if (!log.success) {
         workflowLogStatus = ProcessStatus.FAILED;
       }
 
       return {
-        status: log.output.success
-          ? ProcessStatus.SUCCESS
-          : ProcessStatus.FAILED,
+        status: log.success ? ProcessStatus.SUCCESS : ProcessStatus.FAILED,
         taskId: taskId as unknown as number,
         workflowLogId,
         output: log.output,
         startedAt: log.startedAt,
         finishedAt: log.finishedAt,
+        input: log.input,
+        error: log.error,
       };
     });
+
     await this.taskService.createTaskLogs(taskLogs);
 
     await this.workflowService.finishWorkflowLog(
