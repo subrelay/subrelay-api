@@ -130,7 +130,9 @@ export class EventService {
 
   private getSupportedFields(event: Event): SupportedFilterField[] {
     const dataFields = event.dataSchema.map((field) => {
-      const name = `data.${field.name}`;
+      const name = isNaN(parseInt(field.name))
+        ? `data.${field.name}`
+        : `data[${field.name}]`;
 
       return {
         name,
