@@ -6,12 +6,12 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { WorkflowVersion } from './workflow-version.entity';
 import { EventData } from '../../common/queue.type';
 import { ProcessStatus } from '../../task/type/task.type';
+import { WorkflowEntity } from './workflow.entity';
 
 @Entity({ name: 'workflow_log' })
-export class WorkflowLog {
+export class WorkflowLogEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -33,10 +33,10 @@ export class WorkflowLog {
   @Column({ nullable: false, type: 'jsonb' })
   input: EventData;
 
-  @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])
-  workflowVersion: WorkflowVersion;
+  @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
+  workflow: WorkflowEntity;
 
-  @Column({ name: 'workflowVersionId' })
-  workflowVersionId: number;
+  @Column({ name: 'workflowId' })
+  workflowId: number;
 }

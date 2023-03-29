@@ -27,11 +27,11 @@ import { TaskType } from '../task/type/task.type';
 import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
-  CreateWorkflowTask,
+  CreateWorkflowTaskRequest,
   GetWorkflowsQueryParams,
-  WorkflowsResponse,
+  GetWorkflowsResponse,
   UpdateWorkFlowRequest,
-  WorkflowDetail,
+  GetWorkflowResponse,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 
@@ -46,7 +46,7 @@ export class WorkflowController {
   @Get()
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: WorkflowsResponse,
+    type: GetWorkflowsResponse,
   })
   @ApiOperation({
     summary: 'Get all workflows',
@@ -55,7 +55,7 @@ export class WorkflowController {
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
     @UserInfo() user: User,
-  ): Promise<WorkflowsResponse> {
+  ): Promise<GetWorkflowsResponse> {
     return {
       workflows: await this.workflowService.getWorkflows(queryParams, user.id),
       total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
@@ -67,7 +67,7 @@ export class WorkflowController {
   @Get(':id')
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: WorkflowDetail,
+    type: GetWorkflowResponse,
   })
   @ApiBasicAuth()
   @ApiOperation({
@@ -76,7 +76,7 @@ export class WorkflowController {
   async getWorkflow(
     @Param('id', ParseIntPipe) id: number,
     @UserInfo() user: User,
-  ): Promise<WorkflowDetail> {
+  ): Promise<GetWorkflowResponse> {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
@@ -128,7 +128,7 @@ export class WorkflowController {
   @Post()
   @ApiCreatedResponse({
     description: 'Return data if request is successful',
-    type: WorkflowDetail,
+    type: GetWorkflowResponse,
   })
   @ApiOperation({
     summary: 'Create a workflow',
@@ -137,7 +137,7 @@ export class WorkflowController {
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
-  ): Promise<WorkflowDetail> {
+  ): Promise<GetWorkflowResponse> {
     input.tasks = orderBy(
       input.tasks.map((task) => ({
         ...task,
@@ -156,7 +156,10 @@ export class WorkflowController {
     return this.workflowService.getWorkflow(workflowId, user.id);
   }
 
-  private async validateTasks(chainUuid: string, tasks: CreateWorkflowTask[]) {
+  private async validateTasks(
+    chainUuid: string,
+    tasks: CreateWorkflowTaskRequest[],
+  ) {
     const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
 
     if (!triggerTask) {

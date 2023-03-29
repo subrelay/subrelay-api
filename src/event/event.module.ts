@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubstrateModule } from '../substrate/substrate.module';
-import { Event } from './event.entity';
+import { EventEntity } from './event.entity';
 import { EventService } from './event.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Event]), SubstrateModule],
+  imports: [TypeOrmModule.forFeature([EventEntity]), SubstrateModule],
   providers: [EventService],
   exports: [EventService],
 })

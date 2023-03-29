@@ -1,10 +1,8 @@
 import { EventDetail } from '../event/event.dto';
 
 export class EventRawData {
-  pallet: string;
   name: string;
   data: any;
-  hash: string;
   block: {
     hash: string;
   };

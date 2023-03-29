@@ -9,22 +9,18 @@ import {
 import { TypeSchema } from '../substrate/substrate.data';
 import { ApiProperty } from '@nestjs/swagger';
 
-@Entity()
-export class Event {
+@Entity('event')
+export class EventEntity {
   @ApiProperty({ example: 1 })
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  @ApiProperty({ example: 'Transfer' })
+  @ApiProperty({ example: 'balances.Transfer' })
   @Column()
   name: string;
 
-  @ApiProperty({ example: 'balances' })
-  @Column()
-  pallet: string;
-
-  @Column({ type: 'jsonb', name: 'dataSchema' })
-  dataSchema: TypeSchema[];
+  @Column({ type: 'jsonb', name: 'schema' })
+  schema: TypeSchema[];
 
   @ApiProperty({ example: 'Transfer succeeded.' })
   @Column({ nullable: true })

@@ -7,15 +7,20 @@ import {
   validateSync,
 } from 'class-validator';
 import { isEmpty } from 'lodash';
-import { NotificationTaskConfig } from './notification.type';
+import { EmailTaskConfig } from './email.type';
+import { TelegramTaskConfig } from './telegram.type';
 import { TriggerTaskConfig } from './trigger.type';
+import { WebhookTaskConfig } from './webhook.type';
 
 export enum TaskType {
   NOTIFICATION = 'notification',
   TRIGGER = 'trigger',
+  EMAIL = 'email',
+  WEBHOOK = 'webhook',
+  TELEGRAM = 'telegram',
 }
 
-export enum ProcessStatus {
+export enum TaskStatus {
   PENDING = 'pending',
   RUNNING = 'running',
   FAILED = 'failed',
@@ -83,8 +88,13 @@ export class BaseTask {
       case TaskType.TRIGGER:
         this.config = new TriggerTaskConfig(this.config);
         break;
-      case TaskType.NOTIFICATION:
-        this.config = new NotificationTaskConfig(this.config);
+      case TaskType.WEBHOOK:
+        this.config = new WebhookTaskConfig(this.config);
+        break;
+      case TaskType.EMAIL:
+        this.config = new EmailTaskConfig(this.config);
+      case TaskType.TELEGRAM:
+        this.config = new TelegramTaskConfig(this.config);
         break;
       default:
         throw new Error(`Unsupported type: ${this.type}`);
@@ -99,11 +109,27 @@ export class BaseTask {
     return this.config;
   }
 
-  getNotificationTaskConfig(): NotificationTaskConfig {
+  getWebhookTaskConfig(): WebhookTaskConfig {
     return this.config;
   }
 
-  isNotificationTask(): boolean {
-    return this.type === TaskType.NOTIFICATION;
+  isWebhookTask(): boolean {
+    return this.type === TaskType.WEBHOOK;
+  }
+
+  getEmailTaskConfig(): EmailTaskConfig {
+    return this.config;
+  }
+
+  isEmailTask(): boolean {
+    return this.type === TaskType.EMAIL;
+  }
+
+  getTelegramTaskConfig(): TelegramTaskConfig {
+    return this.config;
+  }
+
+  isTelegramTask(): boolean {
+    return this.type === TaskType.TELEGRAM;
   }
 }

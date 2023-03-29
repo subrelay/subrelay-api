@@ -14,7 +14,7 @@ import { EventData } from '../common/queue.type';
 import { TaskEntity } from '../task/entity/task.entity';
 import { TaskLogDetail } from '../task/task.dto';
 import { ProcessStatus, TaskType } from '../task/type/task.type';
-import { Workflow } from './entity/workflow.entity';
+import { WorkflowEntity } from './entity/workflow.entity';
 import { WorkflowStatus } from './workflow.type';
 
 export enum GetWorkflowsOrderBy {
@@ -96,60 +96,18 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   order: GetWorkflowLogsOrderBy = GetWorkflowLogsOrderBy.FINISHED_AT;
 }
 
-export class WorkflowDetail extends Workflow {
-  @ApiProperty({
-    type: TaskEntity,
-    isArray: true,
-    example: [
-      {
-        id: 1,
-        name: 'Task1',
-        config: [
-          {
-            eventId: 9,
-            conditions: [
-              {
-                variable: 'data.amount',
-                operator: 'greaterThan',
-                value: 1,
-              },
-            ],
-          },
-        ],
-        type: 'trigger',
-        dependOn: null,
-      },
-      {
-        id: 2,
-        name: 'Notify webhook',
-        type: 'notification',
-        config: {
-          channel: 'webhook',
-          config: {
-            headers: [],
-            url: 'https://webhook.site/27307cdd-cca9-4389-8158-7742038fdc80',
-          },
-        },
-        dependOn: 1,
-      },
-    ],
-  })
+export class GetWorkflowResponse extends WorkflowEntity {
   tasks: TaskEntity[];
 
-  @ApiProperty({ example: '2022-11-18T00:53:30.082Z' })
-  updatedAt?: string;
-
-  @ApiProperty({ example: 'Workflow 1' })
   name: string;
 
-  @ApiProperty({ example: '3342b0eb-ab4f-40c0-870c-6587de6b009a' })
-  chainUuid: string;
-
-  @ApiProperty({ example: 'Polkadot' })
-  chainName: string;
+  chain: {
+    uuid: Chain['uuid'];
+    name: Chain['name'];
+  };
 }
 
-export class WorkflowSummary extends Workflow {
+export class WorkflowSummary extends WorkflowEntity {
   @ApiProperty({ example: '2022-11-18T00:53:30.082Z' })
   updatedAt?: string;
 
@@ -165,7 +123,7 @@ export class WorkflowSummary extends Workflow {
   workflowVersionId: number;
 }
 
-export class WorkflowsResponse {
+export class GetWorkflowsResponse {
   @ApiProperty({ type: WorkflowSummary, isArray: true })
   workflows: WorkflowSummary[];
 
@@ -217,7 +175,7 @@ export class WorkflowLogDetail extends WorkflowLogResponse {
   input?: EventData;
 }
 
-export class CreateWorkflowTask {
+export class CreateWorkflowTaskRequest {
   @ApiProperty({ example: 'Task 1' })
   @IsString()
   @IsNotEmpty()

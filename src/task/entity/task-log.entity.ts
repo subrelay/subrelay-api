@@ -5,9 +5,9 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ProcessStatus } from '../type/task.type';
+import { WorkflowLogEntity } from '../../workflow/entity/workflow-log.entity';
+import { TaskStatus } from '../type/task.type';
 import { TaskEntity } from './task.entity';
-import { WorkflowLog } from '../../workflow/entity/workflow-log.entity';
 
 @Entity('task_log')
 export class TaskLogEntity {
@@ -29,11 +29,11 @@ export class TaskLogEntity {
   finishedAt?: Date;
 
   @Column({ nullable: false })
-  status: ProcessStatus;
+  status: TaskStatus;
 
-  @ManyToOne(() => WorkflowLog, { onDelete: 'CASCADE' })
+  @ManyToOne(() => WorkflowLogEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowLogId', referencedColumnName: 'id' }])
-  workflowLog: WorkflowLog;
+  workflowLog: WorkflowLogEntity;
 
   @Column({ name: 'workflowLogId' })
   workflowLogId: number;

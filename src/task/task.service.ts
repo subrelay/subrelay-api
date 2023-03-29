@@ -8,13 +8,7 @@ import {
   mapValues,
   template,
 } from 'lodash';
-import {
-  BaseTask,
-  ProcessStatus,
-  TaskLog,
-  TaskResult,
-  TaskType,
-} from './type/task.type';
+import { BaseTask, TaskLog, TaskResult, TaskType } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { TaskEntity } from './entity/task.entity';
@@ -27,15 +21,6 @@ import {
   TaskLogDetail,
 } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
-import {
-  EmailConfig,
-  NotificationTaskConfig,
-  NotificationEmailInput,
-  TelegramConfig,
-  WebhookConfig,
-  NotificationTelegramInput,
-  TelegramError,
-} from './type/notification.type';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';

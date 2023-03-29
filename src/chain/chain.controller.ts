@@ -19,13 +19,10 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  EventDetail,
-  EventSummary,
-  GetEventsQueryParams,
-} from '../event/event.dto';
-import { Event } from '../event/event.entity';
+import { Pagination } from '../common/pagination.type';
+import { GetEventsResponse, GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
+import { CustomMessageInput } from '../task/task.dto';
 import {
   ChainSummary,
   CreateChainRequest,
@@ -100,8 +97,6 @@ export class ChainController {
   @Get(':uuid/events')
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    isArray: true,
-    type: Event,
   })
   @ApiOperation({
     summary: 'Get all events of a chain',
@@ -109,8 +104,8 @@ export class ChainController {
   })
   async getEvents(
     @Param() pathParams: { uuid?: string },
-    @Query() queryParams: GetEventsQueryParams,
-  ): Promise<EventSummary[]> {
+    @Query() queryParams: Pagination,
+  ): Promise<GetEventsResponse[]> {
     if (!(await this.chainService.chainExist(pathParams.uuid))) {
       throw new NotFoundException('Chain not found');
     }
@@ -121,7 +116,6 @@ export class ChainController {
   @Get(':uuid/events/:eventId')
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: EventDetail,
   })
   @ApiOperation({
     summary: 'Get an event details',
@@ -130,17 +124,31 @@ export class ChainController {
   async getEvent(
     @Param('uuid') uuid: string,
     @Param('eventId', ParseIntPipe) eventId: number,
-  ): Promise<EventDetail> {
+  ): Promise<GetOneEventResponse> {
     if (!(await this.chainService.chainExist(uuid))) {
       throw new NotFoundException('Chain not found');
     }
 
     const event = await this.eventService.getEventByChain(uuid, eventId);
+    const eventDataSample = await this.eventService.generateEventDataSample(
+      eventId,
+    );
+    const eventSample = new CustomMessageInput({
+      eventInfo: event,
+      eventData: eventDataSample,
+      workflow: {
+        id: 1,
+        name: 'Untitled',
+      },
+    });
 
     if (!event) {
       throw new NotFoundException('Event not found');
     }
 
-    return event;
+    return {
+      ...event,
+      sample: eventSample,
+    };
   }
 }

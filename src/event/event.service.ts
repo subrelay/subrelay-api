@@ -2,25 +2,21 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
 import { Repository } from 'typeorm';
+import { Pagination } from '../common/pagination.type';
 import { EventData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import {
-  EventDetail,
-  EventSummary,
-  GetEventsQueryParams,
-  SupportedFilterField,
-} from './event.dto';
-import { Event } from './event.entity';
+import { EventDataField } from './event.dto';
+import { EventEntity } from './event.entity';
 
 @Injectable()
 export class EventService {
   constructor(
     @InjectRepository(Event)
-    private eventRepository: Repository<Event>,
+    private eventRepository: Repository<EventEntity>,
   ) {}
 
   async createEvents(events: EventDef[], chainUuid: string) {
-    const createEventsInput: Partial<Event>[] = events.map((event) => ({
+    const createEventsInput: Partial<EventEntity>[] = events.map((event) => ({
       ...event,
       chainUuid,
     }));
@@ -38,7 +34,7 @@ export class EventService {
   async getEventByChain(
     chainUuid: string,
     eventId: number,
-  ): Promise<EventDetail> {
+  ): Promise<EventEntity> {
     const event = await this.eventRepository.findOneBy({
       id: eventId,
       chainUuid,
@@ -48,13 +44,10 @@ export class EventService {
       return null;
     }
 
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
+    return event;
   }
 
-  async generateEventSample(eventId): Promise<EventData> {
+  async generateEventDataSample(eventId): Promise<EventData> {
     const event = await this.getEventById(eventId);
     if (!event) {
       return null;
@@ -73,42 +66,19 @@ export class EventService {
     return eventData;
   }
 
-  async getEventById(eventId: number): Promise<EventDetail> {
-    const event = await this.eventRepository.findOneBy({
+  async getEventById(eventId: number): Promise<EventEntity> {
+    return await this.eventRepository.findOneBy({
       id: eventId,
     });
-
-    if (!event) {
-      return null;
-    }
-
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
   }
 
   getEventsByChain(
     chainUuid: string,
-    queryParams?: GetEventsQueryParams,
-  ): Promise<EventSummary[]> {
+    queryParams?: Pagination,
+  ): Promise<EventEntity[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
-      .select([
-        'event.id',
-        'event.name',
-        'event.pallet',
-        'event.index',
-        'event.description',
-        'event."chainUuid"',
-      ])
       .where('event."chainUuid" = :chainUuid', { chainUuid });
-
-    if (queryParams.pallet) {
-      queryBuilder = queryBuilder.andWhere('event.pallet = :pallet', {
-        pallet: queryParams.pallet,
-      });
-    }
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
@@ -128,8 +98,8 @@ export class EventService {
     return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
   }
 
-  private getSupportedFields(event: Event): SupportedFilterField[] {
-    const dataFields = event.dataSchema.map((field) => {
+  getEventDataFields(event: EventEntity): EventDataField[] {
+    const dataFields = event.schema.map((field) => {
       const name = isNaN(parseInt(field.name))
         ? `data.${field.name}`
         : `data[${field.name}]`;
@@ -138,19 +108,68 @@ export class EventService {
         name,
         description: field.description,
         type: field.type as GeneralTypeEnum,
-        example: field.example,
+        data: field.example,
+        supportFilter: true,
+        supportCustomMessage: true,
       };
     });
 
-    const eventFields = [
+    const blockFields = [
       {
         name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
-        example: true,
+        data: true,
+        supportFilter: true,
+        supportCustomMessage: true,
+      },
+      {
+        name: 'block.hash',
+        description: 'The hash of the block',
+        type: GeneralTypeEnum.STRING,
+        data: '0x34b6bd12125bb2bfd0be1351222bada58904c5f79cab268bb994aea1dae5a7b8',
+        supportFilter: false,
+        supportCustomMessage: true,
       },
     ];
 
-    return [...eventFields, ...dataFields].filter((field) => field);
+    const eventFields = [
+      {
+        name: 'id',
+        description: 'The Id of the event',
+        type: GeneralTypeEnum.NUMBER,
+        data: event.id,
+        supportFilter: false,
+        supportCustomMessage: true,
+      },
+      {
+        name: 'name',
+        description: 'The name of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.name,
+        supportFilter: false,
+        supportCustomMessage: true,
+      },
+      {
+        name: 'description',
+        description: 'The description of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.description,
+        supportFilter: false,
+        supportCustomMessage: true,
+      },
+      {
+        name: 'time',
+        description: 'The time that the event happened',
+        type: GeneralTypeEnum.STRING,
+        data: event.description,
+        supportFilter: false,
+        supportCustomMessage: true,
+      },
+    ];
+
+    return [...eventFields, ...blockFields, ...dataFields].filter(
+      (field) => field,
+    );
   }
 }

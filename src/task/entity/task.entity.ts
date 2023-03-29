@@ -1,4 +1,3 @@
-import { WorkflowVersion } from '../../workflow/entity/workflow-version.entity';
 import {
   Column,
   Entity,
@@ -8,6 +7,7 @@ import {
 } from 'typeorm';
 import { TaskType } from '../type/task.type';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { WorkflowEntity } from '../../workflow/entity/workflow.entity';
 
 @Entity('task')
 export class TaskEntity {
@@ -30,11 +30,10 @@ export class TaskEntity {
   @Column({ nullable: false, type: 'jsonb' })
   config: any;
 
-  @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])
-  workflowVersion: WorkflowVersion;
+  @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
+  workflow: WorkflowEntity;
 
-  @ApiProperty({ example: 3 })
-  @Column({ name: 'workflowVersionId' })
-  workflowVersionId: number;
+  @Column({ name: 'workflowId' })
+  workflowId: number;
 }

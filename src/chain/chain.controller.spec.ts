@@ -77,6 +77,30 @@ describe('ChainController', () => {
         example: 100000000,
       },
     ],
+    sample: {
+      workflow: {
+        id: 7,
+        name: 'Dot',
+        createdAt: '2023-03-19T03:59:46.281Z',
+        updatedAt: '2023-03-19T03:59:46.281Z',
+        status: 'running',
+        chainUuid: '1932ac09-839e-4b01-a5d5-84dd14b852be',
+        chainName: 'Polkadot',
+      },
+      block: {
+        hash: '0x34b6bd12125bb2bfd0be1351222bada58904c5f79cab268bb994aea1dae5a7b8',
+      },
+      eventId: 1,
+      fullName: 'balances.Transfer',
+      description: 'Transfer succeeded.',
+      time: '2023-03-24T10:37:12.016Z',
+      data: {
+        from: '13UVJyLnbVp8c4FQeiGVUSe11WLtR4mvxfhcuUHdVuW2V5gC',
+        to: '13H6oLtji5L4ByvePgh7c7iAy1wpBRcFsxJkdxwn4TbaeaGA',
+        amount: '0.0450',
+      },
+      success: true,
+    },
   };
   const chainDetail = {
     ...chainSummaries.polkadot,

@@ -9,9 +9,9 @@ import {
 import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { mapValues, startCase } from 'lodash';
 import { EventService } from '../event/event.service';
-import { ProcessTaskRequest } from './task.dto';
+import { ProcessTaskRequest, ProcessTaskResponse } from './task.dto';
 import { TaskService } from './task.service';
-import { BaseTask, TaskLog } from './type/task.type';
+import { BaseTask } from './type/task.type';
 
 @Controller('tasks')
 @ApiTags('Task')
@@ -50,17 +50,15 @@ export class TaskController {
       },
     },
   })
-  async processTask(@Body() input: ProcessTaskRequest): Promise<{
-    success: TaskLog['success'];
-    error: TaskLog['error'];
-    output: TaskLog['output'];
-  }> {
+  async processTask(
+    @Body() input: ProcessTaskRequest,
+  ): Promise<ProcessTaskResponse> {
     const eventInfo = await this.eventService.getEventById(input.data.eventId);
     if (!eventInfo) {
       throw new NotFoundException('Event not found');
     }
 
-    const eventData = await this.eventService.generateEventSample(
+    const eventData = await this.eventService.generateEventDataSample(
       input.data.eventId,
     );
 
@@ -115,21 +113,6 @@ export class TaskController {
     summary: 'Return supported operators for condition filter',
   })
   async getTriggerOperators() {
-    const mapping = this.taskService.getOperatorMapping();
-    return mapValues(mapping, (operatorList) =>
-      operatorList.map((operator) => ({
-        value: operator,
-        name: startCase(operator).toLowerCase(),
-      })),
-    );
-  }
-
-  @Get('/telegram-info')
-  @ApiOkResponse({})
-  @ApiOperation({
-    summary: 'Return chat ID',
-  })
-  async getTelegramInfo() {
     const mapping = this.taskService.getOperatorMapping();
     return mapValues(mapping, (operatorList) =>
       operatorList.map((operator) => ({
