@@ -6,20 +6,21 @@ import {
   CreateChainRequest,
   UpdateChainRequest,
 } from './chain.dto';
-import { Chain } from './chain.entity';
+import { ChainEntity } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
 import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
+import { ulid } from 'ulid';
 
 @Injectable()
 export class ChainService implements OnModuleInit {
   private readonly logger = new Logger(ChainService.name);
 
   constructor(
-    @InjectRepository(Chain)
-    private chainRepository: Repository<Chain>,
+    @InjectRepository(ChainEntity)
+    private chainRepository: Repository<ChainEntity>,
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
@@ -58,7 +59,7 @@ export class ChainService implements OnModuleInit {
     return (await this.chainRepository.countBy({ chainId })) > 0;
   }
 
-  getChain(uuid: string): Promise<Chain> {
+  getChain(uuid: string): Promise<ChainEntity> {
     return this.chainRepository.findOne({
       where: { uuid },
       relations: {
@@ -104,8 +105,8 @@ export class ChainService implements OnModuleInit {
     return chain;
   }
 
-  private insertChain(input: Partial<Chain>): Promise<Chain> {
-    return this.chainRepository.save(input);
+  private insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
+    return this.chainRepository.save({ ...input, id: ulid() });
   }
 
   private async getChainInfoByRpcs(rpcs: string[]) {

@@ -1,10 +1,10 @@
-import { Event } from '../event/event.entity';
+import { EventEntity } from '../event/event.entity';
 import {
   Column,
   Entity,
-  PrimaryGeneratedColumn,
   CreateDateColumn,
   OneToMany,
+  PrimaryColumn,
   // OneToMany,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
@@ -23,12 +23,12 @@ export class ChainConfig {
   chainDecimals: number[];
 }
 
-@Entity()
-export class Chain {
+@Entity('chain')
+export class ChainEntity {
   @ApiProperty({
     example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',
   })
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'char', length: 26 })
   uuid: string;
 
   @ApiProperty({ example: 'polkadot' })
@@ -57,6 +57,6 @@ export class Chain {
   @Column({ nullable: false, type: 'jsonb' })
   config: ChainConfig;
 
-  @OneToMany(() => Event, (event) => event.chain, { lazy: true })
-  events: Event[];
+  @OneToMany(() => EventEntity, (event) => event.chain, { lazy: true })
+  events: EventEntity[];
 }

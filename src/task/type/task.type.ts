@@ -101,11 +101,7 @@ export class BaseTask {
     }
   }
 
-  isTriggerTask(): boolean {
-    return this.type === TaskType.TRIGGER;
-  }
-
-  getTriggerConfig(): TriggerTaskConfig {
+  getTriggerTaskConfig(): TriggerTaskConfig {
     return this.config;
   }
 
@@ -113,23 +109,12 @@ export class BaseTask {
     return this.config;
   }
 
-  isWebhookTask(): boolean {
-    return this.type === TaskType.WEBHOOK;
-  }
-
   getEmailTaskConfig(): EmailTaskConfig {
     return this.config;
-  }
-
-  isEmailTask(): boolean {
-    return this.type === TaskType.EMAIL;
   }
 
   getTelegramTaskConfig(): TelegramTaskConfig {
     return this.config;
   }
 
-  isTelegramTask(): boolean {
-    return this.type === TaskType.TELEGRAM;
-  }
 }

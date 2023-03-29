@@ -9,6 +9,8 @@ import {
   validateSync,
 } from 'class-validator';
 import { isEmpty } from 'lodash';
+import { EventRawData } from '../../common/queue.type';
+import { EventEntity } from '../../event/event.entity';
 import { TaskValidationError } from './task.type';
 
 export class WebhookHeader {

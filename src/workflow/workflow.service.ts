@@ -1,41 +1,40 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { findIndex, get, isEmpty, isNil, isNull, orderBy } from 'lodash';
-import { DataSource, Repository } from 'typeorm';
-import { Chain } from '../chain/chain.entity';
+import { findIndex, get, isNil, isNull, orderBy } from 'lodash';
+import { DataSource, In, Repository } from 'typeorm';
+import { ChainEntity } from '../chain/chain.entity';
 import { TaskEntity } from '../task/entity/task.entity';
 import { ProcessTaskInput } from '../task/task.dto';
 import { TaskService } from '../task/task.service';
-import { BaseTask, ProcessStatus, TaskLog } from '../task/type/task.type';
-import { WorkflowLog } from './entity/workflow-log.entity';
-import { WorkflowVersion } from './entity/workflow-version.entity';
-import { Workflow } from './entity/workflow.entity';
+import { BaseTask, TaskStatus, TaskLog } from '../task/type/task.type';
+import { WorkflowLogEntity } from './entity/workflow-log.entity';
+import { WorkflowEntity } from './entity/workflow.entity';
 import {
   CreateWorkFlowRequest,
   GetWorkflowLogsOrderBy,
   GetWorkflowLogsQueryParams,
   GetWorkflowsOrderBy,
   GetWorkflowsQueryParams,
-  UpdateWorkFlowRequest,
-  WorkflowDetail,
-  WorkflowLogDetail,
-  WorkflowLogResponse,
-  WorkflowSummary,
+  UpdateWorkflowRequest,
 } from './workflow.dto';
-import { WorkflowStatus } from './workflow.type';
+import {
+  ProcessWorkflowInput,
+  WorkflowLogSummary,
+  WorkflowStatus,
+  WorkflowSummary,
+} from './workflow.type';
+import { ulid } from 'ulid';
+import { EventEntity } from '../event/event.entity';
 
 @Injectable()
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
   constructor(
-    @InjectRepository(Workflow)
-    private workflowRepository: Repository<Workflow>,
+    @InjectRepository(WorkflowEntity)
+    private workflowRepository: Repository<WorkflowEntity>,
 
-    @InjectRepository(WorkflowVersion)
-    private workflowVersionRepository: Repository<WorkflowVersion>,
-
-    @InjectRepository(WorkflowLog)
-    private workflowLogRepository: Repository<WorkflowLog>,
+    @InjectRepository(WorkflowLogEntity)
+    private workflowLogRepository: Repository<WorkflowLogEntity>,
 
     @InjectDataSource() private dataSource: DataSource,
 
@@ -43,10 +42,10 @@ export class WorkflowService {
   ) {}
 
   async processWorkflow(
-    parentTaskId: number,
-    input: ProcessTaskInput,
+    input: ProcessWorkflowInput,
     schema: { [dependTaskId: number]: BaseTask },
-    output: { [key: number]: TaskLog },
+    output: { [key: number]: TaskLog } = {},
+    parentTaskId: string = 'start',
   ): Promise<{ [key: number]: TaskLog }> {
     const task = schema[parentTaskId];
 
@@ -62,24 +61,24 @@ export class WorkflowService {
       return output;
     }
 
-    return this.processWorkflow(task.id, input, schema, output);
+    return this.processWorkflow(input, schema, output, task.id);
   }
 
-  async getRunningWorkflows(): Promise<Workflow[]> {
-    return await this.getWorkflows({ status: WorkflowStatus.RUNNING });
-  }
-
-  async createWorkflowLog(
-    input: Pick<WorkflowLog, 'input' | 'workflowVersionId'>,
-  ) {
+  async createWorkflowLog({
+    input,
+    workflowId,
+  }: Pick<WorkflowLogEntity, 'input' | 'workflowId'>) {
     const { id } = await this.workflowLogRepository.save({
-      ...input,
-      status: ProcessStatus.RUNNING,
+      id: ulid(),
+      workflowId,
+      status: TaskStatus.RUNNING,
+      input,
     });
+
     return id;
   }
 
-  async finishWorkflowLog(id: number, status: ProcessStatus) {
+  async finishWorkflowLog(id: string, status: TaskStatus) {
     await this.workflowLogRepository.update(
       { id },
       { status, finishedAt: new Date() },
@@ -88,8 +87,8 @@ export class WorkflowService {
 
   async createWorkflow(
     input: CreateWorkFlowRequest,
-    userId: number,
-  ): Promise<number> {
+    userId: string,
+  ): Promise<string> {
     const tasksInput = orderBy(
       input.tasks.map((task) => ({
         ...task,
@@ -106,17 +105,13 @@ export class WorkflowService {
     await queryRunner.startTransaction();
 
     try {
-      const workflow = await queryRunner.manager.getRepository(Workflow).save({
-        userId,
-        status: WorkflowStatus.RUNNING,
-      });
-
-      const workflowVersion = await queryRunner.manager
-        .getRepository(WorkflowVersion)
+      const workflow = await queryRunner.manager
+        .getRepository(WorkflowEntity)
         .save({
-          workflowId: workflow.id,
+          userId,
+          status: WorkflowStatus.RUNNING,
           name: input.name,
-          chainUuid: input.chainUuid,
+          eventId: input.eventId,
         });
 
       const tasksObject: { [key: string]: number } = {};
@@ -127,7 +122,7 @@ export class WorkflowService {
           type: taskInput.type,
           config: taskInput.config,
           dependOn: get(tasksObject, taskInput.dependOnName),
-          workflowVersionId: workflowVersion.id,
+          workflowId: workflow.id,
         });
         Object.assign(tasksObject, { [taskInput.name]: taskId });
       }
@@ -149,75 +144,41 @@ export class WorkflowService {
     return workflowId;
   }
 
-  async getRunningWorkflowVersionAndTriggerEvents(
-    eventIds: number[],
-  ): Promise<{ workflowVersionId: number; eventId: number }[]> {
-    return this.workflowVersionRepository
-      .createQueryBuilder('wv')
-      .innerJoin(TaskEntity, 't', 't."workflowVersionId" = wv.id')
-      .innerJoin(
-        Workflow,
-        'w',
-        `wv."workflowId" = w.id AND w.status = '${WorkflowStatus.RUNNING}'`,
-      )
-      .where(`config ->> 'eventId' IN (:...eventIds)`, {
-        eventIds: eventIds.map((e) => e.toString()),
-      })
-      .select([
-        `wv.id AS "workflowVersionId"`,
-        `CAST(coalesce(config ->> 'eventId', '0') AS integer) AS "eventId"`,
-      ])
-      .distinct()
-      .getRawMany();
+  async getRunningWorkflowsByEventIds(
+    eventIds: string[],
+  ): Promise<WorkflowEntity[]> {
+    return this.workflowRepository.find({
+      where: {
+        eventId: In(eventIds),
+        status: WorkflowStatus.RUNNING,
+      },
+      relations: {
+        event: true,
+      },
+    });
   }
 
-  async workflowExists(id: number, userId: number): Promise<boolean> {
+  async workflowExists(id: string, userId: string): Promise<boolean> {
     return (await this.workflowRepository.countBy({ id, userId })) > 0;
   }
 
-  deleteWorkflow(id: number, userId: number) {
+  deleteWorkflow(id: string, userId: string) {
     return this.workflowRepository.delete({ id, userId });
   }
 
-  async updateWorkflowStatus(id: number, input: UpdateWorkFlowRequest) {
-    if (!isEmpty(input.status)) {
-      await this.workflowRepository.update({ id }, { status: input.status });
-    }
-
-    if (!isEmpty(input.name)) {
-      const workflowVersion = await this.workflowVersionRepository.findOne({
-        where: { workflowId: id },
-        order: { createdAt: 'DESC' },
-      });
-      await this.workflowVersionRepository.update(
-        { id: workflowVersion.id },
-        { name: input.name },
-      );
-    }
+  async updateWorkflowStatus(id: string, input: UpdateWorkflowRequest) {
+    await this.workflowRepository.update(
+      { id },
+      { status: input.status, name: input.name },
+    );
   }
 
-  async getWorkflow(id: number, userId?: number): Promise<WorkflowDetail> {
-    const queryBuilder = this.workflowRepository
-      .createQueryBuilder('w')
-      .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .innerJoin(TaskEntity, 't', 't."workflowVersionId" = wv.id')
-      .select([
-        'w.id AS id',
-        'wv.name AS name',
-        'w."createdAt" AS "createdAt"',
-        'wv."createdAt" AS "updatedAt"',
-        'w.status AS status',
-        'c.uuid AS "chainUuid"',
-        'c.name AS "chainName"',
-        `ARRAY_AGG(JSONB_BUILD_OBJECT('id', t.id, 'type', t.type, 'name', t.name, 'config', t.config, 'dependOn', t."dependOn")) AS tasks`,
-      ])
-      .where('w.id = :id', { id })
-
-      .groupBy(
-        'w.id, "wv"."name", wv."createdAt", w."createdAt", "w"."status", c.uuid',
-      )
-      .orderBy('wv."createdAt"', 'DESC');
+  async getWorkflowLog(
+    workflowLogId: string,
+    userId?: number,
+  ): Promise<WorkflowLogSummary> {
+    let queryBuilder = await this.getWorkflowLogQueryBuilder();
+    queryBuilder.andWhere('wl.id = :workflowLogId', { workflowLogId });
 
     if (!isNil(userId)) {
       queryBuilder.andWhere('w."userId" = :userId', { userId });
@@ -226,63 +187,21 @@ export class WorkflowService {
     return queryBuilder.getRawOne();
   }
 
-  async getWorkflowLog(
-    workflowLogId: number,
-    userId?: number,
-  ): Promise<WorkflowLogDetail> {
-    return this.workflowLogRepository
-      .createQueryBuilder('wl')
-      .innerJoin(
-        WorkflowVersion,
-        'wv',
-        `wv.id = wl."workflowVersionId" AND wl.id = ${workflowLogId}`,
-      )
-      .innerJoin(
-        Workflow,
-        'w',
-        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
-      )
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .select([
-        'DISTINCT wl.id AS id',
-        'wv.name AS name',
-        'wl."finishedAt" AS "finishedAt"',
-        'wl."startedAt" AS "startedAt"',
-        'wl.status AS "status"',
-        'wl.input AS "input"',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
-        `JSONB_BUILD_OBJECT('id', w.id) AS workflow`,
-      ])
-      .getRawOne();
-  }
-
-  async getWorkflowSummaryByVersionId(
-    workflowVersionId: number,
+  async getWorkflowSummary(
+    workflowId: string,
+    userId?: string,
   ): Promise<WorkflowSummary> {
-    const queryBuilder = this.workflowRepository
-      .createQueryBuilder('w')
-      .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .select([
-        'w.id AS id',
-        'wv.name AS name',
-        'w."createdAt" AS "createdAt"',
-        'wv."createdAt" AS "updatedAt"',
-        'w.status AS status',
-        'c.uuid AS "chainUuid"',
-        'c.name AS "chainName"',
-      ])
-      .where('wv.id = :id', { id: workflowVersionId })
+    let queryBuilder = await this.getWorkflowQueryBuilder();
+    queryBuilder.andWhere('w.id = :workflowId', { workflowId });
 
-      .groupBy(
-        'w.id, "wv"."name", wv."createdAt", w."createdAt", "w"."status", c.uuid',
-      )
-      .orderBy('wv."createdAt"', 'DESC');
+    if (!isNil(userId)) {
+      queryBuilder.andWhere('w."userId" = :userId', { userId });
+    }
 
     return queryBuilder.getRawOne();
   }
 
-  async getWorkflows(
+  async getWorkflowsAndTotal(
     {
       limit,
       offset,
@@ -291,17 +210,21 @@ export class WorkflowService {
       order: requestedOrder,
       search,
       status,
+      id,
     }: Partial<GetWorkflowsQueryParams>,
-    userId?: number,
-  ): Promise<WorkflowSummary[]> {
-    let queryBuilder = this.workflowRepository
-      .createQueryBuilder('w')
-      .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid');
+    userId?: string,
+  ): Promise<{ workflows: WorkflowSummary[]; total: number }> {
+    let queryBuilder = this.getWorkflowQueryBuilder();
 
     if (chainUuid) {
       queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
         chainUuid,
+      });
+    }
+
+    if (id) {
+      queryBuilder = queryBuilder.andWhere('w."id" = :id', {
+        id,
       });
     }
 
@@ -318,13 +241,9 @@ export class WorkflowService {
     }
 
     if (search) {
-      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
+      queryBuilder = queryBuilder.andWhere('w."name" ILIKE :search', {
         search: `%${search}%`,
       });
-    }
-
-    if (!isNull(limit) && !isNull(offset)) {
-      queryBuilder = queryBuilder.limit(limit).offset(offset);
     }
 
     let order;
@@ -333,32 +252,31 @@ export class WorkflowService {
         order = `w."${requestedOrder}"`;
         break;
       case GetWorkflowsOrderBy.UPDATEDAT:
-        order = `wv."createdAt"`;
+        order = `w."createdAt"`;
         break;
       case GetWorkflowsOrderBy.NAME:
-        order = `wv."${requestedOrder}"`;
+        order = `w."${requestedOrder}"`;
         break;
       default:
-        order = `wv."${GetWorkflowsOrderBy.NAME}"`;
+        order = `w."${GetWorkflowsOrderBy.NAME}"`;
         break;
     }
-
-    return queryBuilder
-      .select([
-        'DISTINCT w.id AS id',
-        'wv.id AS "workflowVersionId"',
-        'wv.name AS name',
-        'w."createdAt" AS "createdAt"',
-        'wv."createdAt" AS "updatedAt"',
-        'w.status AS "status"',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
-      ])
+    queryBuilder = queryBuilder
       .addOrderBy(order, sort)
-      .addOrderBy('wv."createdAt"', 'DESC')
-      .getRawMany();
+      .addOrderBy('wv."createdAt"', 'DESC');
+
+    const total = await queryBuilder.getCount();
+
+    if (!isNull(limit) && !isNull(offset)) {
+      queryBuilder = queryBuilder.limit(limit).offset(offset);
+    }
+
+    const workflows = await queryBuilder.getRawMany();
+
+    return { workflows, total };
   }
 
-  async getWorkflowLogs(
+  async getWorkflowLogsAndTotal(
     {
       limit,
       offset,
@@ -371,19 +289,11 @@ export class WorkflowService {
       id,
     }: Partial<GetWorkflowLogsQueryParams>,
     userId: number,
-  ): Promise<WorkflowLogResponse[]> {
-    let queryBuilder = this.workflowLogRepository
-      .createQueryBuilder('wl')
-      .innerJoin(WorkflowVersion, 'wv', 'wv.id = wl."workflowVersionId"')
-      .innerJoin(
-        Workflow,
-        'w',
-        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
-      )
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .where('wl.status IN (:...statuses) ', {
-        statuses: [ProcessStatus.FAILED, ProcessStatus.SUCCESS],
-      });
+  ): Promise<{ workflowLogs: WorkflowLogSummary[]; total: number }> {
+    let queryBuilder = this.getWorkflowLogQueryBuilder();
+    queryBuilder.andWhere('w."userId" = :userId', {
+      userId,
+    });
 
     if (chainUuid) {
       queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
@@ -398,13 +308,9 @@ export class WorkflowService {
     }
 
     if (search) {
-      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
+      queryBuilder = queryBuilder.andWhere('w."name" ILIKE :search', {
         search: `%${search}%`,
       });
-    }
-
-    if (!isNil(limit) && !isNil(offset)) {
-      queryBuilder = queryBuilder.limit(limit).offset(offset);
     }
 
     if (!isNil(workflowId)) {
@@ -435,111 +341,51 @@ export class WorkflowService {
         order = `wl."${GetWorkflowLogsOrderBy.FINISHED_AT}"`;
         break;
     }
+    queryBuilder = queryBuilder.addOrderBy(order, sort);
 
-    return queryBuilder
+    const total = await queryBuilder.getCount();
+
+    if (!isNil(limit) && !isNil(offset)) {
+      queryBuilder = queryBuilder.limit(limit).offset(offset);
+    }
+
+    const workflowLogs = await queryBuilder.getRawMany();
+
+    return { workflowLogs, total };
+  }
+
+  private getWorkflowLogQueryBuilder() {
+    return this.workflowLogRepository
+      .createQueryBuilder('wl')
+      .innerJoin(WorkflowEntity, 'w', `w.id = wl."workflowId"`)
+      .innerJoin(ChainEntity, 'c', 'wv."chainUuid" = c.uuid')
+      .where('wl.status IN (:...statuses) ', {
+        statuses: [TaskStatus.FAILED, TaskStatus.SUCCESS],
+      })
       .select([
         'DISTINCT wl.id AS id',
-        'wv.name AS name',
-        'w.id AS "workflowId"',
-        'wv.id AS "workflowVersionId"',
         'wl."finishedAt" AS "finishedAt"',
         'wl."startedAt" AS "startedAt"',
         'wl.status AS "status"',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
-      ])
-      .addOrderBy(order, sort)
-      .getRawMany();
+        'wl.input AS "input"',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'imageUrl', c."imageUrl") AS chain`,
+        `JSONB_BUILD_OBJECT('id', w.id, 'name', w.name, 'name') AS workflow`,
+      ]);
   }
 
-  async getWorkflowLogsTotal(
-    {
-      chainUuid,
-      search,
-      status,
-      workflowId,
-      id,
-    }: Partial<GetWorkflowLogsQueryParams>,
-    userId: number,
-  ): Promise<number> {
-    let queryBuilder = this.workflowLogRepository
-      .createQueryBuilder('wl')
-      .innerJoin(WorkflowVersion, 'wv', 'wv.id = wl."workflowVersionId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid')
-      .innerJoin(
-        Workflow,
-        'w',
-        `w.id = wv."workflowId" AND w."userId" = ${userId}`,
-      )
-      .where('wl.status IN (:...statuses) ', {
-        statuses: [ProcessStatus.FAILED, ProcessStatus.SUCCESS],
-      });
-
-    if (chainUuid) {
-      queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
-        chainUuid,
-      });
-    }
-
-    if (status) {
-      queryBuilder = queryBuilder.andWhere('wl."status" = :status', {
-        status,
-      });
-    }
-
-    if (!isNil(workflowId)) {
-      queryBuilder = queryBuilder.andWhere('w."id" = :workflowId', {
-        workflowId,
-      });
-    }
-
-    if (!isNil(id)) {
-      queryBuilder = queryBuilder.andWhere('wl."id" = :id', {
-        id,
-      });
-    }
-
-    if (search) {
-      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    return queryBuilder.getCount();
-  }
-
-  async getWorkflowsTotal(
-    { chainUuid, search, status }: Partial<GetWorkflowsQueryParams>,
-    userId?: number,
-  ): Promise<number> {
-    let queryBuilder = this.workflowRepository
+  private getWorkflowQueryBuilder() {
+    return this.workflowRepository
       .createQueryBuilder('w')
-      .innerJoin(WorkflowVersion, 'wv', 'w.id = wv."workflowId"')
-      .innerJoin(Chain, 'c', 'wv."chainUuid" = c.uuid');
-
-    if (chainUuid) {
-      queryBuilder = queryBuilder.andWhere('c."uuid" = :chainUuid', {
-        chainUuid,
-      });
-    }
-
-    if (userId) {
-      queryBuilder = queryBuilder.andWhere('w."userId" = :userId', {
-        userId,
-      });
-    }
-
-    if (status) {
-      queryBuilder = queryBuilder.andWhere('w."status" = :status', {
-        status,
-      });
-    }
-
-    if (search) {
-      queryBuilder = queryBuilder.andWhere('wv."name" ILIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    return queryBuilder.getCount();
+      .innerJoin(EventEntity, 'e', 'e.id = w."eventId"')
+      .innerJoin(ChainEntity, 'c', 'e."chainUuid" = c.id')
+      .select([
+        'DISTINCT w.id AS id',
+        'w.name AS name',
+        'w."createdAt" AS "createdAt"',
+        'w."createdAt" AS "updatedAt"',
+        'w.status AS "status"',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
+        `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name, 'chain', JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId")) AS event`,
+      ]);
   }
 }

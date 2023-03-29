@@ -3,10 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
 import { Repository } from 'typeorm';
 import { Pagination } from '../common/pagination.type';
-import { EventData } from '../common/queue.type';
+import { EventRawData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
 import { EventDataField } from './event.dto';
 import { EventEntity } from './event.entity';
+import { EventData } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -23,37 +24,30 @@ export class EventService {
     await this.eventRepository.insert(createEventsInput);
   }
 
-  getEventsByChainUuidAndName(chainUuid: string, names: string[]) {
+  getEventsByChainIdAndName(chainId: string, names: string[]) {
     return this.eventRepository
       .createQueryBuilder('event')
-      .where('"chainUuid" = :chainUuid', { chainUuid })
-      .andWhere(`CONCAT(pallet, '.', name) IN (:...names) `, { names })
+      .where('"chainId" = :chainUuid', { chainId })
+      .andWhere(`name IN (:...names) `, { names })
       .getMany();
   }
 
-  async getEventByChain(
-    chainUuid: string,
-    eventId: number,
-  ): Promise<EventEntity> {
-    const event = await this.eventRepository.findOneBy({
-      id: eventId,
-      chainUuid,
-    });
-
-    if (!event) {
-      return null;
-    }
-
-    return event;
+  getEventData(event: EventEntity, eventRawData: EventRawData): EventData {
+    return {
+      id: event.id,
+      name: event.name,
+      description: event.description,
+      success: eventRawData.success,
+      time: new Date(eventRawData.timestamp),
+      block: eventRawData.block,
+      data: eventRawData.data,
+    };
   }
 
-  async generateEventDataSample(eventId): Promise<EventData> {
-    const event = await this.getEventById(eventId);
-    if (!event) {
-      return null;
-    }
+  async generateEventRawDataSample(event: EventEntity): Promise<EventRawData> {
+    const fields = await this.getEventDataFields(event);
 
-    const eventData: EventData = {
+    const eventRawData: EventRawData = {
       timestamp: Date.now(),
       block: {
         hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
@@ -61,12 +55,12 @@ export class EventService {
       success: true,
       data: null,
     };
-    event.fields.forEach((f) => set(eventData, f.name, f.example));
+    fields.forEach((f) => set(eventRawData, f.name, f.data));
 
-    return eventData;
+    return eventRawData;
   }
 
-  async getEventById(eventId: number): Promise<EventEntity> {
+  async getEventById(eventId: string): Promise<EventEntity> {
     return await this.eventRepository.findOneBy({
       id: eventId,
     });
@@ -131,9 +125,17 @@ export class EventService {
         supportFilter: false,
         supportCustomMessage: true,
       },
+      {
+        name: 'time',
+        description: 'The time that the event happened',
+        type: GeneralTypeEnum.STRING,
+        data: event.description,
+        supportFilter: false,
+        supportCustomMessage: true,
+      },
     ];
 
-    const eventFields = [
+    const eventInfoFields = [
       {
         name: 'id',
         description: 'The Id of the event',
@@ -158,17 +160,9 @@ export class EventService {
         supportFilter: false,
         supportCustomMessage: true,
       },
-      {
-        name: 'time',
-        description: 'The time that the event happened',
-        type: GeneralTypeEnum.STRING,
-        data: event.description,
-        supportFilter: false,
-        supportCustomMessage: true,
-      },
     ];
 
-    return [...eventFields, ...blockFields, ...dataFields].filter(
+    return [...eventInfoFields, ...blockFields, ...dataFields].filter(
       (field) => field,
     );
   }

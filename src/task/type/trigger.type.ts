@@ -11,6 +11,7 @@ import { TaskValidationError } from './task.type';
 import { IsTriggerConditions } from '../validator/trigger.validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { isEmpty } from 'lodash';
+import { EventEntity } from '../../event/event.entity';
 
 export enum FilterOperator {
   GREATER_THAN_EQUAL = 'greaterThanEqual',

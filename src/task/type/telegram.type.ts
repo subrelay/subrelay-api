@@ -32,7 +32,6 @@ export class TelegramTaskConfig {
 
 export class TelegramTaskInput {
   message: string;
-  chatId: TelegramTaskConfig['chatId'];
 }
 
 export class TelegramTaskError extends Error {}

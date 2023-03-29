@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   camelCase,
+  filter,
   get,
   isEmpty,
   keyBy,
@@ -8,23 +9,37 @@ import {
   mapValues,
   template,
 } from 'lodash';
-import { BaseTask, TaskLog, TaskResult, TaskType } from './type/task.type';
+import {
+  BaseTask,
+  TaskLog,
+  TaskResult,
+  TaskStatus,
+  TaskType,
+} from './type/task.type';
 import { HttpService } from '@nestjs/axios';
 import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import {
-  CustomMessageInput,
-  ProcessTaskInput,
-  TaskLogDetail,
-} from './task.dto';
+import { ProcessTaskInput, TaskLogDetail } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
+import { ulid } from 'ulid';
+import { EventData } from '../event/event.type';
+import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
+import {
+  TelegramTaskConfig,
+  TelegramTaskError,
+  TelegramTaskInput,
+} from './type/telegram.type';
+import { WebhookTaskConfig } from './type/webhook.type';
+import { EventEntity } from '../event/event.entity';
+import { EventRawData } from '../common/queue.type';
+import { EventService } from '../event/event.service';
 
 @Injectable()
 export class TaskService {
@@ -42,10 +57,11 @@ export class TaskService {
     private readonly httpService: HttpService,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
+    private readonly eventService: EventService,
   ) {}
 
-  async createTask(input: Partial<TaskEntity>): Promise<number> {
-    const result = await this.taskRepository.save(input);
+  async createTask(input: Partial<TaskEntity>): Promise<string> {
+    const result = await this.taskRepository.save({ ...input, id: ulid() });
     return result.id;
   }
 
@@ -53,7 +69,7 @@ export class TaskService {
     return await this.taskLogRepository.save(input);
   }
 
-  async updateTaskLogStatus(id: number, status: ProcessStatus) {
+  async updateTaskLogStatus(id: string, status: TaskStatus) {
     return await this.taskLogRepository.update(
       { id },
       { status, startedAt: new Date() },
@@ -61,25 +77,25 @@ export class TaskService {
   }
 
   async finishTaskLog(
-    id: number,
-    data: Pick<TaskLogEntity, 'status' | 'output'>,
+    id: string,
+    { status, output }: Pick<TaskLogEntity, 'status' | 'output'>,
   ) {
     await this.taskLogRepository.update(
       { id },
-      { ...data, finishedAt: new Date() },
+      { status, output, finishedAt: new Date() },
     );
   }
 
-  async skipPendingTaskLogs(workflowLogId: number) {
+  async skipPendingTaskLogs(workflowLogId: string) {
     await this.taskLogRepository.update(
-      { workflowLogId, status: ProcessStatus.PENDING },
-      { status: ProcessStatus.SKIPPED, finishedAt: new Date() },
+      { workflowLogId, status: TaskStatus.PENDING },
+      { status: TaskStatus.SKIPPED, finishedAt: new Date() },
     );
   }
 
-  getTasks(workflowVersionId: number) {
+  getTasks(workflowId: string) {
     return this.taskRepository.find({
-      where: { workflowVersionId },
+      where: { workflowId },
       order: { dependOn: { direction: 'ASC', nulls: 'FIRST' } },
     });
   }
@@ -155,11 +171,11 @@ export class TaskService {
 
   private processTriggerTask(
     config: TriggerTaskConfig,
-    { eventData }: ProcessTaskInput,
+    eventRawData: EventRawData,
   ): TaskResult {
     if (isEmpty(config.conditions)) {
       return {
-        input: eventData,
+        input: eventRawData,
         success: true,
         output: {
           match: true,
@@ -170,7 +186,7 @@ export class TaskService {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const actualValue = get(eventData, condition.variable);
+          const actualValue = get(eventRawData, condition.variable);
           return this.isMatchCondition(
             condition.operator,
             actualValue,
@@ -180,7 +196,7 @@ export class TaskService {
       );
 
       return {
-        input: eventData,
+        input: eventRawData,
         success: true,
         output: {
           match,
@@ -197,66 +213,7 @@ export class TaskService {
     }
   }
 
-  private async processNotificationTask(
-    config: NotificationTaskConfig,
-    input: ProcessTaskInput,
-  ): Promise<TaskResult> {
-    try {
-      const customMessageInput = new CustomMessageInput(input);
-
-      if (config.isWebhookChannel()) {
-        await this.notifyWebhook(config.getWebhookConfig(), customMessageInput);
-        return {
-          input: customMessageInput,
-          success: true,
-        };
-      }
-
-      if (config.isEmailChannel()) {
-        const input = this.buildNotificationEmailInput(
-          config.getEmailConfig(),
-          customMessageInput,
-        );
-
-        await this.notifyEmail(input);
-
-        return {
-          input: input,
-          success: true,
-        };
-      }
-
-      if (config.isTelegramChannel()) {
-        const telegramConfig = config.getTelegramConfig();
-        await this.telegramChatIdExists(telegramConfig.chatId);
-
-        const input = this.buildNotificationTelegramInput(
-          telegramConfig,
-          customMessageInput,
-        );
-
-        console.log({ input });
-
-        await this.notifyTelegram(input);
-
-        return {
-          input: input,
-          success: true,
-        };
-      }
-    } catch (error) {
-      this.logger.error('Failed to process notification task', error);
-      return {
-        input,
-        success: false,
-        error: {
-          message: error.message,
-        },
-      };
-    }
-  }
-
-  async getTaskLogs(workflowLogId: number): Promise<TaskLogDetail[]> {
+  async getTaskLogs(workflowLogId: string): Promise<TaskLogDetail[]> {
     const taskLogs = await this.taskLogRepository.find({
       where: { workflowLogId },
       relations: {
@@ -273,7 +230,10 @@ export class TaskService {
     return mapValues(keyBy(headers, 'key'), (header) => header.value);
   }
 
-  private async notifyWebhook({ url, headers }: WebhookConfig, message: any) {
+  private async notifyWebhook(
+    { url, headers }: WebhookTaskConfig,
+    message: any,
+  ) {
     await this.httpService.axiosRef.post(url, message, {
       headers: {
         Accept: 'application/json',
@@ -282,38 +242,33 @@ export class TaskService {
     });
   }
 
-  private buildCustomMessage(
-    messageTemplate: string,
-    input: CustomMessageInput,
-  ) {
+  private buildCustomMessage(messageTemplate: string, eventData: EventData) {
     const compiled = template(messageTemplate);
-    return compiled(input);
+    return compiled(eventData);
   }
 
-  private buildMessageContext(input: CustomMessageInput, variables: string[]) {
-    const context = mapValues(keyBy(variables), (val) => get(input, val));
+  private buildMessageContext(eventData: EventData, variables: string[]) {
+    const context = mapValues(keyBy(variables), (val) => get(eventData, val));
     return mapKeys(context, (_, key) => camelCase(key));
   }
 
   private buildNotificationEmailInput(
-    { addresses, subjectTemplate, bodyTemplate }: EmailConfig,
-    input: CustomMessageInput,
-  ): NotificationEmailInput {
-    const subject = this.buildCustomMessage(subjectTemplate, input);
-    const body = this.buildCustomMessage(bodyTemplate, input);
+    { subjectTemplate, bodyTemplate }: EmailTaskConfig,
+    eventData: EventData,
+  ): EmailTaskInput {
+    const subject = this.buildCustomMessage(subjectTemplate, eventData);
+    const body = this.buildCustomMessage(bodyTemplate, eventData);
 
     return {
-      addresses,
       subject,
       body,
     };
   }
 
-  private async notifyEmail({
-    addresses,
-    body,
-    subject,
-  }: NotificationEmailInput) {
+  private async notifyEmail(
+    { addresses }: EmailTaskConfig,
+    { body, subject }: EmailTaskInput,
+  ) {
     await this.mailerService.sendMail({
       from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
       to: addresses,
@@ -329,16 +284,18 @@ export class TaskService {
   }
 
   private buildNotificationTelegramInput(
-    { chatId, messageTemplate }: TelegramConfig,
-    input: CustomMessageInput,
-  ): NotificationTelegramInput {
+    { messageTemplate }: TelegramTaskConfig,
+    eventData: EventData,
+  ): TelegramTaskInput {
     return {
-      message: this.buildCustomMessage(messageTemplate, input),
-      chatId,
+      message: this.buildCustomMessage(messageTemplate, eventData),
     };
   }
 
-  private async notifyTelegram({ chatId, message }: NotificationTelegramInput) {
+  private async notifyTelegram(
+    { chatId }: TelegramTaskConfig,
+    { message }: TelegramTaskInput,
+  ) {
     await this.bot.telegram.sendMessage(chatId, message, {
       parse_mode: 'HTML',
     });
@@ -349,7 +306,7 @@ export class TaskService {
       await this.bot.telegram.getChat(chatId);
     } catch (error) {
       if (error.response.error_code === 400) {
-        throw new TelegramError('Chat not found');
+        throw new TelegramTaskError('Chat not found');
       }
 
       this.logger.debug(

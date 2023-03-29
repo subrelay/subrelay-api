@@ -1,9 +1,8 @@
 import { InjectQueue, Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bull';
-import { find, isEmpty, map, pick, reduce, uniq } from 'lodash';
-import { BlockJobData } from '../common/queue.type';
-import { Event } from '../event/event.entity';
+import { find, isEmpty, map, reduce, uniq } from 'lodash';
+import { BlockJobData, EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
 import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from './workflow.service';
@@ -20,10 +19,11 @@ export class BlockProcessor {
   @Process({ concurrency: 10 })
   async processNewBlock(job: Job) {
     const data: BlockJobData = job.data;
-    const eventNames = uniq(map(data.events, (e) => `${e.pallet}.${e.name}`));
+    const eventNames = uniq(map(data.events, 'name'));
     this.logger.debug(`Events: ${eventNames.join(' | ')}`);
-    const events = await this.eventService.getEventsByChainUuidAndName(
-      data.chainUuid,
+
+    const events = await this.eventService.getEventsByChainIdAndName(
+      data.chainId,
       eventNames,
     );
 
@@ -32,12 +32,12 @@ export class BlockProcessor {
       return;
     }
 
-    const workflowVersionAndTriggerTasks =
-      await this.workflowService.getRunningWorkflowVersionAndTriggerEvents(
+    const runningWorkflows =
+      await this.workflowService.getRunningWorkflowsByEventIds(
         map(events, 'id'),
       );
 
-    if (isEmpty(workflowVersionAndTriggerTasks)) {
+    if (isEmpty(runningWorkflows)) {
       this.logger.debug(`Not found running workflows`);
       return true;
     }
@@ -47,62 +47,46 @@ export class BlockProcessor {
       removeOnFail: true,
     };
 
-    const eventIdToEventData = {};
-    const jobs = workflowVersionAndTriggerTasks.map(
-      ({ workflowVersionId, eventId }) => {
-        const result = {
-          data: {
-            workflowVersionId,
-            ...eventIdToEventData[eventId],
-          },
-          opts: {
-            ...jobOption,
-            jobId: `${workflowVersionId}_${eventId}_${data.hash}`,
-          },
-        };
-
-        if (eventIdToEventData[eventId]) {
+    const jobs = runningWorkflows.map((workflow) => {
+      const blockEvent = find(
+        data.events,
+        (e) => e.name === workflow.event.name,
+      );
+      const blockEventData = reduce(
+        blockEvent.data,
+        (result, value, index) => {
+          const field = workflow.event.schema[index];
+          result[field.name] = formatValue(field.typeName, value);
           return result;
-        }
+        },
+        {},
+      );
 
-        const event: Event = events.find((e) => e.id === eventId);
-        const eventData = find(
-          data.events,
-          (e) => e.name === event.name && e.pallet === event.pallet,
-        );
-
-        eventData.data = reduce(
-          eventData.data,
-          (result, value, index) => {
-            const field = event.dataSchema[index];
-            result[field.name] = formatValue(field.typeName, value);
-            return result;
-          },
-          {},
-        );
-        eventData.block = {
+      const eventRawData: EventRawData = {
+        timestamp: data.timestamp,
+        success: data.success,
+        block: {
           hash: data.hash,
-        };
+        },
+        data: blockEventData,
+      };
 
-        eventIdToEventData[eventId] = {
-          eventData: {
-            ...eventData,
-            ...pick(data, ['timestamp', 'success']),
-          },
-          event,
-        };
-
-        result.data = { ...result.data, ...eventIdToEventData[eventId] };
-        return result;
-      },
-    );
+      return {
+        data: {
+          workflow,
+          eventRawData,
+        },
+        opts: {
+          ...jobOption,
+          jobId: `${workflow.id}_${data.hash}`,
+        },
+      };
+    });
 
     await this.workflowQueue.addBulk(jobs);
     this.logger.debug(
       `Found running workflows, ${JSON.stringify(
-        workflowVersionAndTriggerTasks.map(
-          (i) => `${i.eventId} | ${i.workflowVersionId}`,
-        ),
+        runningWorkflows.map((i) => `${i.id} | ${i.event.name}`),
       )}`,
     );
   }

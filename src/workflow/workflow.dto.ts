@@ -8,14 +8,13 @@ import {
   IsUUID,
   ValidateNested,
 } from 'class-validator';
-import { Chain } from '../chain/chain.entity';
 import { Pagination } from '../common/pagination.type';
-import { EventData } from '../common/queue.type';
-import { TaskEntity } from '../task/entity/task.entity';
-import { TaskLogDetail } from '../task/task.dto';
-import { ProcessStatus, TaskType } from '../task/type/task.type';
-import { WorkflowEntity } from './entity/workflow.entity';
-import { WorkflowStatus } from './workflow.type';
+import { TaskStatus, TaskType } from '../task/type/task.type';
+import {
+  WorkflowLogSummary,
+  WorkflowStatus,
+  WorkflowSummary,
+} from './workflow.type';
 
 export enum GetWorkflowsOrderBy {
   CREATEDAT = 'createdAt',
@@ -58,6 +57,8 @@ export class GetWorkflowsQueryParams extends Pagination {
     ).join(', ')}`,
   })
   order: GetWorkflowsOrderBy = GetWorkflowsOrderBy.NAME;
+
+  id?: number;
 }
 
 export class GetWorkflowLogsQueryParams extends Pagination {
@@ -68,14 +69,14 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   chainUuid?: string;
 
   @ApiPropertyOptional({
-    example: ProcessStatus.SUCCESS,
-    enum: [ProcessStatus.FAILED, ProcessStatus.SUCCESS],
+    example: TaskStatus.SUCCESS,
+    enum: [TaskStatus.FAILED, TaskStatus.SUCCESS],
   })
-  @IsEnum(ProcessStatus, {
-    message: `Invalid status. Possible values: ${ProcessStatus.FAILED}, ${ProcessStatus.SUCCESS}`,
+  @IsEnum(TaskStatus, {
+    message: `Invalid status. Possible values: ${TaskStatus.FAILED}, ${TaskStatus.SUCCESS}`,
   })
   @IsOptional()
-  status?: ProcessStatus;
+  status?: TaskStatus;
 
   @ApiPropertyOptional({ example: 2 })
   @IsOptional()
@@ -96,83 +97,14 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   order: GetWorkflowLogsOrderBy = GetWorkflowLogsOrderBy.FINISHED_AT;
 }
 
-export class GetWorkflowResponse extends WorkflowEntity {
-  tasks: TaskEntity[];
-
-  name: string;
-
-  chain: {
-    uuid: Chain['uuid'];
-    name: Chain['name'];
-  };
-}
-
-export class WorkflowSummary extends WorkflowEntity {
-  @ApiProperty({ example: '2022-11-18T00:53:30.082Z' })
-  updatedAt?: string;
-
-  @ApiProperty({
-    example: { uuid: '3342b0eb-ab4f-40c0-870c-6587de6b009a', name: 'Polkadot' },
-  })
-  chain?: Chain;
-
-  @ApiProperty({ example: 'Workflow 1' })
-  name: string;
-
-  @ApiProperty({ example: 2 })
-  workflowVersionId: number;
-}
-
 export class GetWorkflowsResponse {
-  @ApiProperty({ type: WorkflowSummary, isArray: true })
   workflows: WorkflowSummary[];
 
-  @ApiProperty({ example: 1 })
   total: number;
 
-  @ApiProperty({ example: 10 })
   limit: number;
 
-  @ApiProperty({ example: 0 })
   offset: number;
-}
-
-export class WorkflowLogResponse {
-  @ApiProperty({ example: 1 })
-  id: number;
-
-  @ApiProperty({ example: 'Workflow 1' })
-  name: string;
-
-  @ApiProperty({ example: '2022-11-18T00:52:30.082Z' })
-  finishedAt: Date;
-
-  @ApiProperty({ example: '2022-11-18T00:51:30.082Z' })
-  startedAt: Date;
-
-  @ApiProperty({
-    example: { uuid: '3342b0eb-ab4f-40c0-870c-6587de6b009a', name: 'Polkadot' },
-  })
-  chain: {
-    uuid: string;
-    name: string;
-  };
-
-  @ApiProperty({ example: ProcessStatus.SUCCESS, enum: ProcessStatus })
-  status: ProcessStatus;
-
-  @ApiProperty({ example: 1 })
-  workflowId: number;
-
-  @ApiProperty({ example: 2 })
-  workflowVersionId: number;
-}
-
-export class WorkflowLogDetail extends WorkflowLogResponse {
-  @ApiProperty({ type: TaskLogDetail, isArray: true })
-  taskLogs: TaskLogDetail[];
-
-  input?: EventData;
 }
 
 export class CreateWorkflowTaskRequest {
@@ -204,8 +136,8 @@ export class CreateWorkflowTaskRequest {
 }
 
 export class GetWorkflowLogsResponse {
-  @ApiProperty({ type: WorkflowLogResponse, isArray: true })
-  workflowLogs: WorkflowLogResponse[];
+  @ApiProperty()
+  workflowLogs: WorkflowLogSummary[];
 
   @ApiProperty({ example: 1 })
   total: number;
@@ -224,7 +156,6 @@ export class CreateWorkFlowRequest {
   name: string;
 
   @ApiProperty({
-    type: CreateWorkflowTask,
     isArray: true,
     example: [
       {
@@ -275,16 +206,16 @@ export class CreateWorkFlowRequest {
   })
   @IsArray()
   @ValidateNested()
-  tasks: CreateWorkflowTask[];
+  tasks: CreateWorkflowTaskRequest[];
 
   @ApiProperty({
     example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',
   })
   @IsUUID()
-  chainUuid: string;
+  eventId: string;
 }
 
-export class UpdateWorkFlowRequest {
+export class UpdateWorkflowRequest {
   @ApiPropertyOptional({
     example: WorkflowStatus.RUNNING,
     enum: WorkflowStatus,

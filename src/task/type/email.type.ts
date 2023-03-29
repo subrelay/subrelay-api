@@ -42,8 +42,7 @@ export class EmailTaskConfig {
   }
 }
 
-export class NotificationEmailInput {
-  addresses: EmailTaskConfig['addresses'];
+export class EmailTaskInput {
   subject: string;
   body: string;
 }

@@ -1,10 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { TaskType } from '../type/task.type';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { WorkflowEntity } from '../../workflow/entity/workflow.entity';
@@ -12,8 +6,8 @@ import { WorkflowEntity } from '../../workflow/entity/workflow.entity';
 @Entity('task')
 export class TaskEntity {
   @ApiProperty({ example: 1 })
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
   @ApiProperty({ example: TaskType.TRIGGER, enum: TaskType })
   @Column({ nullable: false, type: 'text' })
@@ -35,5 +29,5 @@ export class TaskEntity {
   workflow: WorkflowEntity;
 
   @Column({ name: 'workflowId' })
-  workflowId: number;
+  workflowId: string;
 }

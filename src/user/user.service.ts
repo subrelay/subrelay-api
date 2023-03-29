@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ulid } from 'ulid';
 import { CreateUserDto } from './user.dto';
 import { User } from './user.entity';
 
@@ -20,6 +21,6 @@ export class UserService {
   }
 
   createUser(input: CreateUserDto): Promise<User> {
-    return this.usersRepository.save(input);
+    return this.usersRepository.save({ ...input, id: ulid() });
   }
 }

@@ -5,17 +5,18 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  PrimaryColumn,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
 import { ApiProperty } from '@nestjs/swagger';
-import { Chain } from '../../chain/chain.entity';
+import { EventEntity } from '../../event/event.entity';
 
 @Entity()
 export class WorkflowEntity {
   @ApiProperty({ example: 1 })
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
   @Column({ type: 'text' })
   status: WorkflowStatus;
@@ -34,12 +35,12 @@ export class WorkflowEntity {
   user: User;
 
   @Column({ name: 'userId' })
-  userId: number;
+  userId: string;
 
-  @Column({ type: 'text', name: 'chainUuid' })
-  chainUuid: string;
+  @Column({ type: 'text', name: 'eventId' })
+  eventId: string;
 
-  @ManyToOne(() => Chain, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'chainUuid', referencedColumnName: 'uuid' }])
-  chain: Chain;
+  @ManyToOne(() => EventEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'eventId', referencedColumnName: 'uuid' }])
+  event: EventEntity;
 }

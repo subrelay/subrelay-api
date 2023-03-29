@@ -4,16 +4,15 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
-import { EventData } from '../../common/queue.type';
-import { ProcessStatus } from '../../task/type/task.type';
+import { TaskStatus } from '../../task/type/task.type';
 import { WorkflowEntity } from './workflow.entity';
 
 @Entity({ name: 'workflow_log' })
 export class WorkflowLogEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
   @CreateDateColumn({
     name: 'startedAt',
@@ -28,15 +27,15 @@ export class WorkflowLogEntity {
   finishedAt?: Date;
 
   @Column({ nullable: false, type: 'text' })
-  status: ProcessStatus;
+  status: TaskStatus;
 
   @Column({ nullable: false, type: 'jsonb' })
-  input: EventData;
+  input: any;
 
   @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
   workflow: WorkflowEntity;
 
   @Column({ name: 'workflowId' })
-  workflowId: number;
+  workflowId: string;
 }

@@ -123,13 +123,17 @@ export class ChainController {
   })
   async getEvent(
     @Param('uuid') uuid: string,
-    @Param('eventId', ParseIntPipe) eventId: number,
+    @Param('eventId') eventId: string,
   ): Promise<GetOneEventResponse> {
     if (!(await this.chainService.chainExist(uuid))) {
       throw new NotFoundException('Chain not found');
     }
 
-    const event = await this.eventService.getEventByChain(uuid, eventId);
+    const event = await this.eventService.getEventById(eventId);
+    if (!event || event.chainUuid !== uuid) {
+      throw new NotFoundException('Event not found');
+    }
+
     const eventDataSample = await this.eventService.generateEventDataSample(
       eventId,
     );
@@ -141,10 +145,6 @@ export class ChainController {
         name: 'Untitled',
       },
     });
-
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
 
     return {
       ...event,

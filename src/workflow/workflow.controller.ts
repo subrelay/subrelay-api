@@ -7,7 +7,6 @@ import {
   HttpCode,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -20,18 +19,17 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { findIndex, get, orderBy } from 'lodash';
+import { findIndex, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
+import { TaskService } from '../task/task.service';
 import { TaskType } from '../task/type/task.type';
 import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
   CreateWorkflowTaskRequest,
   GetWorkflowsQueryParams,
-  GetWorkflowsResponse,
-  UpdateWorkFlowRequest,
-  GetWorkflowResponse,
+  UpdateWorkflowRequest,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 
@@ -41,12 +39,12 @@ export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
+    private readonly taskService: TaskService,
   ) {}
 
   @Get()
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: GetWorkflowsResponse,
   })
   @ApiOperation({
     summary: 'Get all workflows',
@@ -55,10 +53,13 @@ export class WorkflowController {
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
     @UserInfo() user: User,
-  ): Promise<GetWorkflowsResponse> {
+  ) {
+    const { workflows, total } =
+      await this.workflowService.getWorkflowsAndTotal(queryParams, user.id);
+
     return {
-      workflows: await this.workflowService.getWorkflows(queryParams, user.id),
-      total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
+      workflows,
+      total,
       limit: queryParams.limit,
       offset: queryParams.offset,
     };
@@ -67,23 +68,24 @@ export class WorkflowController {
   @Get(':id')
   @ApiOkResponse({
     description: 'Return data if request is successful',
-    type: GetWorkflowResponse,
   })
   @ApiBasicAuth()
   @ApiOperation({
     summary: 'Get a workflow details',
   })
-  async getWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @UserInfo() user: User,
-  ): Promise<GetWorkflowResponse> {
-    const workflow = await this.workflowService.getWorkflow(id, user.id);
+  async getWorkflow(@Param('id') id: string, @UserInfo() user: User) {
+    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
 
     if (!workflow) {
       throw new NotFoundException('Workflow not found');
     }
 
-    return workflow;
+    const tasks = await this.taskService.getTasks(workflow.id);
+
+    return {
+      ...workflow,
+      tasks,
+    };
   }
 
   @Patch(':id')
@@ -94,8 +96,8 @@ export class WorkflowController {
     summary: 'Update a workflow',
   })
   async updateWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() input: UpdateWorkFlowRequest,
+    @Param('id') id: string,
+    @Body() input: UpdateWorkflowRequest,
     @UserInfo() user: User,
   ) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
@@ -114,10 +116,7 @@ export class WorkflowController {
   @ApiOperation({
     summary: 'Delete a workflow',
   })
-  async deleteWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @UserInfo() user: User,
-  ) {
+  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: User) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
@@ -128,7 +127,6 @@ export class WorkflowController {
   @Post()
   @ApiCreatedResponse({
     description: 'Return data if request is successful',
-    type: GetWorkflowResponse,
   })
   @ApiOperation({
     summary: 'Create a workflow',
@@ -137,7 +135,7 @@ export class WorkflowController {
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
-  ): Promise<GetWorkflowResponse> {
+  ) {
     input.tasks = orderBy(
       input.tasks.map((task) => ({
         ...task,
@@ -146,35 +144,42 @@ export class WorkflowController {
       ['dependOnIndex'],
       ['asc'],
     );
-    await this.validateTasks(input.chainUuid, input.tasks);
+
+    await this.validateTasks(input.eventId, input.tasks);
 
     const workflowId = await this.workflowService.createWorkflow(
       input,
       user.id,
     );
 
-    return this.workflowService.getWorkflow(workflowId, user.id);
+    const workflow = await this.workflowService.getWorkflowSummary(
+      workflowId,
+      user.id,
+    );
+    const tasks = await this.taskService.getTasks(workflow.id);
+
+    return {
+      ...workflow,
+      tasks,
+    };
   }
 
   private async validateTasks(
-    chainUuid: string,
+    eventId: string,
     tasks: CreateWorkflowTaskRequest[],
   ) {
+    const event = await this.eventService.getEventById(eventId);
+
+    if (!event) {
+      throw new BadRequestException('Event not found');
+    }
+
     const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
 
     if (!triggerTask) {
       throw new BadRequestException('A workflow should has one trigger task');
     } else if (triggerTask.dependOnIndex !== -1) {
       throw new BadRequestException('Trigger task depends on invalid task');
-    }
-
-    const event = await this.eventService.getEventByChain(
-      chainUuid,
-      get(triggerTask, 'config.eventId'),
-    );
-
-    if (!event) {
-      throw new BadRequestException('Event not found');
     }
 
     const otherTasks = tasks.filter((t) => t.type !== TaskType.TRIGGER);
