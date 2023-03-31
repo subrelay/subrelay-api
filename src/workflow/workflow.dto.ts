@@ -200,11 +200,6 @@ export class CreateWorkFlowRequest {
   @IsArray()
   @ValidateNested()
   tasks: CreateWorkflowTaskRequest[];
-
-  @ApiProperty({
-    example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',
-  })
-  eventId: string;
 }
 
 export class UpdateWorkflowRequest {

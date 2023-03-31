@@ -31,7 +31,7 @@ async function bootstrap() {
   const bot = app.get(getBotToken());
   app.use(bot.webhookCallback('/telegram-bot'));
 
-  await app.listen(3005);
+  await app.listen(3000);
 }
 
 bootstrap();

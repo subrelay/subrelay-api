@@ -61,7 +61,7 @@ export class TaskLogDetail {
 }
 
 export class ProcessTaskResponse {
-  success: TaskLog['success'];
+  status: TaskLog['status'];
   error: TaskLog['error'];
   output: TaskLog['output'];
 }

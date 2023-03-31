@@ -136,7 +136,7 @@ export class TaskService {
       this.logger.error(`Failed to process task: ${JSON.stringify(error)}`);
       return {
         input,
-        success: false,
+        status: TaskStatus.FAILED,
         error: {
           message: error.message,
         },
@@ -181,16 +181,6 @@ export class TaskService {
     config: FilterTaskConfig,
     eventRawData: EventRawData,
   ): TaskResult {
-    if (isEmpty(config.conditions)) {
-      return {
-        input: eventRawData,
-        success: true,
-        output: {
-          match: true,
-        },
-      };
-    }
-
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
@@ -205,7 +195,7 @@ export class TaskService {
 
       return {
         input: eventRawData,
-        success: true,
+        status: TaskStatus.SUCCESS,
         output: {
           match,
         },
@@ -213,7 +203,7 @@ export class TaskService {
     } catch (error) {
       return {
         input: eventRawData,
-        success: false,
+        status: TaskStatus.FAILED,
         error: {
           message: error.message,
         },

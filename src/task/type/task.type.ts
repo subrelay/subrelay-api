@@ -12,8 +12,10 @@ import { EmailTaskConfig } from './email.type';
 import { TelegramTaskConfig } from './telegram.type';
 import { FilterTaskConfig } from './filter.type';
 import { WebhookTaskConfig } from './webhook.type';
+import { TriggerTaskConfig } from './trigger.type';
 
 export enum TaskType {
+  TRIGGER = 'trigger',
   FILTER = 'filter',
   EMAIL = 'email',
   WEBHOOK = 'webhook',
@@ -36,19 +38,8 @@ export class TaskError {
 }
 
 export class TaskResult {
-  @ApiProperty({
-    example: true,
-  })
-  success: boolean;
-  @ApiPropertyOptional({
-    example: null,
-  })
+  status: TaskStatus;
   error?: TaskError;
-  @ApiPropertyOptional({
-    example: {
-      match: true,
-    },
-  })
   output?: any;
   input?: any;
 }
@@ -97,6 +88,9 @@ export class BaseTask {
       case TaskType.TELEGRAM:
         this.config = new TelegramTaskConfig(this.config);
         break;
+      case TaskType.TRIGGER:
+        this.config = new TriggerTaskConfig(this.config);
+        break;
       default:
         throw new Error(`Unsupported type: ${this.type}`);
     }
@@ -115,6 +109,10 @@ export class BaseTask {
   }
 
   getTelegramTaskConfig(): TelegramTaskConfig {
+    return this.config;
+  }
+
+  getTriggerTaskConfig(): TriggerTaskConfig {
     return this.config;
   }
 }

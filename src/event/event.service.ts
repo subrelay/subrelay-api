@@ -9,6 +9,7 @@ import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
 import { EventDataField } from './event.dto';
 import { EventEntity } from './event.entity';
 import { EventData } from './event.type';
+import { ChainEntity } from '../chain/chain.entity';
 
 @Injectable()
 export class EventService {
@@ -28,9 +29,10 @@ export class EventService {
 
   getEventsByChainIdAndName(chainId: string, names: string[]) {
     return this.eventRepository
-      .createQueryBuilder('event')
-      .where('"chainId" = :chainUuid', { chainId })
-      .andWhere(`name IN (:...names) `, { names })
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('c."chainId" = :chainId', { chainId })
+      .andWhere(`e.name IN (:...names) `, { names })
       .getMany();
   }
 

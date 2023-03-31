@@ -10,9 +10,6 @@ import { ChainService } from './chain.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([ChainEntity]),
-    BullModule.registerQueue({
-      name: 'chain',
-    }),
     SubstrateModule,
     EventModule,
   ],

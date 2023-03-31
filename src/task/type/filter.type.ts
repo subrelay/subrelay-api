@@ -54,7 +54,6 @@ export class FilterCondition {
 export class FilterTaskConfig {
   @ApiPropertyOptional({ isArray: true, type: FilterCondition })
   @IsFilterConditions()
-  @IsOptional()
   conditions?: Array<FilterCondition[]>;
 
   constructor(config: any) {

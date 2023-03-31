@@ -78,7 +78,7 @@ export class TaskController {
     });
 
     return {
-      success: result.success,
+      status: result.status,
       error: result.error,
       output: result.output,
     };

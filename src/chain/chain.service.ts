@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   ChainSummary,
   CreateChainRequest,
@@ -10,11 +10,10 @@ import { ChainEntity } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
-import { isEmpty, map } from 'lodash';
+import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
 import { ulid } from 'ulid';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import { EventEntity } from '../event/event.entity';
 
 @Injectable()
 export class ChainService implements OnModuleInit {
@@ -23,8 +22,6 @@ export class ChainService implements OnModuleInit {
   constructor(
     @InjectRepository(ChainEntity)
     private chainRepository: Repository<ChainEntity>,
-
-    @InjectQueue('chain') private chainQueue: Queue,
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
@@ -38,29 +35,18 @@ export class ChainService implements OnModuleInit {
     }
   }
 
-  async processChainWorkers(chainUuids: string[], start: boolean) {
-    const chains = await this.chainRepository.findBy({ uuid: In(chainUuids) });
-    const jobOption = {
-      removeOnComplete: true,
-      removeOnFail: true,
-    };
-
-    const jobs = chains.map((chain) => {
-      return {
-        data: {
-          chain,
-          start,
-        },
-        opts: jobOption,
-      };
-    });
-    await this.chainQueue.addBulk(jobs);
-
-    this.logger.debug(
-      `${start === true ? 'Start' : 'Stop'} ${map(chains, 'name').join(
-        ', ',
-      )} worker for chain ${map(chains, 'name').join(', ')}`,
-    );
+  async getChainsByEventIds(eventIds: string[]): Promise<
+    {
+      chainId: ChainEntity['chainId'];
+      config: ChainEntity['config'];
+    }[]
+  > {
+    return this.chainRepository
+      .createQueryBuilder('c')
+      .innerJoin(EventEntity, 'e', 'e."chainUuid" = c.uuid')
+      .where('e.id IN (:...eventIds)', { eventIds })
+      .select(['DISTINCT "chainId", "config"'])
+      .getRawMany();
   }
 
   getChains(): Promise<ChainSummary[]> {
@@ -99,7 +85,6 @@ export class ChainService implements OnModuleInit {
 
   async deleteChainByChainId(uuid: string) {
     await this.chainRepository.delete({ uuid });
-    await this.processChainWorkers([uuid], false);
   }
 
   async updateChain(uuid: string, input: UpdateChainRequest) {

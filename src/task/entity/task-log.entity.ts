@@ -40,11 +40,11 @@ export class TaskLogEntity {
   taskId: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  output: any;
+  output?: any;
 
   @Column({ type: 'jsonb', nullable: true })
-  input: any;
+  input?: any;
 
   @Column({ type: 'jsonb', nullable: true })
-  error: any;
+  error?: any;
 }

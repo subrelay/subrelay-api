@@ -36,6 +36,6 @@ export class WorkflowLogEntity {
   @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
   workflow: WorkflowEntity;
 
-  @Column({ name: 'workflowId' })
+  @Column({ name: 'workflowId', type: 'char', length: 26 })
   workflowId: string;
 }

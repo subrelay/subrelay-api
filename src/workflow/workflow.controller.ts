@@ -19,7 +19,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { findIndex, isEmpty, orderBy } from 'lodash';
+import { filter, findIndex, isEmpty, map, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
@@ -32,6 +32,8 @@ import {
   UpdateWorkflowRequest,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
+import { log } from 'console';
+import { TriggerTaskConfig } from '../task/type/trigger.type';
 
 @Controller('workflows')
 @ApiTags('Workflow')
@@ -136,18 +138,8 @@ export class WorkflowController {
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
   ) {
-    input.tasks = orderBy(
-      input.tasks.map((task) => ({
-        ...task,
-        dependOnIndex: task.dependOnName
-          ? findIndex(input.tasks, { name: task.dependOnName })
-          : null,
-      })),
-      ['dependOnIndex'],
-      ['asc'],
-    );
-
-    await this.validateTasks(input.eventId, input.tasks);
+    input.tasks = this.modifyTaskRequests(input.tasks);
+    await this.validateTasks(input.tasks);
 
     const workflow = await this.workflowService.createWorkflow(input, user.id);
 
@@ -159,31 +151,59 @@ export class WorkflowController {
     };
   }
 
-  private async validateTasks(
-    eventId: string,
-    tasks: CreateWorkflowTaskRequest[],
-  ) {
-    const event = await this.eventService.getEventById(eventId);
+  private async validateTasks(tasks: CreateWorkflowTaskRequest[]) {
+    const triggerTasks = filter(tasks, { type: TaskType.TRIGGER });
+    if (isEmpty(triggerTasks)) {
+      throw new BadRequestException('Can not found trigger task.');
+    } else if (triggerTasks.length > 1) {
+      throw new BadRequestException(
+        'Should have only one trigger task in a workflow.',
+      );
+    }
 
+    const triggerTaskConfig = new TriggerTaskConfig(triggerTasks[0].config);
+    const event = await this.eventService.getEventById(
+      triggerTaskConfig.eventId,
+    );
     if (!event) {
       throw new BadRequestException('Event not found');
     }
 
-    const startTasks = tasks.filter((t) => !t.dependOnIndex);
-    if (isEmpty(startTasks)) {
+    const missingDependingTaskNames = tasks
+      .filter((t) => t.dependOnIndex === null && t.type !== TaskType.TRIGGER)
+      .map((t) => t.name);
+    if (!isEmpty(missingDependingTaskNames)) {
       throw new BadRequestException(
-        'Invalid workflow. Can not found start task.',
+        `${missingDependingTaskNames.join(
+          ', ',
+        )} task(s) have to depend on another task.`,
       );
     }
 
-    if (startTasks.length > 1) {
+    const invalidDependingTaskNames = tasks
+      .filter((t) => t.dependOnIndex === -1)
+      .map((t) => t.name);
+    if (!isEmpty(invalidDependingTaskNames)) {
       throw new BadRequestException(
-        'Workflow should only have one start task.',
+        `${invalidDependingTaskNames.join(
+          ', ',
+        )} task(s) depend on invalid task.`,
       );
     }
+  }
 
-    if (tasks.some((task) => task.dependOnIndex === -1)) {
-      throw new BadRequestException('Task depends on invalid task');
-    }
+  modifyTaskRequests(
+    tasks: CreateWorkflowTaskRequest[],
+  ): CreateWorkflowTaskRequest[] {
+    return orderBy(
+      tasks.map((task) => ({
+        ...task,
+        dependOnIndex: task.dependOnName
+          ? findIndex(tasks, { name: task.dependOnName })
+          : null,
+      })),
+      ['dependOnIndex'],
+      ['asc'],
+    );
   }
 }

@@ -21,6 +21,7 @@ import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
+import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
@@ -50,9 +51,6 @@ import { AuthMiddleware } from './common/auth.middleware';
         },
       }),
     }),
-    BullModule.registerQueue({
-      name: 'block',
-    }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     UserModule,
@@ -61,6 +59,7 @@ import { AuthMiddleware } from './common/auth.middleware';
     SubstrateModule,
     TaskModule,
     WorkflowModule,
+    WorkerModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,20 +1,16 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import {
-  findIndex,
-  get,
-  isEmpty,
-  isNil,
-  isNull,
-  map,
-  orderBy,
-  uniq,
-} from 'lodash';
+import { find, get, isNil, isNull } from 'lodash';
 import { DataSource, In, Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
 import { TaskEntity } from '../task/entity/task.entity';
 import { TaskService } from '../task/task.service';
-import { BaseTask, TaskStatus, TaskLog } from '../task/type/task.type';
+import {
+  BaseTask,
+  TaskStatus,
+  TaskLog,
+  TaskType,
+} from '../task/type/task.type';
 import { WorkflowLogEntity } from './entity/workflow-log.entity';
 import { WorkflowEntity } from './entity/workflow.entity';
 import {
@@ -33,10 +29,9 @@ import {
 } from './workflow.type';
 import { ulid } from 'ulid';
 import { EventEntity } from '../event/event.entity';
-import { ChainService } from '../chain/chain.service';
 
 @Injectable()
-export class WorkflowService implements OnModuleInit {
+export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
   constructor(
     @InjectRepository(WorkflowEntity)
@@ -48,41 +43,31 @@ export class WorkflowService implements OnModuleInit {
     @InjectDataSource() private dataSource: DataSource,
 
     private readonly taskService: TaskService,
-    private readonly chainService: ChainService,
   ) {}
-
-  async onModuleInit() {
-    this.logger.debug('Checking running workflows to start chain worker');
-    const runningWorkflows = await this.workflowRepository.find({
-      where: { status: WorkflowStatus.RUNNING },
-      relations: {
-        event: true,
-      },
-    });
-
-    if (!isEmpty(runningWorkflows)) {
-      const chainIds = uniq(map(runningWorkflows, 'event.chainUuid'));
-      await this.chainService.processChainWorkers(chainIds, true);
-    }
-  }
 
   async processWorkflow(
     input: ProcessWorkflowInput,
-    schema: { [dependTaskId: number]: BaseTask },
-    output: { [key: number]: TaskLog } = {},
+    schema: { [dependTaskId: string]: BaseTask },
+    output: { [key: string]: TaskLog } = {},
     parentTaskId = 'start',
-  ): Promise<{ [key: number]: TaskLog }> {
+  ): Promise<{ [key: string]: TaskLog }> {
     const task = schema[parentTaskId];
 
     const result = await this.taskService.processTask(task, input);
-    if (result.success && result.output?.match === false) {
+    output[task.id] = result;
+
+    if (result.status === TaskStatus.FAILED) {
+      // Task is failed
+      return output;
+    }
+
+    if (task.type === TaskType.FILTER && result.output?.match === false) {
       // Event does not match with filter
       return {};
     }
 
-    output[task.id] = result;
-    if (!result.success || !schema[task.id]) {
-      // Task is failed
+    if (!schema[task.id]) {
+      // This is final task
       return output;
     }
 
@@ -114,14 +99,6 @@ export class WorkflowService implements OnModuleInit {
     input: CreateWorkFlowRequest,
     userId: string,
   ): Promise<Workflow> {
-    const tasksInput = orderBy(
-      input.tasks.map((task) => ({
-        ...task,
-        dependOnIndex: findIndex(input.tasks, { name: task.dependOnName }),
-      })),
-      ['dependOnIndex'],
-      ['asc'],
-    );
     let err;
     let workflowId;
 
@@ -130,6 +107,7 @@ export class WorkflowService implements OnModuleInit {
     await queryRunner.startTransaction();
 
     try {
+      const { eventId } = find(input.tasks, { type: TaskType.TRIGGER }).config;
       const workflow = await queryRunner.manager
         .getRepository(WorkflowEntity)
         .save({
@@ -137,13 +115,13 @@ export class WorkflowService implements OnModuleInit {
           userId,
           status: WorkflowStatus.RUNNING,
           name: input.name,
-          eventId: input.eventId,
+          eventId,
           updatedAt: new Date(),
         });
 
       const tasksObject: { [key: string]: string } = {};
       const taskRepo = queryRunner.manager.getRepository(TaskEntity);
-      for (const taskInput of tasksInput) {
+      for (const taskInput of input.tasks) {
         const { id: taskId } = await taskRepo.save({
           id: ulid(),
           name: taskInput.name,
@@ -169,22 +147,7 @@ export class WorkflowService implements OnModuleInit {
       throw err;
     }
 
-    const workflow = await this.getWorkflow(workflowId, userId);
-
-    await this.chainService.processChainWorkers([workflow.chain.uuid], true);
-
-    return workflow;
-  }
-
-  async hasRunningWorkflowsByChainUuid(chainUuid: string) {
-    const total = await this.workflowRepository
-      .createQueryBuilder('w')
-      .innerJoin(EventEntity, 'e', 'e.id = w."eventId"')
-      .where('e."chainUuid" =:chainUuid', { chainUuid })
-      .andWhere('w.status = :status', { status: WorkflowStatus.RUNNING })
-      .getCount();
-
-    return total > 0;
+    return await this.getWorkflow(workflowId, userId);
   }
 
   async getRunningWorkflowsByEventIds(
@@ -201,6 +164,17 @@ export class WorkflowService implements OnModuleInit {
     });
   }
 
+  async getRunningWorkflows(): Promise<WorkflowEntity[]> {
+    return this.workflowRepository.find({
+      where: {
+        status: WorkflowStatus.RUNNING,
+      },
+      relations: {
+        event: true,
+      },
+    });
+  }
+
   async workflowExists(id: string, userId: string): Promise<boolean> {
     return (await this.workflowRepository.countBy({ id, userId })) > 0;
   }
@@ -209,10 +183,6 @@ export class WorkflowService implements OnModuleInit {
     const workflow = await this.getWorkflow(id, userId);
 
     await this.workflowRepository.delete({ id, userId });
-
-    if (!(await this.hasRunningWorkflowsByChainUuid(workflow.chain.uuid))) {
-      await this.chainService.processChainWorkers([workflow.chain.uuid], false);
-    }
   }
 
   async updateWorkflowStatus(id: string, input: UpdateWorkflowRequest) {
@@ -220,15 +190,6 @@ export class WorkflowService implements OnModuleInit {
       { id },
       { status: input.status, name: input.name },
     );
-
-    const workflow = await this.getWorkflow(id);
-
-    if (input.status === WorkflowStatus.RUNNING) {
-      await this.chainService.processChainWorkers([workflow.chain.uuid], true);
-    }
-    if (!(await this.hasRunningWorkflowsByChainUuid(workflow.chain.uuid))) {
-      await this.chainService.processChainWorkers([workflow.chain.uuid], false);
-    }
   }
 
   async getWorkflowLog(
@@ -421,9 +382,8 @@ export class WorkflowService implements OnModuleInit {
         'wl."finishedAt" AS "finishedAt"',
         'wl."startedAt" AS "startedAt"',
         'wl.status AS "status"',
-        'wl.input AS "input"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'imageUrl', c."imageUrl") AS chain`,
-        `JSONB_BUILD_OBJECT('id', w.id, 'name', w.name, 'name') AS workflow`,
+        `JSONB_BUILD_OBJECT('id', w.id, 'name', w.name) AS workflow`,
       ]);
   }
 
@@ -438,7 +398,7 @@ export class WorkflowService implements OnModuleInit {
         'w."createdAt" AS "createdAt"',
         'w."createdAt" AS "updatedAt"',
         'w.status AS "status"',
-        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId") AS chain`,
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
         `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name) AS event`,
       ]);
   }
