@@ -4,17 +4,17 @@ import {
   IsNotEmptyObject,
   IsNumber,
   IsOptional,
+  IsString,
   validateSync,
 } from 'class-validator';
 import { isEmpty } from 'lodash';
 import { EmailTaskConfig } from './email.type';
 import { TelegramTaskConfig } from './telegram.type';
-import { TriggerTaskConfig } from './trigger.type';
+import { FilterTaskConfig } from './filter.type';
 import { WebhookTaskConfig } from './webhook.type';
 
 export enum TaskType {
-  NOTIFICATION = 'notification',
-  TRIGGER = 'trigger',
+  FILTER = 'filter',
   EMAIL = 'email',
   WEBHOOK = 'webhook',
   TELEGRAM = 'telegram',
@@ -61,8 +61,8 @@ export class TaskLog extends TaskResult {
 export class TaskValidationError extends Error {}
 
 export class BaseTask {
-  @IsNumber()
-  id: number;
+  @IsString()
+  id: string;
 
   @IsOptional()
   @IsNumber()
@@ -85,14 +85,15 @@ export class BaseTask {
     }
 
     switch (this.type) {
-      case TaskType.TRIGGER:
-        this.config = new TriggerTaskConfig(this.config);
+      case TaskType.FILTER:
+        this.config = new FilterTaskConfig(this.config);
         break;
       case TaskType.WEBHOOK:
         this.config = new WebhookTaskConfig(this.config);
         break;
       case TaskType.EMAIL:
         this.config = new EmailTaskConfig(this.config);
+        break;
       case TaskType.TELEGRAM:
         this.config = new TelegramTaskConfig(this.config);
         break;
@@ -101,7 +102,7 @@ export class BaseTask {
     }
   }
 
-  getTriggerTaskConfig(): TriggerTaskConfig {
+  getFilterTaskConfig(): FilterTaskConfig {
     return this.config;
   }
 
@@ -116,5 +117,4 @@ export class BaseTask {
   getTelegramTaskConfig(): TelegramTaskConfig {
     return this.config;
   }
-
 }

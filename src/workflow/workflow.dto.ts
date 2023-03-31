@@ -5,16 +5,11 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   ValidateNested,
 } from 'class-validator';
 import { Pagination } from '../common/pagination.type';
 import { TaskStatus, TaskType } from '../task/type/task.type';
-import {
-  WorkflowLogSummary,
-  WorkflowStatus,
-  WorkflowSummary,
-} from './workflow.type';
+import { Workflow, WorkflowLogSummary, WorkflowStatus } from './workflow.type';
 
 export enum GetWorkflowsOrderBy {
   CREATEDAT = 'createdAt',
@@ -32,7 +27,6 @@ export class GetWorkflowsQueryParams extends Pagination {
   @ApiPropertyOptional({ example: '3342b0eb-ab4f-40c0-870c-6587de6b009a' })
   @IsString()
   @IsOptional()
-  @IsUUID()
   chainUuid?: string;
 
   @ApiPropertyOptional({
@@ -65,7 +59,6 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   @ApiPropertyOptional({ example: '3342b0eb-ab4f-40c0-870c-6587de6b009a' })
   @IsString()
   @IsOptional()
-  @IsUUID()
   chainUuid?: string;
 
   @ApiPropertyOptional({
@@ -98,7 +91,7 @@ export class GetWorkflowLogsQueryParams extends Pagination {
 }
 
 export class GetWorkflowsResponse {
-  workflows: WorkflowSummary[];
+  workflows: Workflow[];
 
   total: number;
 
@@ -118,7 +111,7 @@ export class CreateWorkflowTaskRequest {
 
   @ApiProperty({
     enum: TaskType,
-    example: TaskType.TRIGGER,
+    example: TaskType.FILTER,
   })
   @IsEnum(TaskType, {
     message: `Invalid type. Possible values: ${Object.values(TaskType).join(
@@ -172,7 +165,7 @@ export class CreateWorkFlowRequest {
             ],
           },
         ],
-        type: 'trigger',
+        type: 'filter',
         dependOnName: null,
       },
       {
@@ -211,7 +204,6 @@ export class CreateWorkFlowRequest {
   @ApiProperty({
     example: '3342b0eb-ab4f-40c0-870c-6587de6b009a',
   })
-  @IsUUID()
   eventId: string;
 }
 

@@ -6,7 +6,6 @@ import {
   HttpCode,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -19,10 +18,10 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { map, omit, pick } from 'lodash';
 import { Pagination } from '../common/pagination.type';
-import { GetEventsResponse, GetOneEventResponse } from '../event/event.dto';
+import { GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
-import { CustomMessageInput } from '../task/task.dto';
 import {
   ChainSummary,
   CreateChainRequest,
@@ -66,11 +65,15 @@ export class ChainController {
     return await this.chainService.createChain(input);
   }
 
-  @Delete(':chainId')
+  @Delete(':uuid')
   @ApiBasicAuth('admin')
   @HttpCode(204)
-  async deleteChain(@Param() pathParams: { chainId?: string }) {
-    await this.chainService.deleteChainByChainId(pathParams.chainId);
+  async deleteChain(@Param() pathParams: { uuid?: string }) {
+    if (!(await this.chainService.chainExist(pathParams.uuid))) {
+      throw new NotFoundException('Chain not found');
+    }
+
+    await this.chainService.deleteChainByChainId(pathParams.uuid);
   }
 
   @Put(':uuid')
@@ -105,12 +108,17 @@ export class ChainController {
   async getEvents(
     @Param() pathParams: { uuid?: string },
     @Query() queryParams: Pagination,
-  ): Promise<GetEventsResponse[]> {
+  ) {
     if (!(await this.chainService.chainExist(pathParams.uuid))) {
       throw new NotFoundException('Chain not found');
     }
 
-    return this.eventService.getEventsByChain(pathParams.uuid, queryParams);
+    const events = await this.eventService.getEventsByChain(
+      pathParams.uuid,
+      queryParams,
+    );
+
+    return map(events, (event) => pick(event, ['id', 'name', 'description']));
   }
 
   @Get(':uuid/events/:eventId')
@@ -134,21 +142,11 @@ export class ChainController {
       throw new NotFoundException('Event not found');
     }
 
-    const eventDataSample = await this.eventService.generateEventDataSample(
-      eventId,
-    );
-    const eventSample = new CustomMessageInput({
-      eventInfo: event,
-      eventData: eventDataSample,
-      workflow: {
-        id: 1,
-        name: 'Untitled',
-      },
-    });
+    const fields = this.eventService.getEventDataFields(event);
 
     return {
-      ...event,
-      sample: eventSample,
+      ...omit(event, ['schema']),
+      fields,
     };
   }
 }

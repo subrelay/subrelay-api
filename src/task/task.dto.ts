@@ -1,15 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsNotEmpty, ValidateNested } from 'class-validator';
-import { pick } from 'lodash';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { EventRawData } from '../common/queue.type';
-import { WorkflowEntity } from '../workflow/entity/workflow.entity';
+import { WorkflowSummary } from '../workflow/workflow.type';
 import { TaskEntity } from './entity/task.entity';
 import { TaskLog, TaskStatus, TaskType } from './type/task.type';
 
 export class ProcessTaskRequestData {
-  @IsInt()
+  @IsString()
   @IsNotEmpty()
-  eventId: number;
+  eventId: string;
 }
 
 export class ProcessTaskRequest {
@@ -29,7 +34,7 @@ export class ProcessTaskRequest {
 
 export type ProcessTaskInput = {
   eventRawData: EventRawData;
-  workflow: WorkflowEntity;
+  workflow: WorkflowSummary;
 };
 
 export class TaskLogDetail {

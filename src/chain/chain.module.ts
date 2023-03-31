@@ -1,3 +1,4 @@
+import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventModule } from '../event/event.module';
@@ -7,7 +8,14 @@ import { ChainEntity } from './chain.entity';
 import { ChainService } from './chain.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChainEntity]), SubstrateModule, EventModule],
+  imports: [
+    TypeOrmModule.forFeature([ChainEntity]),
+    BullModule.registerQueue({
+      name: 'chain',
+    }),
+    SubstrateModule,
+    EventModule,
+  ],
   controllers: [ChainController],
   providers: [ChainService],
   exports: [ChainService],

@@ -1,4 +1,5 @@
 import { GeneralTypeEnum } from '../substrate/substrate.data';
+import { EventEntity } from './event.entity';
 import { EventSummary } from './event.type';
 
 export class EventDataField {
@@ -19,4 +20,7 @@ export type GetOneEventResponse = EventSummary & {
   fields: EventDataField[];
 };
 
-export type GetEventsResponse = EventSummary;
+export type GetEventsResponse = Pick<
+  EventEntity,
+  'id' | 'name' | 'description'
+>;

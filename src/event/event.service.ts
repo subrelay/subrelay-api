@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { set } from 'lodash';
 import { Repository } from 'typeorm';
+import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
 import { EventRawData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
@@ -12,12 +13,13 @@ import { EventData } from './event.type';
 @Injectable()
 export class EventService {
   constructor(
-    @InjectRepository(Event)
+    @InjectRepository(EventEntity)
     private eventRepository: Repository<EventEntity>,
   ) {}
 
   async createEvents(events: EventDef[], chainUuid: string) {
     const createEventsInput: Partial<EventEntity>[] = events.map((event) => ({
+      id: ulid(),
       ...event,
       chainUuid,
     }));
@@ -76,7 +78,7 @@ export class EventService {
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(event.name ILIKE :search OR event.pallet ILIKE :search OR event.description ILIKE :search)',
+        '(event.name ILIKE :search OR event.description ILIKE :search)',
         { search: `%${queryParams.search}%` },
       );
     }
@@ -129,7 +131,7 @@ export class EventService {
         name: 'time',
         description: 'The time that the event happened',
         type: GeneralTypeEnum.STRING,
-        data: event.description,
+        data: new Date(Date.now()),
         supportFilter: false,
         supportCustomMessage: true,
       },

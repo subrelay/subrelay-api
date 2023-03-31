@@ -93,10 +93,9 @@ export class SubstrateService {
         }
 
         return {
-          name: eventMeta.name.toString(),
-          dataSchema: dataSchema,
+          name: `${pallet}.${eventMeta.name.toString()}`,
+          schema: dataSchema,
           description: eventMeta.docs.join(' '),
-          pallet,
           index: eventMeta.index as unknown as number,
         };
       });

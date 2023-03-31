@@ -9,12 +9,8 @@ export enum WorkflowStatus {
   PAUSING = 'pausing',
 }
 
-export type WorkflowSummary = Pick<
-  WorkflowEntity,
-  'id' | 'name' | 'status' | 'createdAt' | 'updatedAt'
-> & {
-  chain: Pick<ChainEntity, 'uuid' | 'name' | 'imageUrl'>;
-  event: Pick<EventEntity, 'id' | 'name'>;
+export type WorkflowSummary = Pick<WorkflowEntity, 'id' | 'name' | 'event'> & {
+  chain?: Pick<ChainEntity, 'uuid' | 'name' | 'imageUrl'>;
 };
 
 export type Workflow = Pick<
@@ -34,6 +30,6 @@ export type WorkflowLogSummary = Pick<
 };
 
 export class ProcessWorkflowInput {
-  workflow: WorkflowEntity;
+  workflow: WorkflowSummary;
   eventRawData: EventRawData;
 }

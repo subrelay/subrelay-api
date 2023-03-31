@@ -29,14 +29,14 @@ export class TaskLogEntity {
   @JoinColumn([{ name: 'workflowLogId', referencedColumnName: 'id' }])
   workflowLog: WorkflowLogEntity;
 
-  @Column({ name: 'workflowLogId' })
+  @Column({ name: 'workflowLogId', type: 'char', length: 26 })
   workflowLogId: string;
 
   @ManyToOne(() => TaskEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'taskId', referencedColumnName: 'id' }])
   task: TaskEntity;
 
-  @Column({ name: 'taskId' })
+  @Column({ name: 'taskId', type: 'char', length: 26 })
   taskId: string;
 
   @Column({ type: 'jsonb', nullable: true })

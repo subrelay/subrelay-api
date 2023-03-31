@@ -19,9 +19,8 @@ export enum GeneralTypeEnum {
 
 export class EventDef {
   name: string;
-  dataSchema?: TypeSchema[];
+  schema?: TypeSchema[];
   description?: string;
-  pallet: string;
   index: number;
 }
 

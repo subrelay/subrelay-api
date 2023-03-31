@@ -6,13 +6,12 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryColumn,
-  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
 import { ApiProperty } from '@nestjs/swagger';
 import { EventEntity } from '../../event/event.entity';
 
-@Entity()
+@Entity('workflow')
 export class WorkflowEntity {
   @ApiProperty({ example: 1 })
   @PrimaryColumn({ type: 'char', length: 26 })
@@ -25,22 +24,22 @@ export class WorkflowEntity {
   name: string;
 
   @Column({ name: 'updatedAt', type: 'timestamptz' })
-  updatedAt: string;
+  updatedAt: Date;
 
   @CreateDateColumn({ name: 'createdAt' })
-  createdAt: string;
+  createdAt: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'userId', referencedColumnName: 'id' }])
   user: User;
 
-  @Column({ name: 'userId' })
+  @Column({ name: 'userId', type: 'char', length: 26 })
   userId: string;
 
-  @Column({ type: 'text', name: 'eventId' })
+  @Column({ type: 'char', length: 26, name: 'eventId' })
   eventId: string;
 
   @ManyToOne(() => EventEntity, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'eventId', referencedColumnName: 'uuid' }])
+  @JoinColumn([{ name: 'eventId', referencedColumnName: 'id' }])
   event: EventEntity;
 }

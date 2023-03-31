@@ -9,7 +9,7 @@ export class TaskEntity {
   @PrimaryColumn({ type: 'char', length: 26 })
   id: string;
 
-  @ApiProperty({ example: TaskType.TRIGGER, enum: TaskType })
+  @ApiProperty({ example: TaskType.FILTER, enum: TaskType })
   @Column({ nullable: false, type: 'text' })
   type: TaskType;
 
@@ -18,8 +18,8 @@ export class TaskEntity {
   name: string;
 
   @ApiPropertyOptional({ example: 2 })
-  @Column({ nullable: true, name: 'dependOn' })
-  dependOn?: number;
+  @Column({ nullable: true, name: 'dependOn', type: 'char', length: 26 })
+  dependOn?: string;
 
   @Column({ nullable: false, type: 'jsonb' })
   config: any;
@@ -28,6 +28,6 @@ export class TaskEntity {
   @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
   workflow: WorkflowEntity;
 
-  @Column({ name: 'workflowId' })
+  @Column({ name: 'workflowId', type: 'char', length: 26 })
   workflowId: string;
 }

@@ -1,4 +1,4 @@
-import { Chain } from '../chain/chain.entity';
+import { ChainEntity } from '../chain/chain.entity';
 
 export enum AppEvent {
   BLOCK_WATCHER_START = 'block.watcher.start',
@@ -9,6 +9,6 @@ export enum AppEvent {
   EVENT_PROCESS = 'event.process',
 }
 
-export function getBlockWatcherJobName(chain: Chain) {
+export function getBlockWatcherJobName(chain: ChainEntity) {
   return `${AppEvent.BLOCK_WATCHER_START}.${chain.chainId}`;
 }

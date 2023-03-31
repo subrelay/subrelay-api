@@ -19,7 +19,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { findIndex, orderBy } from 'lodash';
+import { findIndex, isEmpty, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
@@ -74,7 +74,7 @@ export class WorkflowController {
     summary: 'Get a workflow details',
   })
   async getWorkflow(@Param('id') id: string, @UserInfo() user: User) {
-    const workflow = await this.workflowService.getWorkflowSummary(id, user.id);
+    const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
       throw new NotFoundException('Workflow not found');
@@ -139,7 +139,9 @@ export class WorkflowController {
     input.tasks = orderBy(
       input.tasks.map((task) => ({
         ...task,
-        dependOnIndex: findIndex(input.tasks, { name: task.dependOnName }),
+        dependOnIndex: task.dependOnName
+          ? findIndex(input.tasks, { name: task.dependOnName })
+          : null,
       })),
       ['dependOnIndex'],
       ['asc'],
@@ -147,15 +149,8 @@ export class WorkflowController {
 
     await this.validateTasks(input.eventId, input.tasks);
 
-    const workflowId = await this.workflowService.createWorkflow(
-      input,
-      user.id,
-    );
+    const workflow = await this.workflowService.createWorkflow(input, user.id);
 
-    const workflow = await this.workflowService.getWorkflowSummary(
-      workflowId,
-      user.id,
-    );
     const tasks = await this.taskService.getTasks(workflow.id);
 
     return {
@@ -174,20 +169,20 @@ export class WorkflowController {
       throw new BadRequestException('Event not found');
     }
 
-    const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
-
-    if (!triggerTask) {
-      throw new BadRequestException('A workflow should has one trigger task');
-    } else if (triggerTask.dependOnIndex !== -1) {
-      throw new BadRequestException('Trigger task depends on invalid task');
+    const startTasks = tasks.filter((t) => !t.dependOnIndex);
+    if (isEmpty(startTasks)) {
+      throw new BadRequestException(
+        'Invalid workflow. Can not found start task.',
+      );
     }
 
-    const otherTasks = tasks.filter((t) => t.type !== TaskType.TRIGGER);
-    if (otherTasks.length === 0) {
+    if (startTasks.length > 1) {
       throw new BadRequestException(
-        'A workflow should has at least one notification task',
+        'Workflow should only have one start task.',
       );
-    } else if (otherTasks.some((task) => task.dependOnIndex === -1)) {
+    }
+
+    if (tasks.some((task) => task.dependOnIndex === -1)) {
       throw new BadRequestException('Task depends on invalid task');
     }
   }

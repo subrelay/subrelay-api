@@ -1,12 +1,5 @@
 import { ChainEntity } from '../chain/chain.entity';
-import {
-  Column,
-  Entity,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
-  PrimaryColumn,
-} from 'typeorm';
+import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn } from 'typeorm';
 import { TypeSchema } from '../substrate/substrate.data';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -32,7 +25,7 @@ export class EventEntity {
   index: number;
 
   @ApiProperty({ example: '3342b0eb-ab4f-40c0-870c-6587de6b009a' })
-  @Column({ type: 'text', name: 'chainUuid' })
+  @Column({ type: 'char', length: 26, name: 'chainUuid' })
   chainUuid: string;
 
   @ManyToOne(() => ChainEntity, { onDelete: 'CASCADE' })

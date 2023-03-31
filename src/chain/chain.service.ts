@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   ChainSummary,
   CreateChainRequest,
@@ -10,9 +10,11 @@ import { ChainEntity } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
-import { isEmpty } from 'lodash';
+import { isEmpty, map } from 'lodash';
 import * as defaultChains from './chains.json';
 import { ulid } from 'ulid';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class ChainService implements OnModuleInit {
@@ -21,6 +23,8 @@ export class ChainService implements OnModuleInit {
   constructor(
     @InjectRepository(ChainEntity)
     private chainRepository: Repository<ChainEntity>,
+
+    @InjectQueue('chain') private chainQueue: Queue,
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
@@ -34,11 +38,36 @@ export class ChainService implements OnModuleInit {
     }
   }
 
+  async processChainWorkers(chainUuids: string[], start: boolean) {
+    const chains = await this.chainRepository.findBy({ uuid: In(chainUuids) });
+    const jobOption = {
+      removeOnComplete: true,
+      removeOnFail: true,
+    };
+
+    const jobs = chains.map((chain) => {
+      return {
+        data: {
+          chain,
+          start,
+        },
+        opts: jobOption,
+      };
+    });
+    await this.chainQueue.addBulk(jobs);
+
+    this.logger.debug(
+      `${start === true ? 'Start' : 'Stop'} ${map(chains, 'name').join(
+        ', ',
+      )} worker for chain ${map(chains, 'name').join(', ')}`,
+    );
+  }
+
   getChains(): Promise<ChainSummary[]> {
     return this.chainRepository
       .createQueryBuilder()
       .select([
-        'DISTINCT ON("chainId") uuid',
+        'uuid',
         'name',
         '"createdAt"',
         'version',
@@ -68,8 +97,9 @@ export class ChainService implements OnModuleInit {
     });
   }
 
-  async deleteChainByChainId(chainId: string) {
-    await this.chainRepository.delete({ chainId });
+  async deleteChainByChainId(uuid: string) {
+    await this.chainRepository.delete({ uuid });
+    await this.processChainWorkers([uuid], false);
   }
 
   async updateChain(uuid: string, input: UpdateChainRequest) {
@@ -88,6 +118,7 @@ export class ChainService implements OnModuleInit {
     }
 
     const chain = await this.insertChain({
+      uuid: ulid(),
       name: input.name,
       imageUrl: input.imageUrl,
       version: chainInfo.runtimeVersion,
@@ -99,6 +130,8 @@ export class ChainService implements OnModuleInit {
         rpcs: validRpcs,
       },
     });
+
+    console.log({ chain });
 
     await this.eventService.createEvents(chainInfo.events, chain.uuid);
 

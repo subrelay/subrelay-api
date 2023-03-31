@@ -1,28 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  camelCase,
-  filter,
-  get,
-  isEmpty,
-  keyBy,
-  mapKeys,
-  mapValues,
-  template,
-} from 'lodash';
+import { get, isEmpty, keyBy, mapValues, pick, template } from 'lodash';
 import {
   BaseTask,
   TaskLog,
   TaskResult,
   TaskStatus,
   TaskType,
+  TaskValidationError,
 } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
-import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import { ProcessTaskInput, TaskLogDetail } from './task.dto';
+import { ProcessTaskInput } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
@@ -37,9 +28,10 @@ import {
   TelegramTaskInput,
 } from './type/telegram.type';
 import { WebhookTaskConfig } from './type/webhook.type';
-import { EventEntity } from '../event/event.entity';
 import { EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
+import { WorkflowSummary } from '../workflow/workflow.type';
+import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
 
 @Injectable()
 export class TaskService {
@@ -105,24 +97,34 @@ export class TaskService {
     let result;
 
     try {
-      if (task.isNotificationTask()) {
-        result = await this.processNotificationTask(
-          new NotificationTaskConfig(task.getNotificationTaskConfig()),
-          input,
-        );
-      } else if (task.isTriggerTask()) {
-        result = await this.processTriggerTask(
-          new TriggerTaskConfig(task.getTriggerConfig()),
-          input,
-        );
-      } else {
-        result = {
-          input,
-          success: false,
-          error: {
-            message: `Unsupported type: ${task.type}`,
-          },
-        };
+      switch (task.type) {
+        case TaskType.FILTER:
+          result = await this.processFilterTask(
+            new FilterTaskConfig(task.getFilterTaskConfig()),
+            input.eventRawData,
+          );
+          break;
+        case TaskType.EMAIL:
+          result = await this.processEmailTask(
+            new EmailTaskConfig(task.getEmailTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.TELEGRAM:
+          result = await this.processTelegramTask(
+            new TelegramTaskConfig(task.getTelegramTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.WEBHOOK:
+          result = await this.processWebhookTask(
+            new WebhookTaskConfig(task.getWebhookTaskConfig()),
+            input,
+          );
+          break;
+
+        default:
+          throw new TaskValidationError(`Unsupported type: ${task.type}`);
       }
 
       return {
@@ -144,33 +146,39 @@ export class TaskService {
     }
   }
 
-  getTriggerTasks(workflowVersionIds: number[], eventIds: number[]) {
+  getFilterTasks(workflowVersionIds: number[], eventIds: number[]) {
     return this.taskRepository
       .createQueryBuilder('t')
-      .where({ type: TaskType.TRIGGER })
+      .where({ type: TaskType.FILTER })
       .andWhereInIds(workflowVersionIds)
       .andWhere(`config ->> 'eventId' IN (:eventIds)`, eventIds)
       .getMany();
   }
 
   getOperatorMapping(): {
-    [key: string]: FilterOperator[];
+    [key: string]: FilterVariableOperator[];
   } {
     return {
-      [GeneralTypeEnum.BOOL]: [FilterOperator.IS_FALSE, FilterOperator.IS_TRUE],
-      [GeneralTypeEnum.STRING]: [FilterOperator.EQUAL, FilterOperator.CONTAINS],
+      [GeneralTypeEnum.BOOL]: [
+        FilterVariableOperator.IS_FALSE,
+        FilterVariableOperator.IS_TRUE,
+      ],
+      [GeneralTypeEnum.STRING]: [
+        FilterVariableOperator.EQUAL,
+        FilterVariableOperator.CONTAINS,
+      ],
       [GeneralTypeEnum.NUMBER]: [
-        FilterOperator.EQUAL,
-        FilterOperator.GREATER_THAN,
-        FilterOperator.GREATER_THAN_EQUAL,
-        FilterOperator.LESS_THAN,
-        FilterOperator.LESS_THAN_EQUAL,
+        FilterVariableOperator.EQUAL,
+        FilterVariableOperator.GREATER_THAN,
+        FilterVariableOperator.GREATER_THAN_EQUAL,
+        FilterVariableOperator.LESS_THAN,
+        FilterVariableOperator.LESS_THAN_EQUAL,
       ],
     };
   }
 
-  private processTriggerTask(
-    config: TriggerTaskConfig,
+  private processFilterTask(
+    config: FilterTaskConfig,
     eventRawData: EventRawData,
   ): TaskResult {
     if (isEmpty(config.conditions)) {
@@ -204,7 +212,7 @@ export class TaskService {
       };
     } catch (error) {
       return {
-        input: eventData,
+        input: eventRawData,
         success: false,
         error: {
           message: error.message,
@@ -213,7 +221,7 @@ export class TaskService {
     }
   }
 
-  async getTaskLogs(workflowLogId: string): Promise<TaskLogDetail[]> {
+  async getTaskLogs(workflowLogId: string): Promise<TaskLogEntity[]> {
     const taskLogs = await this.taskLogRepository.find({
       where: { workflowLogId },
       relations: {
@@ -230,11 +238,16 @@ export class TaskService {
     return mapValues(keyBy(headers, 'key'), (header) => header.value);
   }
 
-  private async notifyWebhook(
+  private async processWebhookTask(
     { url, headers }: WebhookTaskConfig,
-    message: any,
+    input: {
+      eventRawData: EventRawData;
+      workflow: WorkflowSummary;
+    },
   ) {
-    await this.httpService.axiosRef.post(url, message, {
+    const data = this.getWebhookTaskInput(input);
+
+    await this.httpService.axiosRef.post(url, data, {
       headers: {
         Accept: 'application/json',
         ...this.parseHeaders(headers),
@@ -247,12 +260,7 @@ export class TaskService {
     return compiled(eventData);
   }
 
-  private buildMessageContext(eventData: EventData, variables: string[]) {
-    const context = mapValues(keyBy(variables), (val) => get(eventData, val));
-    return mapKeys(context, (_, key) => camelCase(key));
-  }
-
-  private buildNotificationEmailInput(
+  private getEmailTaskInput(
     { subjectTemplate, bodyTemplate }: EmailTaskConfig,
     eventData: EventData,
   ): EmailTaskInput {
@@ -265,25 +273,55 @@ export class TaskService {
     };
   }
 
-  private async notifyEmail(
-    { addresses }: EmailTaskConfig,
-    { body, subject }: EmailTaskInput,
+  private getWebhookTaskInput({
+    eventRawData,
+    workflow,
+  }: {
+    eventRawData: EventRawData;
+    workflow: WorkflowSummary;
+  }) {
+    const eventData = this.eventService.getEventData(
+      workflow.event,
+      eventRawData,
+    );
+
+    return {
+      ...eventData,
+      workflow: pick(workflow, ['id', 'name']),
+      chain: workflow.chain,
+    };
+  }
+
+  private async processEmailTask(
+    config: EmailTaskConfig,
+    {
+      eventRawData,
+      workflow,
+    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
   ) {
+    const eventData = this.eventService.getEventData(
+      workflow.event,
+      eventRawData,
+    );
+    const { subject, body } = this.getEmailTaskInput(config, eventData);
+
+    const now = Date.now();
     await this.mailerService.sendMail({
       from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
-      to: addresses,
+      to: config.addresses,
       subject,
       html: body,
     });
 
+    this.logger.debug(`[Email Task] Took ${Date.now() - now} ms to send email`);
+
     return {
-      addresses,
       subject,
       body,
     };
   }
 
-  private buildNotificationTelegramInput(
+  private getTelegramTaskInput(
     { messageTemplate }: TelegramTaskConfig,
     eventData: EventData,
   ): TelegramTaskInput {
@@ -292,11 +330,20 @@ export class TaskService {
     };
   }
 
-  private async notifyTelegram(
-    { chatId }: TelegramTaskConfig,
-    { message }: TelegramTaskInput,
+  private async processTelegramTask(
+    config: TelegramTaskConfig,
+    {
+      eventRawData,
+      workflow,
+    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
   ) {
-    await this.bot.telegram.sendMessage(chatId, message, {
+    const eventData = this.eventService.getEventData(
+      workflow.event,
+      eventRawData,
+    );
+    const { message } = this.getTelegramTaskInput(config, eventData);
+
+    await this.bot.telegram.sendMessage(config.chatId, message, {
       parse_mode: 'HTML',
     });
   }
@@ -318,28 +365,28 @@ export class TaskService {
   }
 
   private isMatchCondition(
-    operator: FilterOperator,
+    operator: FilterVariableOperator,
     acctualValue: any,
     expectedValue: any,
   ): boolean {
     switch (operator) {
-      case FilterOperator.IS_TRUE:
+      case FilterVariableOperator.IS_TRUE:
         return acctualValue === true;
-      case FilterOperator.IS_FALSE:
+      case FilterVariableOperator.IS_FALSE:
         return acctualValue === false;
-      case FilterOperator.CONTAINS:
+      case FilterVariableOperator.CONTAINS:
         return (acctualValue as string)
           .toLowerCase()
           .includes((expectedValue as string).toLowerCase());
-      case FilterOperator.GREATER_THAN:
+      case FilterVariableOperator.GREATER_THAN:
         return (acctualValue as number) > (expectedValue as number);
-      case FilterOperator.GREATER_THAN_EQUAL:
+      case FilterVariableOperator.GREATER_THAN_EQUAL:
         return (acctualValue as number) >= (expectedValue as number);
-      case FilterOperator.LESS_THAN:
+      case FilterVariableOperator.LESS_THAN:
         return (acctualValue as number) < (expectedValue as number);
-      case FilterOperator.LESS_THAN_EQUAL:
+      case FilterVariableOperator.LESS_THAN_EQUAL:
         return (acctualValue as number) <= (expectedValue as number);
-      case FilterOperator.EQUAL:
+      case FilterVariableOperator.EQUAL:
         return acctualValue == expectedValue;
       default:
         return false;

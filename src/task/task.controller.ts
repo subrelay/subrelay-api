@@ -32,7 +32,7 @@ export class TaskController {
   @ApiBody({
     schema: {
       example: {
-        type: 'trigger',
+        type: 'filter',
         data: {
           eventId: 3457,
         },
@@ -53,26 +53,27 @@ export class TaskController {
   async processTask(
     @Body() input: ProcessTaskRequest,
   ): Promise<ProcessTaskResponse> {
-    const eventInfo = await this.eventService.getEventById(input.data.eventId);
-    if (!eventInfo) {
+    const event = await this.eventService.getEventById(input.data.eventId);
+    if (!event) {
       throw new NotFoundException('Event not found');
     }
 
-    const eventData = await this.eventService.generateEventDataSample(
-      input.data.eventId,
+    const eventRawData = await this.eventService.generateEventRawDataSample(
+      event,
     );
 
     const baseTask = new BaseTask({
       type: input.type,
       config: input.config,
-      id: 0,
+      id: 'TestTask',
     });
+
     const result = await this.taskService.processTask(baseTask, {
-      eventData,
-      eventInfo,
+      eventRawData,
       workflow: {
-        id: 0,
+        id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
         name: 'This workflow only for testing',
+        event,
       },
     });
 
@@ -83,7 +84,7 @@ export class TaskController {
     };
   }
 
-  @Get('/operators')
+  @Get('/filter/variable-operators')
   @ApiOkResponse({
     description: 'Return data if request is successful',
     schema: {
@@ -112,7 +113,7 @@ export class TaskController {
   @ApiOperation({
     summary: 'Return supported operators for condition filter',
   })
-  async getTriggerOperators() {
+  async getFilterVariableOperators() {
     const mapping = this.taskService.getOperatorMapping();
     return mapValues(mapping, (operatorList) =>
       operatorList.map((operator) => ({
