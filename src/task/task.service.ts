@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { get, isEmpty, keyBy, mapValues, pick, template } from 'lodash';
+import { get, keyBy, mapValues, pick, template } from 'lodash';
 import {
   BaseTask,
   TaskLog,
@@ -98,6 +98,11 @@ export class TaskService {
 
     try {
       switch (task.type) {
+        case TaskType.TRIGGER:
+          result = {
+            status: TaskStatus.SUCCESS,
+          };
+          break;
         case TaskType.FILTER:
           result = await this.processFilterTask(
             new FilterTaskConfig(task.getFilterTaskConfig()),
@@ -235,14 +240,27 @@ export class TaskService {
       workflow: WorkflowSummary;
     },
   ) {
-    const data = this.getWebhookTaskInput(input);
+    const rs: TaskResult = {
+      input: input.eventRawData,
+      status: TaskStatus.RUNNING,
+    };
+    try {
+      const data = this.getWebhookTaskInput(input);
 
-    await this.httpService.axiosRef.post(url, data, {
-      headers: {
-        Accept: 'application/json',
-        ...this.parseHeaders(headers),
-      },
-    });
+      await this.httpService.axiosRef.post(url, data, {
+        headers: {
+          Accept: 'application/json',
+          ...this.parseHeaders(headers),
+        },
+      });
+      rs.input = data;
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+      rs.error = error;
+    }
+
+    return rs;
   }
 
   private buildCustomMessage(messageTemplate: string, eventData: EventData) {
@@ -289,26 +307,42 @@ export class TaskService {
       workflow,
     }: { eventRawData: EventRawData; workflow: WorkflowSummary },
   ) {
-    const eventData = this.eventService.getEventData(
-      workflow.event,
-      eventRawData,
-    );
-    const { subject, body } = this.getEmailTaskInput(config, eventData);
-
-    const now = Date.now();
-    await this.mailerService.sendMail({
-      from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
-      to: config.addresses,
-      subject,
-      html: body,
-    });
-
-    this.logger.debug(`[Email Task] Took ${Date.now() - now} ms to send email`);
-
-    return {
-      subject,
-      body,
+    const rs: TaskResult = {
+      input: eventRawData,
+      status: TaskStatus.RUNNING,
     };
+    try {
+      const eventData = this.eventService.getEventData(
+        workflow.event,
+        eventRawData,
+      );
+      const { subject, body } = this.getEmailTaskInput(config, eventData);
+
+      const now = Date.now();
+      await this.mailerService.sendMail({
+        from: `SubRelay Notifications ${this.configService.get(
+          'EMAIL_SENDER',
+        )}`,
+        to: config.addresses,
+        subject,
+        html: body,
+      });
+
+      this.logger.debug(
+        `[Email Task] Took ${Date.now() - now} ms to send email`,
+      );
+
+      rs.input = {
+        subject,
+        body,
+      };
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+      rs.error = error;
+    }
+
+    return rs;
   }
 
   private getTelegramTaskInput(
@@ -327,15 +361,33 @@ export class TaskService {
       workflow,
     }: { eventRawData: EventRawData; workflow: WorkflowSummary },
   ) {
-    const eventData = this.eventService.getEventData(
-      workflow.event,
-      eventRawData,
-    );
-    const { message } = this.getTelegramTaskInput(config, eventData);
+    const rs: TaskResult = {
+      input: eventRawData,
+      status: TaskStatus.RUNNING,
+    };
 
-    await this.bot.telegram.sendMessage(config.chatId, message, {
-      parse_mode: 'HTML',
-    });
+    try {
+      const eventData = this.eventService.getEventData(
+        workflow.event,
+        eventRawData,
+      );
+      const { message } = this.getTelegramTaskInput(config, eventData);
+
+      await this.bot.telegram.sendMessage(config.chatId, message, {
+        parse_mode: 'HTML',
+      });
+
+      rs.input = {
+        message,
+      };
+
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+      rs.error = error;
+    }
+
+    return rs;
   }
 
   private async telegramChatIdExists(chatId: string) {

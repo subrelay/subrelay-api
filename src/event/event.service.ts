@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { set } from 'lodash';
+import { isNil, set } from 'lodash';
 import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
@@ -64,10 +64,29 @@ export class EventService {
     return eventRawData;
   }
 
-  async getEventById(eventId: string): Promise<EventEntity> {
-    return await this.eventRepository.findOneBy({
-      id: eventId,
-    });
+  async getEventById(
+    eventId: string,
+    chainUuid?: string,
+  ): Promise<EventEntity> {
+    let queryBuilder = this.eventRepository
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('e."id" = :eventId', { eventId })
+      .select([
+        'e.id AS id',
+        'e.name AS name',
+        'e.description AS description',
+        'e.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
+
+    if (!isNil(chainUuid)) {
+      queryBuilder = queryBuilder.andWhere('e."chainUuid =:chainUuid"', {
+        chainUuid,
+      });
+    }
+
+    return (await queryBuilder.getRawOne()) as EventEntity;
   }
 
   getEventsByChain(

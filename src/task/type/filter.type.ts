@@ -1,14 +1,11 @@
 import {
   IsEnum,
   IsNotEmpty,
-  IsNumber,
-  IsOptional,
   IsString,
   ValidateIf,
   validateSync,
 } from 'class-validator';
 import { TaskValidationError } from './task.type';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { isEmpty } from 'lodash';
 import { IsFilterConditions } from '../validator/filter.validator';
 
@@ -24,15 +21,10 @@ export enum FilterVariableOperator {
 }
 
 export class FilterCondition {
-  @ApiProperty({ example: 'data.amount' })
   @IsString()
   @IsNotEmpty()
   variable: string;
 
-  @ApiProperty({
-    example: FilterVariableOperator.GREATER_THAN,
-    enum: FilterVariableOperator,
-  })
   @IsString()
   @IsEnum(FilterVariableOperator, {
     message: `operator should be one of values: ${Object.values(
@@ -41,7 +33,6 @@ export class FilterCondition {
   })
   operator: FilterVariableOperator;
 
-  @ApiProperty({ example: 1 })
   @ValidateIf(
     (o) =>
       o.operator !== FilterVariableOperator.IS_FALSE &&
@@ -52,7 +43,6 @@ export class FilterCondition {
 }
 
 export class FilterTaskConfig {
-  @ApiPropertyOptional({ isArray: true, type: FilterCondition })
   @IsFilterConditions()
   conditions?: Array<FilterCondition[]>;
 

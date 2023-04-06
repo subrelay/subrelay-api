@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
   IsNotEmpty,
@@ -12,25 +11,21 @@ import { isEmpty } from 'lodash';
 import { TaskValidationError } from './task.type';
 
 export class WebhookHeader {
-  @ApiProperty({ example: 'Header 1' })
   @IsString()
   @IsNotEmpty()
   key: string;
 
-  @ApiProperty({ example: 'Value 1' })
   @IsString()
   @IsNotEmpty()
   value: string;
 }
 
 export class WebhookTaskConfig {
-  @ApiPropertyOptional({ type: WebhookHeader, isArray: true })
   @IsArray()
   @IsOptional()
   @ValidateNested()
   headers: WebhookHeader[];
 
-  @ApiProperty({ example: 'https://example.com' })
   @IsNotEmpty()
   @IsUrl()
   url: string;

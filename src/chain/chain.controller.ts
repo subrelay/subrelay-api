@@ -10,14 +10,6 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBasicAuth,
-  ApiCreatedResponse,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import { map, omit, pick } from 'lodash';
 import { Pagination } from '../common/pagination.type';
 import { GetOneEventResponse } from '../event/event.dto';
@@ -29,7 +21,6 @@ import {
 } from './chain.dto';
 import { ChainService } from './chain.service';
 
-@ApiTags('Chain')
 @Controller('chains')
 export class ChainController {
   constructor(
@@ -38,35 +29,16 @@ export class ChainController {
   ) {}
 
   @Get()
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    isArray: true,
-    type: ChainSummary,
-  })
-  @ApiOperation({
-    summary: 'Get all supported chains',
-    description: 'This is a public endpoint',
-  })
   async getChains(): Promise<ChainSummary[]> {
     return this.chainService.getChains();
   }
 
   @Post()
-  @ApiBasicAuth('admin')
-  @ApiCreatedResponse({
-    description: 'Return chain data if request is successful',
-    type: ChainSummary,
-  })
-  @ApiOperation({
-    summary: 'Create a new chain',
-    description: 'Only admin can access this endpoint',
-  })
   async createChain(@Body() input: CreateChainRequest): Promise<ChainSummary> {
     return await this.chainService.createChain(input);
   }
 
   @Delete(':uuid')
-  @ApiBasicAuth('admin')
   @HttpCode(204)
   async deleteChain(@Param() pathParams: { uuid?: string }) {
     if (!(await this.chainService.chainExist(pathParams.uuid))) {
@@ -77,15 +49,7 @@ export class ChainController {
   }
 
   @Put(':uuid')
-  @HttpCode(204)
-  @ApiBasicAuth('admin')
-  @ApiNoContentResponse({
-    description: 'Return chain data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Update name and image of a chain',
-    description: 'Only admin can access this endpoint',
-  })
+  @HttpCode(200)
   async updateChain(
     @Param() pathParams: { uuid?: string },
     @Body() input: UpdateChainRequest,
@@ -94,17 +58,10 @@ export class ChainController {
       throw new NotFoundException('Chain not found');
     }
 
-    await this.chainService.updateChain(pathParams.uuid, input);
+    return this.chainService.updateChain(pathParams.uuid, input);
   }
 
   @Get(':uuid/events')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Get all events of a chain',
-    description: 'This is a public endpoint',
-  })
   async getEvents(
     @Param() pathParams: { uuid?: string },
     @Query() queryParams: Pagination,
@@ -122,13 +79,6 @@ export class ChainController {
   }
 
   @Get(':uuid/events/:eventId')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Get an event details',
-    description: 'This is a public endpoint',
-  })
   async getEvent(
     @Param('uuid') uuid: string,
     @Param('eventId') eventId: string,
@@ -138,7 +88,8 @@ export class ChainController {
     }
 
     const event = await this.eventService.getEventById(eventId);
-    if (!event || event.chainUuid !== uuid) {
+
+    if (!event) {
       throw new NotFoundException('Event not found');
     }
 

@@ -11,15 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBasicAuth,
-  ApiCreatedResponse,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import { filter, findIndex, isEmpty, map, orderBy } from 'lodash';
+import { filter, findIndex, isEmpty, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
@@ -32,11 +24,9 @@ import {
   UpdateWorkflowRequest,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
-import { log } from 'console';
 import { TriggerTaskConfig } from '../task/type/trigger.type';
 
 @Controller('workflows')
-@ApiTags('Workflow')
 export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
@@ -45,13 +35,6 @@ export class WorkflowController {
   ) {}
 
   @Get()
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Get all workflows',
-  })
-  @ApiBasicAuth()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
     @UserInfo() user: User,
@@ -68,13 +51,6 @@ export class WorkflowController {
   }
 
   @Get(':id')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiBasicAuth()
-  @ApiOperation({
-    summary: 'Get a workflow details',
-  })
   async getWorkflow(@Param('id') id: string, @UserInfo() user: User) {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
@@ -92,11 +68,6 @@ export class WorkflowController {
 
   @Patch(':id')
   @HttpCode(204)
-  @ApiBasicAuth()
-  @ApiNoContentResponse()
-  @ApiOperation({
-    summary: 'Update a workflow',
-  })
   async updateWorkflow(
     @Param('id') id: string,
     @Body() input: UpdateWorkflowRequest,
@@ -106,18 +77,11 @@ export class WorkflowController {
       throw new NotFoundException('Workflow not found');
     }
 
-    await this.workflowService.updateWorkflowStatus(id, input);
+    await this.workflowService.updateWorkflow(id, input);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @ApiBasicAuth()
-  @ApiNoContentResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Delete a workflow',
-  })
   async deleteWorkflow(@Param('id') id: string, @UserInfo() user: User) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
@@ -127,13 +91,6 @@ export class WorkflowController {
   }
 
   @Post()
-  @ApiCreatedResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Create a workflow',
-  })
-  @ApiBasicAuth()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
@@ -200,7 +157,7 @@ export class WorkflowController {
         ...task,
         dependOnIndex: task.dependOnName
           ? findIndex(tasks, { name: task.dependOnName })
-          : null,
+          : -2,
       })),
       ['dependOnIndex'],
       ['asc'],

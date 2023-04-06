@@ -5,12 +5,6 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBasicAuth,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
 import { UserInfo } from '../common/user-info.decorator';
 import { TaskService } from '../task/task.service';
 import { User } from '../user/user.entity';
@@ -21,7 +15,6 @@ import {
 import { WorkflowService } from './workflow.service';
 
 @Controller('workflow-logs')
-@ApiTags('Workflow Log')
 export class WorkflowLogController {
   constructor(
     private readonly workflowService: WorkflowService,
@@ -29,14 +22,6 @@ export class WorkflowLogController {
   ) {}
 
   @Get()
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    type: GetWorkflowLogsResponse,
-  })
-  @ApiOperation({
-    summary: 'Get all workflow logs',
-  })
-  @ApiBasicAuth()
   async getWorkflowLogs(
     @Query() queryParams: GetWorkflowLogsQueryParams,
     @UserInfo() user: User,
@@ -55,13 +40,6 @@ export class WorkflowLogController {
   }
 
   @Get(':id')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Get a workflow log',
-  })
-  @ApiBasicAuth()
   async getWorkflowLog(@Param('id') id: string, @UserInfo() user: User) {
     const workflowLog = await this.workflowService.getWorkflowLog(id, user.id);
 

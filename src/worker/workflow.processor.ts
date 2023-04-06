@@ -6,7 +6,6 @@ import { WorkflowJobData } from '../common/queue.type';
 import { TaskService } from '../task/task.service';
 import { BaseTask, TaskStatus } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
-import { TaskEntity } from '../task/entity/task.entity';
 import { ulid } from 'ulid';
 
 @Processor('workflow')
@@ -21,10 +20,10 @@ export class WorkflowProcessor {
   async processWorkflowJob(job: Job) {
     const { workflow, eventRawData }: WorkflowJobData = job.data;
     this.logger.debug(
-      `Process event "${workflow.event.name}" for workflow version ${workflow.id}`,
+      `Process event "${workflow.event.name}" for workflow version ${workflow.id} xxxx`,
     );
-
     const tasks = await this.taskService.getTasks(workflow.id);
+
     const schema: { [key: string]: BaseTask } = {};
     tasks.forEach((task) => {
       schema[task.dependOn || 'start'] = new BaseTask(task);
@@ -45,6 +44,7 @@ export class WorkflowProcessor {
       input: eventRawData,
       workflowId: workflow.id,
     });
+
     const taskLogs = map(schema, (task) => {
       const log = workflowResult[task.id];
       const status = log ? log.status : TaskStatus.SKIPPED;

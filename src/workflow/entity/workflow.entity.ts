@@ -8,12 +8,10 @@ import {
   PrimaryColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
-import { ApiProperty } from '@nestjs/swagger';
 import { EventEntity } from '../../event/event.entity';
 
 @Entity('workflow')
 export class WorkflowEntity {
-  @ApiProperty({ example: 1 })
   @PrimaryColumn({ type: 'char', length: 26 })
   id: string;
 

@@ -1,30 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsNotEmpty, IsString, validateSync } from 'class-validator';
 import { isEmpty } from 'lodash';
 import { TaskValidationError } from './task.type';
 
 export class EmailTaskConfig {
-  @ApiProperty({
-    type: 'string',
-    isArray: true,
-    example: ['example@gmail.com'],
-  })
   @IsArray()
   @IsNotEmpty()
   addresses: string[];
 
-  @ApiProperty({
-    type: 'string',
-    example: 'Your event has been triggered ${eventId}',
-  })
   @IsString()
   @IsNotEmpty()
   subjectTemplate: string;
 
-  @ApiProperty({
-    type: 'string',
-    example: '${data.from} sent ${data.to} ${data.from} DOT',
-  })
   @IsString()
   @IsNotEmpty()
   bodyTemplate: string;

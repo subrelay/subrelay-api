@@ -1,18 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, validateSync } from 'class-validator';
 import { isEmpty } from 'lodash';
 import { TaskValidationError } from './task.type';
 
 export class TelegramTaskConfig {
-  @ApiProperty({ type: 'string', example: '123sdfs21423' })
   @IsString()
   @IsNotEmpty()
   chatId: string;
 
-  @ApiProperty({
-    type: 'string',
-    example: '${data.from} sent ${data.to} ${data.from} DOT',
-  })
   @IsString()
   @IsNotEmpty()
   messageTemplate: string;

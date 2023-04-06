@@ -11,7 +11,7 @@ import {
 
 import { isEmpty, map } from 'lodash';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AppEvent } from '../common/app-event.type';
+import { AppEvent } from '../common/app-event.type copy';
 
 @Injectable()
 export class SubstrateService {

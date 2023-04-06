@@ -121,13 +121,15 @@ export class WorkflowService {
 
       const tasksObject: { [key: string]: string } = {};
       const taskRepo = queryRunner.manager.getRepository(TaskEntity);
+      console.log({ tasks: input.tasks });
+
       for (const taskInput of input.tasks) {
         const { id: taskId } = await taskRepo.save({
           id: ulid(),
           name: taskInput.name,
           type: taskInput.type,
           config: taskInput.config,
-          dependOn: get(tasksObject, taskInput.name),
+          dependOn: get(tasksObject, taskInput.dependOnName),
           workflowId: workflow.id,
         });
         Object.assign(tasksObject, { [taskInput.name]: taskId });
@@ -180,15 +182,13 @@ export class WorkflowService {
   }
 
   async deleteWorkflow(id: string, userId: string) {
-    const workflow = await this.getWorkflow(id, userId);
-
     await this.workflowRepository.delete({ id, userId });
   }
 
-  async updateWorkflowStatus(id: string, input: UpdateWorkflowRequest) {
+  async updateWorkflow(id: string, input: UpdateWorkflowRequest) {
     await this.workflowRepository.update(
       { id },
-      { status: input.status, name: input.name },
+      { status: input.status, name: input.name, updatedAt: new Date() },
     );
   }
 
@@ -396,7 +396,7 @@ export class WorkflowService {
         'DISTINCT w.id AS id',
         'w.name AS name',
         'w."createdAt" AS "createdAt"',
-        'w."createdAt" AS "updatedAt"',
+        'w."updatedAt" AS "updatedAt"',
         'w.status AS "status"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
         `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name) AS event`,

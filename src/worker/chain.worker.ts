@@ -2,12 +2,11 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { Cron } from '@nestjs/schedule';
-import { AppEvent } from '../common/app-event.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { isEmpty, map, uniq } from 'lodash';
-import { EventService } from '../event/event.service';
 import { ChainEntity } from '../chain/chain.entity';
 import { ChainService } from '../chain/chain.service';
+import { AppEvent } from '../common/app-event.type copy';
 
 @Injectable()
 export class ChainWorker implements OnModuleInit {

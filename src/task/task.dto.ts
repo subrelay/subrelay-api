@@ -1,11 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
 import { EventRawData } from '../common/queue.type';
 import { WorkflowSummary } from '../workflow/workflow.type';
 import { TaskEntity } from './entity/task.entity';
@@ -38,25 +31,18 @@ export type ProcessTaskInput = {
 };
 
 export class TaskLogDetail {
-  @ApiProperty({ example: 1 })
   id: number;
 
-  @ApiProperty({ example: '2022-11-18T00:53:30.082Z' })
   startedAt?: Date;
 
-  @ApiProperty({ example: '2022-11-19T00:53:30.082Z' })
   finishedAt?: Date;
 
-  @ApiProperty({ example: TaskStatus.SUCCESS, enum: TaskStatus })
   status: TaskStatus;
 
-  @ApiProperty({ type: TaskEntity })
   task: TaskEntity;
 
-  @ApiProperty({ example: { success: true } })
   output: any;
 
-  @ApiProperty()
   input?: any;
 }
 

@@ -1,8 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsNotEmptyObject,
-  IsNumber,
   IsOptional,
   IsString,
   validateSync,
@@ -31,9 +29,6 @@ export enum TaskStatus {
 }
 
 export class TaskError {
-  @ApiPropertyOptional({
-    example: null,
-  })
   message: string;
 }
 
@@ -55,9 +50,9 @@ export class BaseTask {
   @IsString()
   id: string;
 
+  @IsString()
   @IsOptional()
-  @IsNumber()
-  dependOn?: number;
+  dependOn: string;
 
   @IsEnum(TaskType)
   type: TaskType;

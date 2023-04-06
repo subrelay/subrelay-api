@@ -14,6 +14,7 @@ import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
 import { ulid } from 'ulid';
 import { EventEntity } from '../event/event.entity';
+import { UserInputError } from '../common/error.type';
 
 @Injectable()
 export class ChainService implements OnModuleInit {
@@ -87,19 +88,22 @@ export class ChainService implements OnModuleInit {
     await this.chainRepository.delete({ uuid });
   }
 
-  async updateChain(uuid: string, input: UpdateChainRequest) {
-    await this.chainRepository.update({ uuid }, input);
+  async updateChain(
+    uuid: string,
+    input: UpdateChainRequest,
+  ): Promise<ChainSummary> {
+    return this.chainRepository.save({ uuid, ...input });
   }
 
   async createChain(input: CreateChainRequest): Promise<ChainSummary> {
     const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(input.rpcs);
 
     if (!chainInfo) {
-      throw new Error('Cannot connect to provider by urls in rpcs');
+      throw new UserInputError('Cannot connect to provider by urls in rpcs');
     }
 
     if (await this.chainExistByChainId(chainInfo.chainId)) {
-      throw new Error(`"${chainInfo.chainId}" exists`);
+      throw new UserInputError(`"${chainInfo.chainId}" exists`);
     }
 
     const chain = await this.insertChain({
@@ -116,15 +120,13 @@ export class ChainService implements OnModuleInit {
       },
     });
 
-    console.log({ chain });
-
     await this.eventService.createEvents(chainInfo.events, chain.uuid);
 
     return chain;
   }
 
   private insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
-    return this.chainRepository.save({ ...input, id: ulid() });
+    return this.chainRepository.save({ ...input, uuid: ulid() });
   }
 
   private async getChainInfoByRpcs(rpcs: string[]) {
@@ -138,6 +140,8 @@ export class ChainService implements OnModuleInit {
           chainInfo = await this.substrateService.getChainInfo(api);
         }
         validRpcs.push(rpc);
+      } else {
+        throw new UserInputError(`Invalid rpc: ${rpc}. Connection failed.`);
       }
     }
 
