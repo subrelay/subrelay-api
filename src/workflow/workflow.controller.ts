@@ -11,7 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { filter, findIndex, isEmpty, orderBy } from 'lodash';
+import { filter, findIndex, isEmpty, map, orderBy, uniq } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
@@ -96,7 +96,7 @@ export class WorkflowController {
     @UserInfo() user: User,
   ) {
     input.tasks = this.modifyTaskRequests(input.tasks);
-    await this.validateTasks(input.tasks);
+    await this.validateWorkflowTasks(input.tasks);
 
     const workflow = await this.workflowService.createWorkflow(input, user.id);
 
@@ -108,7 +108,16 @@ export class WorkflowController {
     };
   }
 
-  private async validateTasks(tasks: CreateWorkflowTaskRequest[]) {
+  private async validateWorkflowTasks(tasks: CreateWorkflowTaskRequest[]) {
+    if (tasks.length < 2) {
+      throw new BadRequestException('Workflow should have at least 2 tasks.');
+    }
+
+    const taskNames = map(tasks, 'name');
+    if (taskNames.length > uniq(taskNames).length) {
+      throw new BadRequestException('Task names in a workflow should be uniq.');
+    }
+
     const triggerTasks = filter(tasks, { type: TaskType.TRIGGER });
     if (isEmpty(triggerTasks)) {
       throw new BadRequestException('Can not found trigger task.');
