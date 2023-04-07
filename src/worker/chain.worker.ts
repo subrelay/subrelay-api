@@ -6,7 +6,7 @@ import { WorkflowService } from '../workflow/workflow.service';
 import { isEmpty, map, uniq } from 'lodash';
 import { ChainEntity } from '../chain/chain.entity';
 import { ChainService } from '../chain/chain.service';
-import { AppEvent } from '../common/app-event.type copy';
+import { AppEvent } from '../common/app-event.type';
 
 @Injectable()
 export class ChainWorker implements OnModuleInit {

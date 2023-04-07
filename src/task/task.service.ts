@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { get, keyBy, mapValues, pick, template } from 'lodash';
+import { findIndex, get, pick, template } from 'lodash';
 import {
   BaseTask,
   TaskLog,
@@ -39,6 +39,11 @@ import {
   DiscordTaskError,
   DiscordTaskInput,
 } from './type/discord.type';
+import {
+  decryptText,
+  encryptText,
+  generateWebhookSignature,
+} from '../common/crypto.util';
 
 @Injectable()
 export class TaskService {
@@ -63,7 +68,21 @@ export class TaskService {
   ) {}
 
   async createTask(input: Partial<TaskEntity>): Promise<string> {
+    if (input.type == TaskType.WEBHOOK) {
+      const config = new WebhookTaskConfig(input.config);
+      if (config.secret) {
+        input.config = {
+          ...input.config,
+          secret: encryptText(
+            get(input.config, 'secret'),
+            this.configService.get('WEBHOOK_SECRET_KEY'),
+          ),
+        };
+      }
+    }
+
     const result = await this.taskRepository.save({ ...input, id: ulid() });
+
     return result.id;
   }
 
@@ -95,11 +114,22 @@ export class TaskService {
     );
   }
 
-  getTasks(workflowId: string) {
-    return this.taskRepository.find({
+  async getTasks(workflowId: string, protect = true) {
+    const tasks = await this.taskRepository.find({
       where: { workflowId },
       order: { dependOn: { direction: 'ASC', nulls: 'FIRST' } },
     });
+
+    if (protect) {
+      const webhookTaskIndex = findIndex(tasks, { type: TaskType.WEBHOOK });
+      if (webhookTaskIndex >= 0) {
+        const config = new WebhookTaskConfig(tasks[webhookTaskIndex].config);
+        config.secret = null;
+        tasks[webhookTaskIndex].config = config;
+      }
+    }
+
+    return tasks;
   }
 
   async processTask(task: BaseTask, input: ProcessTaskInput): Promise<TaskLog> {
@@ -244,14 +274,8 @@ export class TaskService {
     return taskLogs;
   }
 
-  private parseHeaders(headers: { key: string; value: string }[]): {
-    [key: string]: string;
-  } {
-    return mapValues(keyBy(headers, 'key'), (header) => header.value);
-  }
-
   private async processWebhookTask(
-    { url, headers }: WebhookTaskConfig,
+    { url, secret }: WebhookTaskConfig,
     input: {
       eventRawData: EventRawData;
       workflow: WorkflowSummary;
@@ -264,11 +288,21 @@ export class TaskService {
     try {
       const data = this.getWebhookTaskInput(input);
 
+      const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
+      const headers = { Accept: 'application/json' };
+      const decryptedSecret = secret
+        ? decryptText(secret, webhookSecretKey)
+        : secret;
+
+      if (decryptedSecret) {
+        headers['X-Hub-Signature-256'] = generateWebhookSignature(
+          decryptedSecret,
+          data,
+        );
+      }
+
       await this.httpService.axiosRef.post(url, data, {
-        headers: {
-          Accept: 'application/json',
-          ...this.parseHeaders(headers),
-        },
+        headers,
       });
       rs.input = data;
       rs.status = TaskStatus.SUCCESS;

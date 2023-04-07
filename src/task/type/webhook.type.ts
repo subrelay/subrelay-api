@@ -1,30 +1,17 @@
 import {
-  IsArray,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
-  ValidateNested,
   validateSync,
 } from 'class-validator';
 import { isEmpty } from 'lodash';
 import { TaskValidationError } from './task.type';
 
-export class WebhookHeader {
-  @IsString()
-  @IsNotEmpty()
-  key: string;
-
-  @IsString()
-  @IsNotEmpty()
-  value: string;
-}
-
 export class WebhookTaskConfig {
-  @IsArray()
+  @IsString()
   @IsOptional()
-  @ValidateNested()
-  headers: WebhookHeader[];
+  secret?: string;
 
   @IsNotEmpty()
   @IsUrl()

@@ -57,10 +57,10 @@ export class GetWorkflowLogsQueryParams extends Pagination {
   status?: TaskStatus;
 
   @IsOptional()
-  workflowId?: number;
+  workflowId?: string;
 
   @IsOptional()
-  id?: number;
+  id?: string;
 
   @IsEnum(GetWorkflowLogsOrderBy, {
     message: `Invalid order. Possible values: ${Object.values(

@@ -22,7 +22,7 @@ export class WorkflowProcessor {
     this.logger.debug(
       `Process event "${workflow.event.name}" for workflow version ${workflow.id} xxxx`,
     );
-    const tasks = await this.taskService.getTasks(workflow.id);
+    const tasks = await this.taskService.getTasks(workflow.id, false);
 
     const schema: { [key: string]: BaseTask } = {};
     tasks.forEach((task) => {

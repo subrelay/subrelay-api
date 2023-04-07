@@ -34,6 +34,12 @@ export class DiscordTaskConfig {
     if (!this.channelId && !this.userId) {
       throw new TaskValidationError('Channel id or user id is required.');
     }
+
+    if (this.channelId && this.userId) {
+      throw new TaskValidationError(
+        'Require only channel id or user id. Should not provider both.',
+      );
+    }
   }
 }
 
