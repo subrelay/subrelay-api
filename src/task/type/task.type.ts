@@ -11,6 +11,7 @@ import { TelegramTaskConfig } from './telegram.type';
 import { FilterTaskConfig } from './filter.type';
 import { WebhookTaskConfig } from './webhook.type';
 import { TriggerTaskConfig } from './trigger.type';
+import { DiscordTaskConfig } from './discord.type';
 
 export enum TaskType {
   TRIGGER = 'trigger',
@@ -18,6 +19,7 @@ export enum TaskType {
   EMAIL = 'email',
   WEBHOOK = 'webhook',
   TELEGRAM = 'telegram',
+  DISCORD = 'discord',
 }
 
 export enum TaskStatus {
@@ -86,6 +88,9 @@ export class BaseTask {
       case TaskType.TRIGGER:
         this.config = new TriggerTaskConfig(this.config);
         break;
+      case TaskType.DISCORD:
+        this.config = new DiscordTaskConfig(this.config);
+        break;
       default:
         throw new Error(`Unsupported type: ${this.type}`);
     }
@@ -108,6 +113,10 @@ export class BaseTask {
   }
 
   getTriggerTaskConfig(): TriggerTaskConfig {
+    return this.config;
+  }
+
+  getDiscordTaskConfig(): DiscordTaskConfig {
     return this.config;
   }
 }

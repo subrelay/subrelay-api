@@ -32,6 +32,13 @@ import { EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
 import { WorkflowSummary } from '../workflow/workflow.type';
 import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
+import { InjectDiscordClient } from '@discord-nestjs/core';
+import { Client, TextChannel } from 'discord.js';
+import {
+  DiscordTaskConfig,
+  DiscordTaskError,
+  DiscordTaskInput,
+} from './type/discord.type';
 
 @Injectable()
 export class TaskService {
@@ -44,7 +51,10 @@ export class TaskService {
     private taskLogRepository: Repository<TaskLogEntity>,
 
     @InjectBot()
-    private bot: Telegraf,
+    private telegramBot: Telegraf,
+
+    @InjectDiscordClient()
+    private readonly discordClient: Client,
 
     private readonly httpService: HttpService,
     private readonly mailerService: MailerService,
@@ -127,10 +137,17 @@ export class TaskService {
             input,
           );
           break;
-
+        case TaskType.DISCORD:
+          result = await this.processDiscordTask(
+            new DiscordTaskConfig(task.getDiscordTaskConfig()),
+            input,
+          );
+          break;
         default:
           throw new TaskValidationError(`Unsupported type: ${task.type}`);
       }
+
+      console.log({ result });
 
       return {
         ...result,
@@ -339,7 +356,7 @@ export class TaskService {
       rs.status = TaskStatus.SUCCESS;
     } catch (error) {
       rs.status = TaskStatus.FAILED;
-      rs.error = error;
+      rs.error = { message: error.message };
     }
 
     return rs;
@@ -349,6 +366,15 @@ export class TaskService {
     { messageTemplate }: TelegramTaskConfig,
     eventData: EventData,
   ): TelegramTaskInput {
+    return {
+      message: this.buildCustomMessage(messageTemplate, eventData),
+    };
+  }
+
+  private getDiscordTaskInput(
+    { messageTemplate }: DiscordTaskConfig,
+    eventData: EventData,
+  ): DiscordTaskInput {
     return {
       message: this.buildCustomMessage(messageTemplate, eventData),
     };
@@ -367,13 +393,15 @@ export class TaskService {
     };
 
     try {
+      await this.validateTelegramChatId(config.chatId);
+
       const eventData = this.eventService.getEventData(
         workflow.event,
         eventRawData,
       );
       const { message } = this.getTelegramTaskInput(config, eventData);
 
-      await this.bot.telegram.sendMessage(config.chatId, message, {
+      await this.telegramBot.telegram.sendMessage(config.chatId, message, {
         parse_mode: 'HTML',
       });
 
@@ -384,15 +412,78 @@ export class TaskService {
       rs.status = TaskStatus.SUCCESS;
     } catch (error) {
       rs.status = TaskStatus.FAILED;
-      rs.error = error;
+      rs.error = { message: error.message };
     }
 
     return rs;
   }
 
-  private async telegramChatIdExists(chatId: string) {
+  private async processDiscordTask(
+    config: DiscordTaskConfig,
+    {
+      eventRawData,
+      workflow,
+    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
+  ) {
+    const eventData = this.eventService.getEventData(
+      workflow.event,
+      eventRawData,
+    );
+    const { message } = this.getDiscordTaskInput(config, eventData);
+
+    const rs: TaskResult = {
+      input: message,
+      status: TaskStatus.RUNNING,
+    };
+
     try {
-      await this.bot.telegram.getChat(chatId);
+      if (config.channelId) {
+        const channel = (await this.discordClient.channels.cache.get(
+          config.channelId,
+        )) as unknown as TextChannel;
+
+        if (!channel) {
+          throw new DiscordTaskError('Channel not found');
+        }
+
+        channel.send({
+          embeds: [
+            {
+              color: 0,
+              description: message,
+            },
+          ],
+        });
+      }
+
+      if (config.userId) {
+        await this.discordClient.users.send(config.userId, {
+          embeds: [
+            {
+              color: 0,
+              description: message,
+            },
+          ],
+        });
+      }
+
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+
+      if (error.message === 'Invalid Recipient(s)') {
+        error.message = 'User not found';
+      }
+
+      rs.error = { message: error.message };
+    }
+
+    return rs;
+  }
+
+  private async validateTelegramChatId(chatId: string) {
+    try {
+      await this.telegramBot.telegram.getChat(chatId);
     } catch (error) {
       if (error.response.error_code === 400) {
         throw new TelegramTaskError('Chat not found');
