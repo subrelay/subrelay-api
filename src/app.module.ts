@@ -86,7 +86,7 @@ export class AppModule implements NestModule {
         { method: RequestMethod.GET, path: '/api' },
         { method: RequestMethod.GET, path: '/api/*' },
         { method: RequestMethod.GET, path: '/chains' },
-        { method: RequestMethod.GET, path: '/tasks/operators' },
+        { method: RequestMethod.GET, path: '/tasks/filter/operators' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
         { method: RequestMethod.POST, path: '/chains' },
