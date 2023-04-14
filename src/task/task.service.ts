@@ -1,45 +1,44 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  camelCase,
-  get,
-  isEmpty,
-  keyBy,
-  mapKeys,
-  mapValues,
-  template,
-} from 'lodash';
+import { findIndex, get, map, template } from 'lodash';
 import {
   BaseTask,
-  ProcessStatus,
+  ProcessTaskInput,
   TaskLog,
   TaskResult,
+  TaskStatus,
   TaskType,
+  TaskValidationError,
 } from './type/task.type';
 import { HttpService } from '@nestjs/axios';
-import { FilterOperator, TriggerTaskConfig } from './type/trigger.type';
 import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import {
-  CustomMessageInput,
-  ProcessTaskInput,
-  TaskLogDetail,
-} from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
-import {
-  EmailConfig,
-  NotificationTaskConfig,
-  NotificationEmailInput,
-  TelegramConfig,
-  WebhookConfig,
-  NotificationTelegramInput,
-  TelegramError,
-} from './type/notification.type';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
+import { ulid } from 'ulid';
+import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
+import {
+  TelegramTaskConfig,
+  TelegramTaskError,
+  TelegramTaskInput,
+} from './type/telegram.type';
+import { WebhookTaskConfig } from './type/webhook.type';
+import { EventService } from '../event/event.service';
+import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
+import { InjectDiscordClient } from '@discord-nestjs/core';
+import { Client, TextChannel } from 'discord.js';
+import {
+  DiscordTaskConfig,
+  DiscordTaskError,
+  DiscordTaskInput,
+} from './type/discord.type';
+import { decryptText, generateWebhookSignature } from '../common/crypto.util';
+import { EventEntity } from '../event/event.entity';
+import { DataField } from '../event/event.dto';
 
 @Injectable()
 export class TaskService {
@@ -52,23 +51,22 @@ export class TaskService {
     private taskLogRepository: Repository<TaskLogEntity>,
 
     @InjectBot()
-    private bot: Telegraf,
+    private telegramBot: Telegraf,
+
+    @InjectDiscordClient()
+    private readonly discordClient: Client,
 
     private readonly httpService: HttpService,
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
+    private readonly eventService: EventService,
   ) {}
-
-  async createTask(input: Partial<TaskEntity>): Promise<number> {
-    const result = await this.taskRepository.save(input);
-    return result.id;
-  }
 
   async createTaskLogs(input: Partial<TaskLog>[]) {
     return await this.taskLogRepository.save(input);
   }
 
-  async updateTaskLogStatus(id: number, status: ProcessStatus) {
+  async updateTaskLogStatus(id: string, status: TaskStatus) {
     return await this.taskLogRepository.update(
       { id },
       { status, startedAt: new Date() },
@@ -76,53 +74,88 @@ export class TaskService {
   }
 
   async finishTaskLog(
-    id: number,
-    data: Pick<TaskLogEntity, 'status' | 'output'>,
+    id: string,
+    { status, output }: Pick<TaskLogEntity, 'status' | 'output'>,
   ) {
     await this.taskLogRepository.update(
       { id },
-      { ...data, finishedAt: new Date() },
+      { status, output, finishedAt: new Date() },
     );
   }
 
-  async skipPendingTaskLogs(workflowLogId: number) {
+  async skipPendingTaskLogs(workflowLogId: string) {
     await this.taskLogRepository.update(
-      { workflowLogId, status: ProcessStatus.PENDING },
-      { status: ProcessStatus.SKIPPED, finishedAt: new Date() },
+      { workflowLogId, status: TaskStatus.PENDING },
+      { status: TaskStatus.SKIPPED, finishedAt: new Date() },
     );
   }
 
-  getTasks(workflowVersionId: number) {
-    return this.taskRepository.find({
-      where: { workflowVersionId },
+  async getTasks(workflowId: string, protect = true) {
+    const tasks = await this.taskRepository.find({
+      where: { workflowId },
       order: { dependOn: { direction: 'ASC', nulls: 'FIRST' } },
     });
+
+    if (protect) {
+      const webhookTaskIndex = findIndex(tasks, { type: TaskType.WEBHOOK });
+      if (webhookTaskIndex >= 0) {
+        const config = new WebhookTaskConfig(tasks[webhookTaskIndex].config);
+        config.secret = null;
+        tasks[webhookTaskIndex].config = config;
+      }
+    }
+
+    return tasks;
   }
 
   async processTask(task: BaseTask, input: ProcessTaskInput): Promise<TaskLog> {
     const startedAt = new Date();
     let result;
 
+    console.log({ task });
+
     try {
-      if (task.isNotificationTask()) {
-        result = await this.processNotificationTask(
-          new NotificationTaskConfig(task.getNotificationTaskConfig()),
-          input,
-        );
-      } else if (task.isTriggerTask()) {
-        result = await this.processTriggerTask(
-          new TriggerTaskConfig(task.getTriggerConfig()),
-          input,
-        );
-      } else {
-        result = {
-          input,
-          success: false,
-          error: {
-            message: `Unsupported type: ${task.type}`,
-          },
-        };
+      switch (task.type) {
+        case TaskType.TRIGGER:
+          result = {
+            status: TaskStatus.SUCCESS,
+          };
+          break;
+        case TaskType.FILTER:
+          result = await this.processFilterTask(
+            new FilterTaskConfig(task.getFilterTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.EMAIL:
+          result = await this.processEmailTask(
+            new EmailTaskConfig(task.getEmailTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.TELEGRAM:
+          result = await this.processTelegramTask(
+            new TelegramTaskConfig(task.getTelegramTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.WEBHOOK:
+          result = await this.processWebhookTask(
+            new WebhookTaskConfig(task.getWebhookTaskConfig()),
+            input,
+          );
+          break;
+        case TaskType.DISCORD:
+          result = await this.processDiscordTask(
+            new DiscordTaskConfig(task.getDiscordTaskConfig()),
+            input,
+          );
+          break;
+        default:
+          throw new TaskValidationError(`Unsupported type: ${task.type}`);
       }
+
+      console.log({ result });
 
       return {
         ...result,
@@ -133,7 +166,7 @@ export class TaskService {
       this.logger.error(`Failed to process task: ${JSON.stringify(error)}`);
       return {
         input,
-        success: false,
+        status: TaskStatus.FAILED,
         error: {
           message: error.message,
         },
@@ -143,49 +176,102 @@ export class TaskService {
     }
   }
 
-  getTriggerTasks(workflowVersionIds: number[], eventIds: number[]) {
+  getFilterTasks(workflowVersionIds: number[], eventIds: number[]) {
     return this.taskRepository
       .createQueryBuilder('t')
-      .where({ type: TaskType.TRIGGER })
+      .where({ type: TaskType.FILTER })
       .andWhereInIds(workflowVersionIds)
       .andWhere(`config ->> 'eventId' IN (:eventIds)`, eventIds)
       .getMany();
   }
 
   getOperatorMapping(): {
-    [key: string]: FilterOperator[];
+    [key: string]: FilterVariableOperator[];
   } {
     return {
-      [GeneralTypeEnum.BOOL]: [FilterOperator.IS_FALSE, FilterOperator.IS_TRUE],
-      [GeneralTypeEnum.STRING]: [FilterOperator.EQUAL, FilterOperator.CONTAINS],
+      [GeneralTypeEnum.BOOL]: [
+        FilterVariableOperator.IS_FALSE,
+        FilterVariableOperator.IS_TRUE,
+      ],
+      [GeneralTypeEnum.STRING]: [
+        FilterVariableOperator.EQUAL,
+        FilterVariableOperator.CONTAINS,
+      ],
       [GeneralTypeEnum.NUMBER]: [
-        FilterOperator.EQUAL,
-        FilterOperator.GREATER_THAN,
-        FilterOperator.GREATER_THAN_EQUAL,
-        FilterOperator.LESS_THAN,
-        FilterOperator.LESS_THAN_EQUAL,
+        FilterVariableOperator.EQUAL,
+        FilterVariableOperator.GREATER_THAN,
+        FilterVariableOperator.GREATER_THAN_EQUAL,
+        FilterVariableOperator.LESS_THAN,
+        FilterVariableOperator.LESS_THAN_EQUAL,
       ],
     };
   }
 
-  private processTriggerTask(
-    config: TriggerTaskConfig,
-    { eventData }: ProcessTaskInput,
-  ): TaskResult {
-    if (isEmpty(config.conditions)) {
-      return {
-        input: eventData,
-        success: true,
-        output: {
-          match: true,
-        },
-      };
-    }
+  getFilterFields(event: EventEntity): DataField[] {
+    const eventDataFields = this.eventService.getEventDataFields(event);
+    const eventStatusFields = this.eventService.getEventStatusFields();
+    return [
+      ...map([...eventDataFields, ...eventStatusFields], (field) => ({
+        ...field,
+        name: `event.${field.name}`,
+      })),
+    ];
+  }
 
+  getCustomMessageFields(event: EventEntity): DataField[] {
+    const eventDataFields = this.eventService.getEventDataFields(event);
+    const eventStatusFields = this.eventService.getEventStatusFields();
+    const eventInfoFields = this.eventService.getEventInfoFields(event);
+    const eventExtraFields = this.eventService.getEventExtraFields();
+
+    return [
+      {
+        name: 'workflow.id',
+        description: ' The workflow ID',
+        type: GeneralTypeEnum.STRING,
+        data: ulid(),
+      },
+      {
+        name: 'workflow.name',
+        description: ' The workflow name',
+        type: GeneralTypeEnum.STRING,
+        data: `Workflow for event ${event.name}`,
+      },
+      {
+        name: 'chain.uuid',
+        description: ' The chain UUID',
+        type: GeneralTypeEnum.STRING,
+        data: event.chain.uuid,
+      },
+      {
+        name: 'chain.name',
+        description: ' The chain name',
+        type: GeneralTypeEnum.STRING,
+        data: event.chain.name,
+      },
+      ...map(
+        [
+          ...eventInfoFields,
+          ...eventStatusFields,
+          ...eventDataFields,
+          ...eventExtraFields,
+        ],
+        (field) => ({
+          ...field,
+          name: `event.${field.name}`,
+        }),
+      ),
+    ];
+  }
+
+  private processFilterTask(
+    config: FilterTaskConfig,
+    input: ProcessTaskInput,
+  ): TaskResult {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const actualValue = get(eventData, condition.variable);
+          const actualValue = get(input, condition.variable);
           return this.isMatchCondition(
             condition.operator,
             actualValue,
@@ -195,16 +281,16 @@ export class TaskService {
       );
 
       return {
-        input: eventData,
-        success: true,
+        input: input,
+        status: TaskStatus.SUCCESS,
         output: {
           match,
         },
       };
     } catch (error) {
       return {
-        input: eventData,
-        success: false,
+        input: input,
+        status: TaskStatus.FAILED,
         error: {
           message: error.message,
         },
@@ -212,66 +298,7 @@ export class TaskService {
     }
   }
 
-  private async processNotificationTask(
-    config: NotificationTaskConfig,
-    input: ProcessTaskInput,
-  ): Promise<TaskResult> {
-    try {
-      const customMessageInput = new CustomMessageInput(input);
-
-      if (config.isWebhookChannel()) {
-        await this.notifyWebhook(config.getWebhookConfig(), customMessageInput);
-        return {
-          input: customMessageInput,
-          success: true,
-        };
-      }
-
-      if (config.isEmailChannel()) {
-        const input = this.buildNotificationEmailInput(
-          config.getEmailConfig(),
-          customMessageInput,
-        );
-
-        await this.notifyEmail(input);
-
-        return {
-          input: input,
-          success: true,
-        };
-      }
-
-      if (config.isTelegramChannel()) {
-        const telegramConfig = config.getTelegramConfig();
-        await this.telegramChatIdExists(telegramConfig.chatId);
-
-        const input = this.buildNotificationTelegramInput(
-          telegramConfig,
-          customMessageInput,
-        );
-
-        console.log({ input });
-
-        await this.notifyTelegram(input);
-
-        return {
-          input: input,
-          success: true,
-        };
-      }
-    } catch (error) {
-      this.logger.error('Failed to process notification task', error);
-      return {
-        input,
-        success: false,
-        error: {
-          message: error.message,
-        },
-      };
-    }
-  }
-
-  async getTaskLogs(workflowLogId: number): Promise<TaskLogDetail[]> {
+  async getTaskLogs(workflowLogId: string): Promise<TaskLogEntity[]> {
     const taskLogs = await this.taskLogRepository.find({
       where: { workflowLogId },
       relations: {
@@ -282,89 +309,218 @@ export class TaskService {
     return taskLogs;
   }
 
-  private parseHeaders(headers: { key: string; value: string }[]): {
-    [key: string]: string;
-  } {
-    return mapValues(keyBy(headers, 'key'), (header) => header.value);
-  }
-
-  private async notifyWebhook({ url, headers }: WebhookConfig, message: any) {
-    await this.httpService.axiosRef.post(url, message, {
-      headers: {
-        Accept: 'application/json',
-        ...this.parseHeaders(headers),
-      },
-    });
-  }
-
-  private buildCustomMessage(
-    messageTemplate: string,
-    input: CustomMessageInput,
+  private async processWebhookTask(
+    { url, secret, encrypted }: WebhookTaskConfig,
+    input: ProcessTaskInput,
   ) {
+    const rs: TaskResult = {
+      input: input,
+      status: TaskStatus.RUNNING,
+    };
+    try {
+      const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
+      const headers = { Accept: 'application/json' };
+      let decryptedSecret;
+      if (secret) {
+        if (encrypted) {
+          decryptedSecret = decryptText(secret, webhookSecretKey);
+        } else {
+          decryptedSecret = secret;
+        }
+      }
+
+      console.log({ decryptedSecret });
+
+      console.log({ decryptedSecret, webhookSecretKey });
+
+      if (decryptedSecret) {
+        headers['X-Hub-Signature-256'] = generateWebhookSignature(
+          decryptedSecret,
+          input,
+        );
+      }
+
+      await this.httpService.axiosRef.post(url, input, {
+        headers,
+      });
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      console.log({ error });
+
+      rs.status = TaskStatus.FAILED;
+      rs.error.message = error?.message;
+    }
+
+    return rs;
+  }
+
+  private buildCustomMessage(messageTemplate: string, data: ProcessTaskInput) {
     const compiled = template(messageTemplate);
-    return compiled(input);
+    return compiled(data);
   }
 
-  private buildMessageContext(input: CustomMessageInput, variables: string[]) {
-    const context = mapValues(keyBy(variables), (val) => get(input, val));
-    return mapKeys(context, (_, key) => camelCase(key));
-  }
-
-  private buildNotificationEmailInput(
-    { addresses, subjectTemplate, bodyTemplate }: EmailConfig,
-    input: CustomMessageInput,
-  ): NotificationEmailInput {
+  private getEmailTaskInput(
+    { subjectTemplate, bodyTemplate }: EmailTaskConfig,
+    input: ProcessTaskInput,
+  ): EmailTaskInput {
     const subject = this.buildCustomMessage(subjectTemplate, input);
     const body = this.buildCustomMessage(bodyTemplate, input);
 
     return {
-      addresses,
       subject,
       body,
     };
   }
 
-  private async notifyEmail({
-    addresses,
-    body,
-    subject,
-  }: NotificationEmailInput) {
-    await this.mailerService.sendMail({
-      from: `SubRelay Notifications ${this.configService.get('EMAIL_SENDER')}`,
-      to: addresses,
-      subject,
-      html: body,
-    });
-
-    return {
-      addresses,
-      subject,
-      body,
+  private async processEmailTask(
+    config: EmailTaskConfig,
+    input: ProcessTaskInput,
+  ) {
+    const { subject, body } = this.getEmailTaskInput(config, input);
+    const rs: TaskResult = {
+      input: { subject, body },
+      status: TaskStatus.RUNNING,
     };
+
+    try {
+      const now = Date.now();
+      await this.mailerService.sendMail({
+        from: `SubRelay Notifications ${this.configService.get(
+          'EMAIL_SENDER',
+        )}`,
+        to: config.addresses,
+        subject,
+        html: body,
+      });
+
+      this.logger.debug(
+        `[Email Task] Took ${Date.now() - now} ms to send email`,
+      );
+
+      rs.input = {
+        subject,
+        body,
+      };
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+      rs.error = { message: error.message };
+    }
+
+    return rs;
   }
 
-  private buildNotificationTelegramInput(
-    { chatId, messageTemplate }: TelegramConfig,
-    input: CustomMessageInput,
-  ): NotificationTelegramInput {
+  private getTelegramTaskInput(
+    { messageTemplate }: TelegramTaskConfig,
+    input: ProcessTaskInput,
+  ): TelegramTaskInput {
     return {
       message: this.buildCustomMessage(messageTemplate, input),
-      chatId,
     };
   }
 
-  private async notifyTelegram({ chatId, message }: NotificationTelegramInput) {
-    await this.bot.telegram.sendMessage(chatId, message, {
-      parse_mode: 'HTML',
-    });
+  private getDiscordTaskInput(
+    { messageTemplate }: DiscordTaskConfig,
+    input: ProcessTaskInput,
+  ): DiscordTaskInput {
+    return {
+      message: this.buildCustomMessage(messageTemplate, input),
+    };
   }
 
-  private async telegramChatIdExists(chatId: string) {
+  private async processTelegramTask(
+    config: TelegramTaskConfig,
+    input: ProcessTaskInput,
+  ) {
+    const { message } = this.getTelegramTaskInput(config, input);
+
+    const rs: TaskResult = {
+      input: { message },
+      status: TaskStatus.RUNNING,
+    };
+
     try {
-      await this.bot.telegram.getChat(chatId);
+      await this.validateTelegramChatId(config.chatId);
+
+      await this.telegramBot.telegram.sendMessage(config.chatId, message, {
+        parse_mode: 'HTML',
+      });
+
+      rs.input = {
+        message,
+      };
+
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+      rs.error = { message: error.message };
+    }
+
+    return rs;
+  }
+
+  private async processDiscordTask(
+    config: DiscordTaskConfig,
+    input: ProcessTaskInput,
+  ) {
+    const { message } = this.getDiscordTaskInput(config, input);
+
+    const rs: TaskResult = {
+      input: { message },
+      status: TaskStatus.RUNNING,
+    };
+
+    try {
+      if (config.channelId) {
+        const channel = (await this.discordClient.channels.cache.get(
+          config.channelId,
+        )) as unknown as TextChannel;
+
+        if (!channel) {
+          throw new DiscordTaskError('Channel not found');
+        }
+
+        channel.send({
+          embeds: [
+            {
+              color: 0,
+              description: message,
+            },
+          ],
+        });
+      }
+
+      if (config.userId) {
+        await this.discordClient.users.send(config.userId, {
+          embeds: [
+            {
+              color: 0,
+              description: message,
+            },
+          ],
+        });
+      }
+
+      rs.status = TaskStatus.SUCCESS;
+    } catch (error) {
+      rs.status = TaskStatus.FAILED;
+
+      if (error.message === 'Invalid Recipient(s)') {
+        error.message = 'User not found';
+      }
+
+      rs.error = { message: error.message };
+    }
+
+    return rs;
+  }
+
+  private async validateTelegramChatId(chatId: string) {
+    try {
+      await this.telegramBot.telegram.getChat(chatId);
     } catch (error) {
       if (error.response.error_code === 400) {
-        throw new TelegramError('Chat not found');
+        throw new TelegramTaskError('Chat not found');
       }
 
       this.logger.debug(
@@ -376,28 +532,28 @@ export class TaskService {
   }
 
   private isMatchCondition(
-    operator: FilterOperator,
+    operator: FilterVariableOperator,
     acctualValue: any,
     expectedValue: any,
   ): boolean {
     switch (operator) {
-      case FilterOperator.IS_TRUE:
+      case FilterVariableOperator.IS_TRUE:
         return acctualValue === true;
-      case FilterOperator.IS_FALSE:
+      case FilterVariableOperator.IS_FALSE:
         return acctualValue === false;
-      case FilterOperator.CONTAINS:
+      case FilterVariableOperator.CONTAINS:
         return (acctualValue as string)
           .toLowerCase()
           .includes((expectedValue as string).toLowerCase());
-      case FilterOperator.GREATER_THAN:
+      case FilterVariableOperator.GREATER_THAN:
         return (acctualValue as number) > (expectedValue as number);
-      case FilterOperator.GREATER_THAN_EQUAL:
+      case FilterVariableOperator.GREATER_THAN_EQUAL:
         return (acctualValue as number) >= (expectedValue as number);
-      case FilterOperator.LESS_THAN:
+      case FilterVariableOperator.LESS_THAN:
         return (acctualValue as number) < (expectedValue as number);
-      case FilterOperator.LESS_THAN_EQUAL:
+      case FilterVariableOperator.LESS_THAN_EQUAL:
         return (acctualValue as number) <= (expectedValue as number);
-      case FilterOperator.EQUAL:
+      case FilterVariableOperator.EQUAL:
         return acctualValue == expectedValue;
       default:
         return false;

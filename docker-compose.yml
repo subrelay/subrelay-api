@@ -32,7 +32,7 @@ services:
       - redis_data:/data
 
   event-service:
-    image: subrelay-event-service
+    image: subrelay-event-service:latest
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}

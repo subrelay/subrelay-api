@@ -1,24 +1,17 @@
-import { EventDetail } from '../event/event.dto';
-
-export class EventRawData {
-  pallet: string;
-  name: string;
-  data: any;
-  hash: string;
-  block: {
-    hash: string;
-  };
-}
+import { WorkflowEntity } from '../workflow/entity/workflow.entity';
 
 export class BlockJobData {
   timestamp: number;
   hash: string;
-  chainUuid: string;
-  events: EventRawData[];
+  chainId: string;
+  events: {
+    name: string;
+    data: any;
+  }[];
   success: boolean;
 }
 
-export class EventData {
+export class EventRawData {
   timestamp: number;
   success: boolean;
   block: {
@@ -28,7 +21,6 @@ export class EventData {
 }
 
 export class WorkflowJobData {
-  workflowVersionId: number;
-  event: EventDetail;
-  eventData: EventData;
+  workflow: WorkflowEntity;
+  eventRawData: EventRawData;
 }

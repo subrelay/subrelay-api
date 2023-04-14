@@ -6,25 +6,13 @@ import {
   HttpCode,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Post,
   Put,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBasicAuth,
-  ApiCreatedResponse,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import {
-  EventDetail,
-  EventSummary,
-  GetEventsQueryParams,
-} from '../event/event.dto';
-import { Event } from '../event/event.entity';
+import { map, omit, pick } from 'lodash';
+import { Pagination } from '../common/pagination.type';
+import { GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
 import {
   ChainSummary,
@@ -33,7 +21,6 @@ import {
 } from './chain.dto';
 import { ChainService } from './chain.service';
 
-@ApiTags('Chain')
 @Controller('chains')
 export class ChainController {
   constructor(
@@ -42,50 +29,27 @@ export class ChainController {
   ) {}
 
   @Get()
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    isArray: true,
-    type: ChainSummary,
-  })
-  @ApiOperation({
-    summary: 'Get all supported chains',
-    description: 'This is a public endpoint',
-  })
   async getChains(): Promise<ChainSummary[]> {
     return this.chainService.getChains();
   }
 
   @Post()
-  @ApiBasicAuth('admin')
-  @ApiCreatedResponse({
-    description: 'Return chain data if request is successful',
-    type: ChainSummary,
-  })
-  @ApiOperation({
-    summary: 'Create a new chain',
-    description: 'Only admin can access this endpoint',
-  })
   async createChain(@Body() input: CreateChainRequest): Promise<ChainSummary> {
     return await this.chainService.createChain(input);
   }
 
-  @Delete(':chainId')
-  @ApiBasicAuth('admin')
+  @Delete(':uuid')
   @HttpCode(204)
-  async deleteChain(@Param() pathParams: { chainId?: string }) {
-    await this.chainService.deleteChainByChainId(pathParams.chainId);
+  async deleteChain(@Param() pathParams: { uuid?: string }) {
+    if (!(await this.chainService.chainExist(pathParams.uuid))) {
+      throw new NotFoundException('Chain not found');
+    }
+
+    await this.chainService.deleteChainByChainId(pathParams.uuid);
   }
 
   @Put(':uuid')
-  @HttpCode(204)
-  @ApiBasicAuth('admin')
-  @ApiNoContentResponse({
-    description: 'Return chain data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Update name and image of a chain',
-    description: 'Only admin can access this endpoint',
-  })
+  @HttpCode(200)
   async updateChain(
     @Param() pathParams: { uuid?: string },
     @Body() input: UpdateChainRequest,
@@ -94,53 +58,46 @@ export class ChainController {
       throw new NotFoundException('Chain not found');
     }
 
-    await this.chainService.updateChain(pathParams.uuid, input);
+    return this.chainService.updateChain(pathParams.uuid, input);
   }
 
   @Get(':uuid/events')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    isArray: true,
-    type: Event,
-  })
-  @ApiOperation({
-    summary: 'Get all events of a chain',
-    description: 'This is a public endpoint',
-  })
   async getEvents(
     @Param() pathParams: { uuid?: string },
-    @Query() queryParams: GetEventsQueryParams,
-  ): Promise<EventSummary[]> {
+    @Query() queryParams: Pagination,
+  ) {
     if (!(await this.chainService.chainExist(pathParams.uuid))) {
       throw new NotFoundException('Chain not found');
     }
 
-    return this.eventService.getEventsByChain(pathParams.uuid, queryParams);
+    const events = await this.eventService.getEventsByChain(
+      pathParams.uuid,
+      queryParams,
+    );
+
+    return map(events, (event) => pick(event, ['id', 'name', 'description']));
   }
 
   @Get(':uuid/events/:eventId')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    type: EventDetail,
-  })
-  @ApiOperation({
-    summary: 'Get an event details',
-    description: 'This is a public endpoint',
-  })
   async getEvent(
     @Param('uuid') uuid: string,
-    @Param('eventId', ParseIntPipe) eventId: number,
-  ): Promise<EventDetail> {
+    @Param('eventId') eventId: string,
+  ): Promise<GetOneEventResponse> {
     if (!(await this.chainService.chainExist(uuid))) {
       throw new NotFoundException('Chain not found');
     }
 
-    const event = await this.eventService.getEventByChain(uuid, eventId);
+    const event = await this.eventService.getEventById(eventId);
 
     if (!event) {
       throw new NotFoundException('Event not found');
     }
 
-    return event;
+    const fields = this.eventService.getEventDataFields(event);
+
+    return {
+      ...omit(event, ['schema']),
+      fields,
+    };
   }
 }

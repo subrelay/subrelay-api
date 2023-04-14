@@ -6,20 +6,23 @@ import {
   CreateChainRequest,
   UpdateChainRequest,
 } from './chain.dto';
-import { Chain } from './chain.entity';
+import { ChainEntity } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
 import { ChainInfo } from '../substrate/substrate.data';
 import { EventService } from '../event/event.service';
 import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
+import { ulid } from 'ulid';
+import { EventEntity } from '../event/event.entity';
+import { UserInputError } from '../common/error.type';
 
 @Injectable()
 export class ChainService implements OnModuleInit {
   private readonly logger = new Logger(ChainService.name);
 
   constructor(
-    @InjectRepository(Chain)
-    private chainRepository: Repository<Chain>,
+    @InjectRepository(ChainEntity)
+    private chainRepository: Repository<ChainEntity>,
 
     private readonly substrateService: SubstrateService,
     private readonly eventService: EventService,
@@ -33,11 +36,25 @@ export class ChainService implements OnModuleInit {
     }
   }
 
+  async getChainsByEventIds(eventIds: string[]): Promise<
+    {
+      chainId: ChainEntity['chainId'];
+      config: ChainEntity['config'];
+    }[]
+  > {
+    return this.chainRepository
+      .createQueryBuilder('c')
+      .innerJoin(EventEntity, 'e', 'e."chainUuid" = c.uuid')
+      .where('e.id IN (:...eventIds)', { eventIds })
+      .select(['DISTINCT "chainId", "config"'])
+      .getRawMany();
+  }
+
   getChains(): Promise<ChainSummary[]> {
     return this.chainRepository
       .createQueryBuilder()
       .select([
-        'DISTINCT ON("chainId") uuid',
+        'uuid',
         'name',
         '"createdAt"',
         'version',
@@ -58,7 +75,7 @@ export class ChainService implements OnModuleInit {
     return (await this.chainRepository.countBy({ chainId })) > 0;
   }
 
-  getChain(uuid: string): Promise<Chain> {
+  getChain(uuid: string): Promise<ChainEntity> {
     return this.chainRepository.findOne({
       where: { uuid },
       relations: {
@@ -67,26 +84,30 @@ export class ChainService implements OnModuleInit {
     });
   }
 
-  async deleteChainByChainId(chainId: string) {
-    await this.chainRepository.delete({ chainId });
+  async deleteChainByChainId(uuid: string) {
+    await this.chainRepository.delete({ uuid });
   }
 
-  async updateChain(uuid: string, input: UpdateChainRequest) {
-    await this.chainRepository.update({ uuid }, input);
+  async updateChain(
+    uuid: string,
+    input: UpdateChainRequest,
+  ): Promise<ChainSummary> {
+    return this.chainRepository.save({ uuid, ...input });
   }
 
   async createChain(input: CreateChainRequest): Promise<ChainSummary> {
     const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(input.rpcs);
 
     if (!chainInfo) {
-      throw new Error('Cannot connect to provider by urls in rpcs');
+      throw new UserInputError('Cannot connect to provider by urls in rpcs');
     }
 
     if (await this.chainExistByChainId(chainInfo.chainId)) {
-      throw new Error(`"${chainInfo.chainId}" exists`);
+      throw new UserInputError(`"${chainInfo.chainId}" exists`);
     }
 
     const chain = await this.insertChain({
+      uuid: ulid(),
       name: input.name,
       imageUrl: input.imageUrl,
       version: chainInfo.runtimeVersion,
@@ -104,8 +125,8 @@ export class ChainService implements OnModuleInit {
     return chain;
   }
 
-  private insertChain(input: Partial<Chain>): Promise<Chain> {
-    return this.chainRepository.save(input);
+  private insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
+    return this.chainRepository.save({ ...input, uuid: ulid() });
   }
 
   private async getChainInfoByRpcs(rpcs: string[]) {
@@ -119,6 +140,8 @@ export class ChainService implements OnModuleInit {
           chainInfo = await this.substrateService.getChainInfo(api);
         }
         validRpcs.push(rpc);
+      } else {
+        throw new UserInputError(`Invalid rpc: ${rpc}. Connection failed.`);
       }
     }
 

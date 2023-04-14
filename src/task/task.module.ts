@@ -10,6 +10,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { TelegramBotService } from './telegram-bot.update';
+import { DiscordModule } from '@discord-nestjs/core';
+import { GatewayIntentBits } from 'discord.js';
 
 @Module({
   imports: [
@@ -41,6 +43,16 @@ import { TelegramBotService } from './telegram-bot.update';
             domain: configService.get('API_BASE_URL'),
             hookPath: '/telegram-bot',
           },
+        },
+      }),
+    }),
+    DiscordModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        token: configService.get('DISCORD_BOT_TOKEN'),
+        discordClientOptions: {
+          intents: [GatewayIntentBits.Guilds],
         },
       }),
     }),

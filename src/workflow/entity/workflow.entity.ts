@@ -5,29 +5,39 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
 import { WorkflowStatus } from '../workflow.type';
-import { ApiProperty } from '@nestjs/swagger';
+import { EventEntity } from '../../event/event.entity';
 
-@Entity()
-export class Workflow {
-  @ApiProperty({ example: 1 })
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('workflow')
+export class WorkflowEntity {
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
-  @ApiProperty({ enum: WorkflowStatus, example: WorkflowStatus.RUNNING })
   @Column({ type: 'text' })
   status: WorkflowStatus;
 
-  @ApiProperty({ example: '2022-11-18T00:52:30.082Z' })
+  @Column({ type: 'text' })
+  name: string;
+
+  @Column({ name: 'updatedAt', type: 'timestamptz' })
+  updatedAt: Date;
+
   @CreateDateColumn({ name: 'createdAt' })
-  createdAt: string;
+  createdAt: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'userId', referencedColumnName: 'id' }])
   user: User;
 
-  @Column({ name: 'userId' })
-  userId: number;
+  @Column({ name: 'userId', type: 'char', length: 26 })
+  userId: string;
+
+  @Column({ type: 'char', length: 26, name: 'eventId' })
+  eventId: string;
+
+  @ManyToOne(() => EventEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'eventId', referencedColumnName: 'id' }])
+  event: EventEntity;
 }

@@ -19,15 +19,15 @@ export enum GeneralTypeEnum {
 
 export class EventDef {
   name: string;
-  dataSchema?: TypeSchema[];
+  schema?: TypeSchema[];
   description?: string;
-  pallet: string;
   index: number;
 }
 
 export class PrimitiveSchema {
   name?: string;
   type: GeneralTypeEnum;
+  originalType: string;
   description?: string;
   typeName: string;
   example?: any;
@@ -36,6 +36,7 @@ export class PrimitiveSchema {
 export class UnknownSchema {
   name?: string;
   type: string;
+  originalType: string;
   description?: string;
   typeName: string;
   example?: any;
@@ -44,6 +45,7 @@ export class UnknownSchema {
 export class ObjectSchema {
   name?: string;
   type: GeneralTypeEnum;
+  originalType: string;
   typeName: string;
   description?: string;
   properties?: {

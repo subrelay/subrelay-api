@@ -1,21 +1,29 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsNotEmptyObject,
-  IsNumber,
   IsOptional,
+  IsString,
   validateSync,
 } from 'class-validator';
 import { isEmpty } from 'lodash';
-import { NotificationTaskConfig } from './notification.type';
+import { EmailTaskConfig } from './email.type';
+import { TelegramTaskConfig } from './telegram.type';
+import { FilterTaskConfig } from './filter.type';
+import { WebhookTaskConfig } from './webhook.type';
 import { TriggerTaskConfig } from './trigger.type';
+import { DiscordTaskConfig } from './discord.type';
+import { ProcessWorkflowInput } from '../../workflow/workflow.type';
 
 export enum TaskType {
-  NOTIFICATION = 'notification',
   TRIGGER = 'trigger',
+  FILTER = 'filter',
+  EMAIL = 'email',
+  WEBHOOK = 'webhook',
+  TELEGRAM = 'telegram',
+  DISCORD = 'discord',
 }
 
-export enum ProcessStatus {
+export enum TaskStatus {
   PENDING = 'pending',
   RUNNING = 'running',
   FAILED = 'failed',
@@ -24,26 +32,12 @@ export enum ProcessStatus {
 }
 
 export class TaskError {
-  @ApiPropertyOptional({
-    example: null,
-  })
   message: string;
 }
 
 export class TaskResult {
-  @ApiProperty({
-    example: true,
-  })
-  success: boolean;
-  @ApiPropertyOptional({
-    example: null,
-  })
+  status: TaskStatus;
   error?: TaskError;
-  @ApiPropertyOptional({
-    example: {
-      match: true,
-    },
-  })
   output?: any;
   input?: any;
 }
@@ -56,12 +50,12 @@ export class TaskLog extends TaskResult {
 export class TaskValidationError extends Error {}
 
 export class BaseTask {
-  @IsNumber()
-  id: number;
+  @IsString()
+  id: string;
 
+  @IsString()
   @IsOptional()
-  @IsNumber()
-  dependOn?: number;
+  dependOn: string;
 
   @IsEnum(TaskType)
   type: TaskType;
@@ -80,30 +74,52 @@ export class BaseTask {
     }
 
     switch (this.type) {
+      case TaskType.FILTER:
+        this.config = new FilterTaskConfig(this.config);
+        break;
+      case TaskType.WEBHOOK:
+        this.config = new WebhookTaskConfig(this.config);
+        break;
+      case TaskType.EMAIL:
+        this.config = new EmailTaskConfig(this.config);
+        break;
+      case TaskType.TELEGRAM:
+        this.config = new TelegramTaskConfig(this.config);
+        break;
       case TaskType.TRIGGER:
         this.config = new TriggerTaskConfig(this.config);
         break;
-      case TaskType.NOTIFICATION:
-        this.config = new NotificationTaskConfig(this.config);
+      case TaskType.DISCORD:
+        this.config = new DiscordTaskConfig(this.config);
         break;
       default:
         throw new Error(`Unsupported type: ${this.type}`);
     }
   }
 
-  isTriggerTask(): boolean {
-    return this.type === TaskType.TRIGGER;
-  }
-
-  getTriggerConfig(): TriggerTaskConfig {
+  getFilterTaskConfig(): FilterTaskConfig {
     return this.config;
   }
 
-  getNotificationTaskConfig(): NotificationTaskConfig {
+  getWebhookTaskConfig(): WebhookTaskConfig {
     return this.config;
   }
 
-  isNotificationTask(): boolean {
-    return this.type === TaskType.NOTIFICATION;
+  getEmailTaskConfig(): EmailTaskConfig {
+    return this.config;
+  }
+
+  getTelegramTaskConfig(): TelegramTaskConfig {
+    return this.config;
+  }
+
+  getTriggerTaskConfig(): TriggerTaskConfig {
+    return this.config;
+  }
+
+  getDiscordTaskConfig(): DiscordTaskConfig {
+    return this.config;
   }
 }
+
+export type ProcessTaskInput = ProcessWorkflowInput;

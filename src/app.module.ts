@@ -21,6 +21,7 @@ import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
+import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
@@ -50,9 +51,6 @@ import { AuthMiddleware } from './common/auth.middleware';
         },
       }),
     }),
-    BullModule.registerQueue({
-      name: 'block',
-    }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     UserModule,
@@ -61,6 +59,7 @@ import { AuthMiddleware } from './common/auth.middleware';
     SubstrateModule,
     TaskModule,
     WorkflowModule,
+    WorkerModule,
   ],
   controllers: [AppController],
   providers: [
@@ -87,7 +86,9 @@ export class AppModule implements NestModule {
         { method: RequestMethod.GET, path: '/api' },
         { method: RequestMethod.GET, path: '/api/*' },
         { method: RequestMethod.GET, path: '/chains' },
-        { method: RequestMethod.GET, path: '/tasks/operators' },
+        { method: RequestMethod.GET, path: '/tasks/filter/operators' },
+        { method: RequestMethod.GET, path: '/tasks/filter/fields' },
+        { method: RequestMethod.GET, path: '/tasks/custom-message/fields' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
         { method: RequestMethod.POST, path: '/chains' },

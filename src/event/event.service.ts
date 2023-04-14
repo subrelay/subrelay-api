@@ -1,118 +1,93 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { set } from 'lodash';
+import { isNil, set, words } from 'lodash';
 import { Repository } from 'typeorm';
-import { EventData } from '../common/queue.type';
+import { ulid } from 'ulid';
+import { Pagination } from '../common/pagination.type';
+import { EventRawData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import {
-  EventDetail,
-  EventSummary,
-  GetEventsQueryParams,
-  SupportedFilterField,
-} from './event.dto';
-import { Event } from './event.entity';
+import { DataField } from './event.dto';
+import { EventEntity } from './event.entity';
+import { ChainEntity } from '../chain/chain.entity';
+import { blake2AsHex } from '@polkadot/util-crypto';
 
 @Injectable()
 export class EventService {
   constructor(
-    @InjectRepository(Event)
-    private eventRepository: Repository<Event>,
+    @InjectRepository(EventEntity)
+    private eventRepository: Repository<EventEntity>,
   ) {}
 
   async createEvents(events: EventDef[], chainUuid: string) {
-    const createEventsInput: Partial<Event>[] = events.map((event) => ({
+    const createEventsInput: Partial<EventEntity>[] = events.map((event) => ({
+      id: ulid(),
       ...event,
       chainUuid,
     }));
     await this.eventRepository.insert(createEventsInput);
   }
 
-  getEventsByChainUuidAndName(chainUuid: string, names: string[]) {
+  getEventsByChainIdAndName(chainId: string, names: string[]) {
     return this.eventRepository
-      .createQueryBuilder('event')
-      .where('"chainUuid" = :chainUuid', { chainUuid })
-      .andWhere(`CONCAT(pallet, '.', name) IN (:...names) `, { names })
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('c."chainId" = :chainId', { chainId })
+      .andWhere(`e.name IN (:...names) `, { names })
       .getMany();
   }
 
-  async getEventByChain(
-    chainUuid: string,
-    eventId: number,
-  ): Promise<EventDetail> {
-    const event = await this.eventRepository.findOneBy({
-      id: eventId,
-      chainUuid,
-    });
+  generateEventRawDataSample(event: EventEntity): EventRawData {
+    const fields = this.getEventDataFields(event);
 
-    if (!event) {
-      return null;
-    }
-
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
-  }
-
-  async generateEventSample(eventId): Promise<EventData> {
-    const event = await this.getEventById(eventId);
-    if (!event) {
-      return null;
-    }
-
-    const eventData: EventData = {
+    const eventRawData: EventRawData = {
       timestamp: Date.now(),
       block: {
-        hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
+        hash: blake2AsHex(ulid()),
       },
       success: true,
       data: null,
     };
-    event.fields.forEach((f) => set(eventData, f.name, f.example));
+    fields.forEach((f) => set(eventRawData, f.name, f.data));
 
-    return eventData;
+    return eventRawData;
   }
 
-  async getEventById(eventId: number): Promise<EventDetail> {
-    const event = await this.eventRepository.findOneBy({
-      id: eventId,
-    });
+  async getEventById(
+    eventId: string,
+    chainUuid?: string,
+  ): Promise<EventEntity> {
+    let queryBuilder = this.eventRepository
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('e."id" = :eventId', { eventId })
+      .select([
+        'e.id AS id',
+        'e.name AS name',
+        'e.description AS description',
+        'e.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
 
-    if (!event) {
-      return null;
+    if (!isNil(chainUuid)) {
+      queryBuilder = queryBuilder.andWhere('e."chainUuid =:chainUuid"', {
+        chainUuid,
+      });
     }
 
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
+    return (await queryBuilder.getRawOne()) as EventEntity;
   }
 
   getEventsByChain(
     chainUuid: string,
-    queryParams?: GetEventsQueryParams,
-  ): Promise<EventSummary[]> {
+    queryParams?: Pagination,
+  ): Promise<EventEntity[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
-      .select([
-        'event.id',
-        'event.name',
-        'event.pallet',
-        'event.index',
-        'event.description',
-        'event."chainUuid"',
-      ])
       .where('event."chainUuid" = :chainUuid', { chainUuid });
-
-    if (queryParams.pallet) {
-      queryBuilder = queryBuilder.andWhere('event.pallet = :pallet', {
-        pallet: queryParams.pallet,
-      });
-    }
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(event.name ILIKE :search OR event.pallet ILIKE :search OR event.description ILIKE :search)',
+        '(event.name ILIKE :search OR event.description ILIKE :search)',
         { search: `%${queryParams.search}%` },
       );
     }
@@ -128,29 +103,69 @@ export class EventService {
     return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
   }
 
-  private getSupportedFields(event: Event): SupportedFilterField[] {
-    const dataFields = event.dataSchema.map((field) => {
+  getEventDataFields(event: EventEntity): DataField[] {
+    return event.schema.map((field) => {
       const name = isNaN(parseInt(field.name))
         ? `data.${field.name}`
         : `data[${field.name}]`;
 
       return {
         name,
-        description: field.description,
+        description: field.description || words(field.name).join(' '),
         type: field.type as GeneralTypeEnum,
-        example: field.example,
+        data: field.example,
       };
     });
+  }
 
-    const eventFields = [
+  getEventStatusFields(): DataField[] {
+    return [
       {
         name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
-        example: true,
+        data: true,
       },
     ];
+  }
 
-    return [...eventFields, ...dataFields].filter((field) => field);
+  getEventExtraFields(): DataField[] {
+    return [
+      {
+        name: 'block.hash',
+        description: 'The hash of the block',
+        type: GeneralTypeEnum.STRING,
+        data: blake2AsHex(ulid()),
+      },
+      {
+        name: 'time',
+        description: 'The time that the event happened',
+        type: GeneralTypeEnum.STRING,
+        data: new Date(Date.now()),
+      },
+    ];
+  }
+
+  getEventInfoFields(event: EventEntity): DataField[] {
+    return [
+      {
+        name: 'id',
+        description: 'The Id of the event',
+        type: GeneralTypeEnum.NUMBER,
+        data: event.id,
+      },
+      {
+        name: 'name',
+        description: 'The name of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.name,
+      },
+      {
+        name: 'description',
+        description: 'The description of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.description,
+      },
+    ];
   }
 }

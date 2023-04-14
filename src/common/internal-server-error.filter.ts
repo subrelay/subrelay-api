@@ -9,7 +9,8 @@ import {
 import * as Rollbar from 'rollbar';
 import { ConfigService } from '@nestjs/config';
 import { TaskValidationError } from '../task/type/task.type';
-import { TelegramError } from '../task/type/notification.type';
+import { TelegramTaskError } from '../task/type/telegram.type';
+import { UserInputError } from './error.type';
 
 @Catch()
 export class InternalServerExceptionsFilter implements ExceptionFilter {
@@ -28,7 +29,8 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
 
     if (
       exception instanceof TaskValidationError ||
-      exception instanceof TelegramError
+      exception instanceof TelegramTaskError ||
+      exception instanceof UserInputError
     ) {
       res.status(HttpStatus.BAD_REQUEST).json({ message: exception.message });
       return;

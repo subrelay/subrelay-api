@@ -7,117 +7,82 @@ import {
   HttpCode,
   NotFoundException,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBasicAuth,
-  ApiCreatedResponse,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
-import { findIndex, get, orderBy } from 'lodash';
+import { filter, findIndex, isEmpty, map, orderBy, uniq } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
+import { TaskService } from '../task/task.service';
 import { TaskType } from '../task/type/task.type';
 import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
-  CreateWorkflowTask,
+  CreateWorkflowTaskRequest,
   GetWorkflowsQueryParams,
-  WorkflowsResponse,
-  UpdateWorkFlowRequest,
-  WorkflowDetail,
+  UpdateWorkflowRequest,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
+import { TriggerTaskConfig } from '../task/type/trigger.type';
 
 @Controller('workflows')
-@ApiTags('Workflow')
 export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
+    private readonly taskService: TaskService,
   ) {}
 
   @Get()
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    type: WorkflowsResponse,
-  })
-  @ApiOperation({
-    summary: 'Get all workflows',
-  })
-  @ApiBasicAuth()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
     @UserInfo() user: User,
-  ): Promise<WorkflowsResponse> {
+  ) {
+    const { workflows, total } =
+      await this.workflowService.getWorkflowsAndTotal(queryParams, user.id);
+
     return {
-      workflows: await this.workflowService.getWorkflows(queryParams, user.id),
-      total: await this.workflowService.getWorkflowsTotal(queryParams, user.id),
+      workflows,
+      total,
       limit: queryParams.limit,
       offset: queryParams.offset,
     };
   }
 
   @Get(':id')
-  @ApiOkResponse({
-    description: 'Return data if request is successful',
-    type: WorkflowDetail,
-  })
-  @ApiBasicAuth()
-  @ApiOperation({
-    summary: 'Get a workflow details',
-  })
-  async getWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @UserInfo() user: User,
-  ): Promise<WorkflowDetail> {
+  async getWorkflow(@Param('id') id: string, @UserInfo() user: User) {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
       throw new NotFoundException('Workflow not found');
     }
 
-    return workflow;
+    const tasks = await this.taskService.getTasks(workflow.id);
+
+    return {
+      ...workflow,
+      tasks,
+    };
   }
 
   @Patch(':id')
   @HttpCode(204)
-  @ApiBasicAuth()
-  @ApiNoContentResponse()
-  @ApiOperation({
-    summary: 'Update a workflow',
-  })
   async updateWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() input: UpdateWorkFlowRequest,
+    @Param('id') id: string,
+    @Body() input: UpdateWorkflowRequest,
     @UserInfo() user: User,
   ) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
 
-    await this.workflowService.updateWorkflowStatus(id, input);
+    await this.workflowService.updateWorkflow(id, input);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @ApiBasicAuth()
-  @ApiNoContentResponse({
-    description: 'Return data if request is successful',
-  })
-  @ApiOperation({
-    summary: 'Delete a workflow',
-  })
-  async deleteWorkflow(
-    @Param('id', ParseIntPipe) id: number,
-    @UserInfo() user: User,
-  ) {
+  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: User) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
@@ -126,61 +91,85 @@ export class WorkflowController {
   }
 
   @Post()
-  @ApiCreatedResponse({
-    description: 'Return data if request is successful',
-    type: WorkflowDetail,
-  })
-  @ApiOperation({
-    summary: 'Create a workflow',
-  })
-  @ApiBasicAuth()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() user: User,
-  ): Promise<WorkflowDetail> {
-    input.tasks = orderBy(
-      input.tasks.map((task) => ({
-        ...task,
-        dependOnIndex: findIndex(input.tasks, { name: task.dependOnName }),
-      })),
-      ['dependOnIndex'],
-      ['asc'],
-    );
-    await this.validateTasks(input.chainUuid, input.tasks);
+  ) {
+    input.tasks = this.modifyTaskRequests(input.tasks);
+    await this.validateWorkflowTasks(input.tasks);
 
-    const workflowId = await this.workflowService.createWorkflow(
-      input,
-      user.id,
-    );
+    const workflow = await this.workflowService.createWorkflow(input, user.id);
 
-    return this.workflowService.getWorkflow(workflowId, user.id);
+    const tasks = await this.taskService.getTasks(workflow.id);
+
+    return {
+      ...workflow,
+      tasks,
+    };
   }
 
-  private async validateTasks(chainUuid: string, tasks: CreateWorkflowTask[]) {
-    const triggerTask = tasks.find((t) => t.type === TaskType.TRIGGER);
-
-    if (!triggerTask) {
-      throw new BadRequestException('A workflow should has one trigger task');
-    } else if (triggerTask.dependOnIndex !== -1) {
-      throw new BadRequestException('Trigger task depends on invalid task');
+  private async validateWorkflowTasks(tasks: CreateWorkflowTaskRequest[]) {
+    if (tasks.length < 2) {
+      throw new BadRequestException('Workflow should have at least 2 tasks.');
     }
 
-    const event = await this.eventService.getEventByChain(
-      chainUuid,
-      get(triggerTask, 'config.eventId'),
-    );
+    const taskNames = map(tasks, 'name');
+    if (taskNames.length > uniq(taskNames).length) {
+      throw new BadRequestException('Task names in a workflow should be uniq.');
+    }
 
+    const triggerTasks = filter(tasks, { type: TaskType.TRIGGER });
+    if (isEmpty(triggerTasks)) {
+      throw new BadRequestException('Can not found trigger task.');
+    } else if (triggerTasks.length > 1) {
+      throw new BadRequestException(
+        'Should have only one trigger task in a workflow.',
+      );
+    }
+
+    const triggerTaskConfig = new TriggerTaskConfig(triggerTasks[0].config);
+    const event = await this.eventService.getEventById(
+      triggerTaskConfig.eventId,
+    );
     if (!event) {
       throw new BadRequestException('Event not found');
     }
 
-    const otherTasks = tasks.filter((t) => t.type !== TaskType.TRIGGER);
-    if (otherTasks.length === 0) {
+    const missingDependingTaskNames = tasks
+      .filter((t) => t.dependOnIndex === null && t.type !== TaskType.TRIGGER)
+      .map((t) => t.name);
+    if (!isEmpty(missingDependingTaskNames)) {
       throw new BadRequestException(
-        'A workflow should has at least one notification task',
+        `${missingDependingTaskNames.join(
+          ', ',
+        )} task(s) have to depend on another task.`,
       );
-    } else if (otherTasks.some((task) => task.dependOnIndex === -1)) {
-      throw new BadRequestException('Task depends on invalid task');
     }
+
+    const invalidDependingTaskNames = tasks
+      .filter((t) => t.dependOnIndex === -1)
+      .map((t) => t.name);
+    if (!isEmpty(invalidDependingTaskNames)) {
+      throw new BadRequestException(
+        `${invalidDependingTaskNames.join(
+          ', ',
+        )} task(s) depend on invalid task.`,
+      );
+    }
+  }
+
+  modifyTaskRequests(
+    tasks: CreateWorkflowTaskRequest[],
+  ): CreateWorkflowTaskRequest[] {
+    return orderBy(
+      tasks.map((task) => ({
+        ...task,
+        dependOnIndex: task.dependOnName
+          ? findIndex(tasks, { name: task.dependOnName })
+          : -2,
+      })),
+      ['dependOnIndex'],
+      ['asc'],
+    );
   }
 }

@@ -6,10 +6,10 @@ import {
   isArray,
   isEmpty,
 } from 'class-validator';
-import { FilterOperator, TriggerCondition } from '../type/trigger.type';
+import { FilterCondition, FilterVariableOperator } from '../type/filter.type';
 
 @ValidatorConstraint({ async: false })
-export class IsTriggerConditionsConstraint
+export class IsFilterConditionsConstraint
   implements ValidatorConstraintInterface
 {
   message: string;
@@ -28,7 +28,7 @@ export class IsTriggerConditionsConstraint
         errorMessages.push(`conditions.${i} should be an array`);
       }
 
-      (conditionList as TriggerCondition[]).forEach((condition, j) => {
+      (conditionList as FilterCondition[]).forEach((condition, j) => {
         if (!condition.variable) {
           errorMessages.push(
             `conditions.${i}.${j}.variable should not be empty`,
@@ -41,10 +41,12 @@ export class IsTriggerConditionsConstraint
           );
         }
 
-        if (!Object.values(FilterOperator).includes(condition.operator)) {
+        if (
+          !Object.values(FilterVariableOperator).includes(condition.operator)
+        ) {
           errorMessages.push(
             `conditions.${i}.${j}.operator is invalid. Possible values: ${Object.values(
-              FilterOperator,
+              FilterVariableOperator,
             ).join(', ')}`,
           );
         }
@@ -59,14 +61,14 @@ export class IsTriggerConditionsConstraint
   }
 }
 
-export function IsTriggerConditions(validationOptions?: ValidationOptions) {
+export function IsFilterConditions(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
       constraints: [],
-      validator: IsTriggerConditionsConstraint,
+      validator: IsFilterConditionsConstraint,
     });
   };
 }

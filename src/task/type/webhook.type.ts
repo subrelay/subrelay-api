@@ -1,14 +1,26 @@
-import { IsString, validateSync } from 'class-validator';
-import { TaskValidationError } from './task.type';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  validateSync,
+} from 'class-validator';
 import { isEmpty } from 'lodash';
+import { TaskValidationError } from './task.type';
 
-export class TriggerTaskConfig {
+export class WebhookTaskConfig {
   @IsString()
-  eventId: string;
+  @IsOptional()
+  secret?: string;
+
+  encrypted?: boolean = true;
+
+  @IsNotEmpty()
+  @IsUrl()
+  url: string;
 
   constructor(config: any) {
     Object.assign(this, config);
-
     const errors = validateSync(this);
     if (!isEmpty(errors)) {
       const message = errors
