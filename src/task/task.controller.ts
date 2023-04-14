@@ -5,12 +5,16 @@ import {
   HttpCode,
   NotFoundException,
   Post,
+  Query,
 } from '@nestjs/common';
-import { mapValues, startCase } from 'lodash';
+import { mapValues, pick, startCase } from 'lodash';
 import { EventService } from '../event/event.service';
 import { ProcessTaskRequest, ProcessTaskResponse } from './task.dto';
 import { TaskService } from './task.service';
-import { BaseTask } from './type/task.type';
+import { BaseTask, ProcessTaskInput, TaskType } from './type/task.type';
+import { DataField } from '../event/event.dto';
+import { EventEntity } from '../event/event.entity';
+import { ulid } from 'ulid';
 
 @Controller('tasks')
 export class TaskController {
@@ -29,24 +33,19 @@ export class TaskController {
       throw new NotFoundException('Event not found');
     }
 
-    const eventRawData = await this.eventService.generateEventRawDataSample(
-      event,
-    );
+    if (input.type === TaskType.WEBHOOK) {
+      input.config = { ...input.config, encrypted: false };
+    }
 
     const baseTask = new BaseTask({
       type: input.type,
       config: input.config,
       id: 'TestTask',
     });
-
-    const result = await this.taskService.processTask(baseTask, {
-      eventRawData,
-      workflow: {
-        id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
-        name: 'This workflow only for testing',
-        event,
-      },
-    });
+    const result = await this.taskService.processTask(
+      baseTask,
+      this.createProcessTaskInput(event),
+    );
 
     return {
       status: result.status,
@@ -64,5 +63,50 @@ export class TaskController {
         name: startCase(operator).toLowerCase(),
       })),
     );
+  }
+
+  @Get('/filter/fields')
+  async getFilterVariableFields(
+    @Query('eventId') eventId: string,
+  ): Promise<DataField[]> {
+    const event = await this.eventService.getEventById(eventId);
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    return this.taskService.getFilterFields(event);
+  }
+
+  @Get('/custom-message/fields')
+  async getCustomMessageFields(
+    @Query('eventId') eventId: string,
+  ): Promise<DataField[]> {
+    const event = await this.eventService.getEventById(eventId);
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    return this.taskService.getCustomMessageFields(event);
+  }
+
+  createProcessTaskInput(event: EventEntity): ProcessTaskInput {
+    const eventRawData = this.eventService.generateEventRawDataSample(event);
+    return {
+      event: {
+        ...pick(event, ['id', 'name', 'description']),
+        ...eventRawData,
+        time: new Date(),
+      },
+      workflow: {
+        id: ulid(),
+        name: 'This is a sample workflow for testing task',
+      },
+      chain: {
+        name: event.chain.name,
+        uuid: event.chain.uuid,
+      },
+    };
   }
 }

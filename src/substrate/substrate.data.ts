@@ -27,6 +27,7 @@ export class EventDef {
 export class PrimitiveSchema {
   name?: string;
   type: GeneralTypeEnum;
+  originalType: string;
   description?: string;
   typeName: string;
   example?: any;
@@ -35,6 +36,7 @@ export class PrimitiveSchema {
 export class UnknownSchema {
   name?: string;
   type: string;
+  originalType: string;
   description?: string;
   typeName: string;
   example?: any;
@@ -43,6 +45,7 @@ export class UnknownSchema {
 export class ObjectSchema {
   name?: string;
   type: GeneralTypeEnum;
+  originalType: string;
   typeName: string;
   description?: string;
   properties?: {

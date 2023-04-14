@@ -1,12 +1,12 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
-import { isEmpty, map } from 'lodash';
-import { WorkflowJobData } from '../common/queue.type';
+import { find, map } from 'lodash';
 import { TaskService } from '../task/task.service';
-import { BaseTask, TaskStatus } from '../task/type/task.type';
+import { BaseTask, TaskStatus, TaskType } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ulid } from 'ulid';
+import { ProcessWorkflowInput } from '../workflow/workflow.type';
 
 @Processor('workflow')
 export class WorkflowProcessor {
@@ -18,11 +18,11 @@ export class WorkflowProcessor {
 
   @Process({ concurrency: 10 })
   async processWorkflowJob(job: Job) {
-    const { workflow, eventRawData }: WorkflowJobData = job.data;
+    const input: ProcessWorkflowInput = job.data;
     this.logger.debug(
-      `Process event "${workflow.event.name}" for workflow version ${workflow.id} xxxx`,
+      `Process event "${input.event.name}" for workflow version ${input.workflow.id} xxxx`,
     );
-    const tasks = await this.taskService.getTasks(workflow.id, false);
+    const tasks = await this.taskService.getTasks(input.workflow.id, false);
 
     const schema: { [key: string]: BaseTask } = {};
     tasks.forEach((task) => {
@@ -30,19 +30,25 @@ export class WorkflowProcessor {
     });
 
     const workflowResult = await this.workflowService.processWorkflow(
-      { eventRawData, workflow },
+      input,
       schema,
     );
 
-    if (isEmpty(workflowResult)) {
+    const filterTask = find(tasks, { type: TaskType.FILTER });
+
+    if (
+      filterTask &&
+      workflowResult[filterTask.id].status === TaskStatus.SUCCESS &&
+      workflowResult[filterTask.id]?.output?.match === false
+    ) {
       this.logger.debug(`Event not match!`);
       return;
     }
 
     let workflowLogStatus = TaskStatus.SUCCESS;
     const workflowLogId = await this.workflowService.createWorkflowLog({
-      input: eventRawData,
-      workflowId: workflow.id,
+      input: input.event.data,
+      workflowId: input.workflow.id,
     });
 
     const taskLogs = map(schema, (task) => {

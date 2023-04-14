@@ -58,7 +58,7 @@ export class WorkflowController {
       throw new NotFoundException('Workflow not found');
     }
 
-    const tasks = await this.taskService.getTasks(workflow.id, false);
+    const tasks = await this.taskService.getTasks(workflow.id);
 
     return {
       ...workflow,

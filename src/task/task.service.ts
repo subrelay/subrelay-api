@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { findIndex, get, pick, template } from 'lodash';
+import { findIndex, get, map, template } from 'lodash';
 import {
   BaseTask,
+  ProcessTaskInput,
   TaskLog,
   TaskResult,
   TaskStatus,
@@ -13,14 +14,12 @@ import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import { ProcessTaskInput } from './task.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { ulid } from 'ulid';
-import { EventData } from '../event/event.type';
 import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
 import {
   TelegramTaskConfig,
@@ -28,9 +27,7 @@ import {
   TelegramTaskInput,
 } from './type/telegram.type';
 import { WebhookTaskConfig } from './type/webhook.type';
-import { EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
-import { WorkflowSummary } from '../workflow/workflow.type';
 import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
 import { InjectDiscordClient } from '@discord-nestjs/core';
 import { Client, TextChannel } from 'discord.js';
@@ -39,11 +36,9 @@ import {
   DiscordTaskError,
   DiscordTaskInput,
 } from './type/discord.type';
-import {
-  decryptText,
-  encryptText,
-  generateWebhookSignature,
-} from '../common/crypto.util';
+import { decryptText, generateWebhookSignature } from '../common/crypto.util';
+import { EventEntity } from '../event/event.entity';
+import { DataField } from '../event/event.dto';
 
 @Injectable()
 export class TaskService {
@@ -66,25 +61,6 @@ export class TaskService {
     private readonly configService: ConfigService,
     private readonly eventService: EventService,
   ) {}
-
-  async createTask(input: Partial<TaskEntity>): Promise<string> {
-    if (input.type == TaskType.WEBHOOK) {
-      const config = new WebhookTaskConfig(input.config);
-      if (config.secret) {
-        input.config = {
-          ...input.config,
-          secret: encryptText(
-            get(input.config, 'secret'),
-            this.configService.get('WEBHOOK_SECRET_KEY'),
-          ),
-        };
-      }
-    }
-
-    const result = await this.taskRepository.save({ ...input, id: ulid() });
-
-    return result.id;
-  }
 
   async createTaskLogs(input: Partial<TaskLog>[]) {
     return await this.taskLogRepository.save(input);
@@ -136,6 +112,8 @@ export class TaskService {
     const startedAt = new Date();
     let result;
 
+    console.log({ task });
+
     try {
       switch (task.type) {
         case TaskType.TRIGGER:
@@ -146,7 +124,7 @@ export class TaskService {
         case TaskType.FILTER:
           result = await this.processFilterTask(
             new FilterTaskConfig(task.getFilterTaskConfig()),
-            input.eventRawData,
+            input,
           );
           break;
         case TaskType.EMAIL:
@@ -229,14 +207,71 @@ export class TaskService {
     };
   }
 
+  getFilterFields(event: EventEntity): DataField[] {
+    const eventDataFields = this.eventService.getEventDataFields(event);
+    const eventStatusFields = this.eventService.getEventStatusFields();
+    return [
+      ...map([...eventDataFields, ...eventStatusFields], (field) => ({
+        ...field,
+        name: `event.${field.name}`,
+      })),
+    ];
+  }
+
+  getCustomMessageFields(event: EventEntity): DataField[] {
+    const eventDataFields = this.eventService.getEventDataFields(event);
+    const eventStatusFields = this.eventService.getEventStatusFields();
+    const eventInfoFields = this.eventService.getEventInfoFields(event);
+    const eventExtraFields = this.eventService.getEventExtraFields();
+
+    return [
+      {
+        name: 'workflow.id',
+        description: ' The workflow ID',
+        type: GeneralTypeEnum.STRING,
+        data: ulid(),
+      },
+      {
+        name: 'workflow.name',
+        description: ' The workflow name',
+        type: GeneralTypeEnum.STRING,
+        data: `Workflow for event ${event.name}`,
+      },
+      {
+        name: 'chain.uuid',
+        description: ' The chain UUID',
+        type: GeneralTypeEnum.STRING,
+        data: event.chain.uuid,
+      },
+      {
+        name: 'chain.name',
+        description: ' The chain name',
+        type: GeneralTypeEnum.STRING,
+        data: event.chain.name,
+      },
+      ...map(
+        [
+          ...eventInfoFields,
+          ...eventStatusFields,
+          ...eventDataFields,
+          ...eventExtraFields,
+        ],
+        (field) => ({
+          ...field,
+          name: `event.${field.name}`,
+        }),
+      ),
+    ];
+  }
+
   private processFilterTask(
     config: FilterTaskConfig,
-    eventRawData: EventRawData,
+    input: ProcessTaskInput,
   ): TaskResult {
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
-          const actualValue = get(eventRawData, condition.variable);
+          const actualValue = get(input, condition.variable);
           return this.isMatchCondition(
             condition.operator,
             actualValue,
@@ -246,7 +281,7 @@ export class TaskService {
       );
 
       return {
-        input: eventRawData,
+        input: input,
         status: TaskStatus.SUCCESS,
         output: {
           match,
@@ -254,7 +289,7 @@ export class TaskService {
       };
     } catch (error) {
       return {
-        input: eventRawData,
+        input: input,
         status: TaskStatus.FAILED,
         error: {
           message: error.message,
@@ -275,56 +310,61 @@ export class TaskService {
   }
 
   private async processWebhookTask(
-    { url, secret }: WebhookTaskConfig,
-    input: {
-      eventRawData: EventRawData;
-      workflow: WorkflowSummary;
-    },
+    { url, secret, encrypted }: WebhookTaskConfig,
+    input: ProcessTaskInput,
   ) {
     const rs: TaskResult = {
-      input: input.eventRawData,
+      input: input,
       status: TaskStatus.RUNNING,
     };
     try {
-      const data = this.getWebhookTaskInput(input);
-
       const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
       const headers = { Accept: 'application/json' };
-      const decryptedSecret = secret
-        ? decryptText(secret, webhookSecretKey)
-        : secret;
+      let decryptedSecret;
+      if (secret) {
+        if (encrypted) {
+          decryptedSecret = decryptText(secret, webhookSecretKey);
+        } else {
+          decryptedSecret = secret;
+        }
+      }
+
+      console.log({ decryptedSecret });
+
+      console.log({ decryptedSecret, webhookSecretKey });
 
       if (decryptedSecret) {
         headers['X-Hub-Signature-256'] = generateWebhookSignature(
           decryptedSecret,
-          data,
+          input,
         );
       }
 
-      await this.httpService.axiosRef.post(url, data, {
+      await this.httpService.axiosRef.post(url, input, {
         headers,
       });
-      rs.input = data;
       rs.status = TaskStatus.SUCCESS;
     } catch (error) {
+      console.log({ error });
+
       rs.status = TaskStatus.FAILED;
-      rs.error = error;
+      rs.error.message = error?.message;
     }
 
     return rs;
   }
 
-  private buildCustomMessage(messageTemplate: string, eventData: EventData) {
+  private buildCustomMessage(messageTemplate: string, data: ProcessTaskInput) {
     const compiled = template(messageTemplate);
-    return compiled(eventData);
+    return compiled(data);
   }
 
   private getEmailTaskInput(
     { subjectTemplate, bodyTemplate }: EmailTaskConfig,
-    eventData: EventData,
+    input: ProcessTaskInput,
   ): EmailTaskInput {
-    const subject = this.buildCustomMessage(subjectTemplate, eventData);
-    const body = this.buildCustomMessage(bodyTemplate, eventData);
+    const subject = this.buildCustomMessage(subjectTemplate, input);
+    const body = this.buildCustomMessage(bodyTemplate, input);
 
     return {
       subject,
@@ -332,43 +372,17 @@ export class TaskService {
     };
   }
 
-  private getWebhookTaskInput({
-    eventRawData,
-    workflow,
-  }: {
-    eventRawData: EventRawData;
-    workflow: WorkflowSummary;
-  }) {
-    const eventData = this.eventService.getEventData(
-      workflow.event,
-      eventRawData,
-    );
-
-    return {
-      ...eventData,
-      workflow: pick(workflow, ['id', 'name']),
-      chain: workflow.chain,
-    };
-  }
-
   private async processEmailTask(
     config: EmailTaskConfig,
-    {
-      eventRawData,
-      workflow,
-    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
+    input: ProcessTaskInput,
   ) {
+    const { subject, body } = this.getEmailTaskInput(config, input);
     const rs: TaskResult = {
-      input: eventRawData,
+      input: { subject, body },
       status: TaskStatus.RUNNING,
     };
-    try {
-      const eventData = this.eventService.getEventData(
-        workflow.event,
-        eventRawData,
-      );
-      const { subject, body } = this.getEmailTaskInput(config, eventData);
 
+    try {
       const now = Date.now();
       await this.mailerService.sendMail({
         from: `SubRelay Notifications ${this.configService.get(
@@ -398,42 +412,35 @@ export class TaskService {
 
   private getTelegramTaskInput(
     { messageTemplate }: TelegramTaskConfig,
-    eventData: EventData,
+    input: ProcessTaskInput,
   ): TelegramTaskInput {
     return {
-      message: this.buildCustomMessage(messageTemplate, eventData),
+      message: this.buildCustomMessage(messageTemplate, input),
     };
   }
 
   private getDiscordTaskInput(
     { messageTemplate }: DiscordTaskConfig,
-    eventData: EventData,
+    input: ProcessTaskInput,
   ): DiscordTaskInput {
     return {
-      message: this.buildCustomMessage(messageTemplate, eventData),
+      message: this.buildCustomMessage(messageTemplate, input),
     };
   }
 
   private async processTelegramTask(
     config: TelegramTaskConfig,
-    {
-      eventRawData,
-      workflow,
-    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
+    input: ProcessTaskInput,
   ) {
+    const { message } = this.getTelegramTaskInput(config, input);
+
     const rs: TaskResult = {
-      input: eventRawData,
+      input: { message },
       status: TaskStatus.RUNNING,
     };
 
     try {
       await this.validateTelegramChatId(config.chatId);
-
-      const eventData = this.eventService.getEventData(
-        workflow.event,
-        eventRawData,
-      );
-      const { message } = this.getTelegramTaskInput(config, eventData);
 
       await this.telegramBot.telegram.sendMessage(config.chatId, message, {
         parse_mode: 'HTML',
@@ -454,19 +461,12 @@ export class TaskService {
 
   private async processDiscordTask(
     config: DiscordTaskConfig,
-    {
-      eventRawData,
-      workflow,
-    }: { eventRawData: EventRawData; workflow: WorkflowSummary },
+    input: ProcessTaskInput,
   ) {
-    const eventData = this.eventService.getEventData(
-      workflow.event,
-      eventRawData,
-    );
-    const { message } = this.getDiscordTaskInput(config, eventData);
+    const { message } = this.getDiscordTaskInput(config, input);
 
     const rs: TaskResult = {
-      input: message,
+      input: { message },
       status: TaskStatus.RUNNING,
     };
 

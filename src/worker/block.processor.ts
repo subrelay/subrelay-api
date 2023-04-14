@@ -6,6 +6,7 @@ import { BlockJobData, EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
 import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from '../workflow/workflow.service';
+import { createProcessWorkflowInput } from '../workflow/workflow.type';
 
 @Processor('block')
 export class BlockProcessor {
@@ -52,10 +53,11 @@ export class BlockProcessor {
         data.events,
         (e) => e.name === workflow.event.name,
       );
+      const eventInfo = find(events, { id: workflow.event.id });
       const blockEventData = reduce(
         blockEvent.data,
         (result, value, index) => {
-          const field = workflow.event.schema[index];
+          const field = eventInfo.schema[index];
           result[field.name] = formatValue(field.typeName, value);
           return result;
         },
@@ -72,10 +74,7 @@ export class BlockProcessor {
       };
 
       return {
-        data: {
-          workflow,
-          eventRawData,
-        },
+        data: createProcessWorkflowInput(workflow, eventRawData),
         opts: {
           ...jobOption,
           jobId: `${workflow.id}_${data.hash}`,

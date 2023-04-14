@@ -1,3 +1,4 @@
+import { pick } from 'lodash';
 import { ChainEntity } from '../chain/chain.entity';
 import { EventRawData } from '../common/queue.type';
 import { EventEntity } from '../event/event.entity';
@@ -18,7 +19,7 @@ export type Workflow = Pick<
   'id' | 'name' | 'status' | 'createdAt' | 'updatedAt'
 > & {
   chain: Pick<ChainEntity, 'uuid' | 'name' | 'imageUrl'>;
-  event: Pick<EventEntity, 'id' | 'name'>;
+  event: Pick<EventEntity, 'id' | 'name' | 'description'>;
 };
 
 export type WorkflowLogSummary = Pick<
@@ -30,6 +31,23 @@ export type WorkflowLogSummary = Pick<
 };
 
 export class ProcessWorkflowInput {
-  workflow: WorkflowSummary;
-  eventRawData: EventRawData;
+  event: Pick<EventEntity, 'id' | 'name' | 'description'> &
+    EventRawData & { time: Date };
+  workflow: Pick<WorkflowEntity, 'id' | 'name'>;
+  chain: Pick<ChainEntity, 'uuid' | 'name'>;
+}
+
+export function createProcessWorkflowInput(
+  workflow: Workflow,
+  eventData: EventRawData,
+): ProcessWorkflowInput {
+  return {
+    event: {
+      ...pick(workflow.event, ['id', 'name', 'description']),
+      ...eventData,
+      time: new Date(eventData.timestamp),
+    },
+    workflow: pick(workflow, ['id', 'name']),
+    chain: pick(workflow.chain, ['uuid', 'name']),
+  };
 }

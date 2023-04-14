@@ -2,7 +2,7 @@ import { GeneralTypeEnum } from '../substrate/substrate.data';
 import { EventEntity } from './event.entity';
 import { EventSummary } from './event.type';
 
-export class EventDataField {
+export class DataField {
   name: string;
 
   description?: string;
@@ -10,14 +10,11 @@ export class EventDataField {
   data?: any;
 
   type: GeneralTypeEnum;
-
-  supportFilter: boolean;
-
-  supportCustomMessage: boolean;
+  originalType?: string;
 }
 
 export type GetOneEventResponse = EventSummary & {
-  fields: EventDataField[];
+  fields: DataField[];
 };
 
 export type GetEventsResponse = Pick<

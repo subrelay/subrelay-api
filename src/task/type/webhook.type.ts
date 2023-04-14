@@ -13,6 +13,8 @@ export class WebhookTaskConfig {
   @IsOptional()
   secret?: string;
 
+  encrypted?: boolean = true;
+
   @IsNotEmpty()
   @IsUrl()
   url: string;

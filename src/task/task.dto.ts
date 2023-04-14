@@ -1,6 +1,4 @@
 import { IsEnum, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
-import { EventRawData } from '../common/queue.type';
-import { WorkflowSummary } from '../workflow/workflow.type';
 import { TaskEntity } from './entity/task.entity';
 import { TaskLog, TaskStatus, TaskType } from './type/task.type';
 
@@ -24,11 +22,6 @@ export class ProcessTaskRequest {
   })
   type: TaskType;
 }
-
-export type ProcessTaskInput = {
-  eventRawData: EventRawData;
-  workflow: WorkflowSummary;
-};
 
 export class TaskLogDetail {
   id: number;

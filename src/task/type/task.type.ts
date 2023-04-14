@@ -12,6 +12,7 @@ import { FilterTaskConfig } from './filter.type';
 import { WebhookTaskConfig } from './webhook.type';
 import { TriggerTaskConfig } from './trigger.type';
 import { DiscordTaskConfig } from './discord.type';
+import { ProcessWorkflowInput } from '../../workflow/workflow.type';
 
 export enum TaskType {
   TRIGGER = 'trigger',
@@ -120,3 +121,5 @@ export class BaseTask {
     return this.config;
   }
 }
+
+export type ProcessTaskInput = ProcessWorkflowInput;

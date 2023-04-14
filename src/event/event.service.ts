@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { isNil, set } from 'lodash';
+import { isNil, set, words } from 'lodash';
 import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
 import { EventRawData } from '../common/queue.type';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import { EventDataField } from './event.dto';
+import { DataField } from './event.dto';
 import { EventEntity } from './event.entity';
-import { EventData } from './event.type';
 import { ChainEntity } from '../chain/chain.entity';
+import { blake2AsHex } from '@polkadot/util-crypto';
 
 @Injectable()
 export class EventService {
@@ -36,25 +36,13 @@ export class EventService {
       .getMany();
   }
 
-  getEventData(event: EventEntity, eventRawData: EventRawData): EventData {
-    return {
-      id: event.id,
-      name: event.name,
-      description: event.description,
-      success: eventRawData.success,
-      time: new Date(eventRawData.timestamp),
-      block: eventRawData.block,
-      data: eventRawData.data,
-    };
-  }
-
-  async generateEventRawDataSample(event: EventEntity): Promise<EventRawData> {
-    const fields = await this.getEventDataFields(event);
+  generateEventRawDataSample(event: EventEntity): EventRawData {
+    const fields = this.getEventDataFields(event);
 
     const eventRawData: EventRawData = {
       timestamp: Date.now(),
       block: {
-        hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
+        hash: blake2AsHex(ulid()),
       },
       success: true,
       data: null,
@@ -115,78 +103,69 @@ export class EventService {
     return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
   }
 
-  getEventDataFields(event: EventEntity): EventDataField[] {
-    const dataFields = event.schema.map((field) => {
+  getEventDataFields(event: EventEntity): DataField[] {
+    return event.schema.map((field) => {
       const name = isNaN(parseInt(field.name))
         ? `data.${field.name}`
         : `data[${field.name}]`;
 
       return {
         name,
-        description: field.description,
+        description: field.description || words(field.name).join(' '),
         type: field.type as GeneralTypeEnum,
         data: field.example,
-        supportFilter: true,
-        supportCustomMessage: true,
       };
     });
+  }
 
-    const blockFields = [
+  getEventStatusFields(): DataField[] {
+    return [
       {
         name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
         data: true,
-        supportFilter: true,
-        supportCustomMessage: true,
       },
+    ];
+  }
+
+  getEventExtraFields(): DataField[] {
+    return [
       {
         name: 'block.hash',
         description: 'The hash of the block',
         type: GeneralTypeEnum.STRING,
-        data: '0x34b6bd12125bb2bfd0be1351222bada58904c5f79cab268bb994aea1dae5a7b8',
-        supportFilter: false,
-        supportCustomMessage: true,
+        data: blake2AsHex(ulid()),
       },
       {
         name: 'time',
         description: 'The time that the event happened',
         type: GeneralTypeEnum.STRING,
         data: new Date(Date.now()),
-        supportFilter: false,
-        supportCustomMessage: true,
       },
     ];
+  }
 
-    const eventInfoFields = [
+  getEventInfoFields(event: EventEntity): DataField[] {
+    return [
       {
         name: 'id',
         description: 'The Id of the event',
         type: GeneralTypeEnum.NUMBER,
         data: event.id,
-        supportFilter: false,
-        supportCustomMessage: true,
       },
       {
         name: 'name',
         description: 'The name of the event',
         type: GeneralTypeEnum.STRING,
         data: event.name,
-        supportFilter: false,
-        supportCustomMessage: true,
       },
       {
         name: 'description',
         description: 'The description of the event',
         type: GeneralTypeEnum.STRING,
         data: event.description,
-        supportFilter: false,
-        supportCustomMessage: true,
       },
     ];
-
-    return [...eventInfoFields, ...blockFields, ...dataFields].filter(
-      (field) => field,
-    );
   }
 }

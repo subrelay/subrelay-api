@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { find, get, isNil, isNull } from 'lodash';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
 import { TaskEntity } from '../task/entity/task.entity';
 import { TaskService } from '../task/task.service';
@@ -29,6 +29,8 @@ import {
 } from './workflow.type';
 import { ulid } from 'ulid';
 import { EventEntity } from '../event/event.entity';
+import { encryptText } from '../common/crypto.util';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class WorkflowService {
@@ -43,6 +45,7 @@ export class WorkflowService {
     @InjectDataSource() private dataSource: DataSource,
 
     private readonly taskService: TaskService,
+    private readonly configService: ConfigService,
   ) {}
 
   async processWorkflow(
@@ -63,7 +66,7 @@ export class WorkflowService {
 
     if (task.type === TaskType.FILTER && result.output?.match === false) {
       // Event does not match with filter
-      return {};
+      return output;
     }
 
     if (!schema[task.id]) {
@@ -124,6 +127,19 @@ export class WorkflowService {
       console.log({ tasks: input.tasks });
 
       for (const taskInput of input.tasks) {
+        if (taskInput.type === TaskType.WEBHOOK) {
+          const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
+          taskInput.config = {
+            ...taskInput.config,
+            secret:
+              taskInput.config.secret &&
+              encryptText(taskInput.config.secret, webhookSecretKey),
+            encrypted: !isNil(taskInput.config.secret),
+          };
+        }
+
+        console.log('create task xxx:', taskInput.config);
+
         const { id: taskId } = await taskRepo.save({
           id: ulid(),
           name: taskInput.name,
@@ -152,18 +168,13 @@ export class WorkflowService {
     return await this.getWorkflow(workflowId, userId);
   }
 
-  async getRunningWorkflowsByEventIds(
-    eventIds: string[],
-  ): Promise<WorkflowEntity[]> {
-    return this.workflowRepository.find({
-      where: {
-        eventId: In(eventIds),
+  async getRunningWorkflowsByEventIds(eventIds: string[]): Promise<Workflow[]> {
+    return this.getWorkflowQueryBuilder()
+      .where('w.status = :status', {
         status: WorkflowStatus.RUNNING,
-      },
-      relations: {
-        event: true,
-      },
-    });
+      })
+      .andWhere('w."eventId" IN (:...eventIds)', { eventIds })
+      .getRawMany();
   }
 
   async getRunningWorkflows(): Promise<WorkflowEntity[]> {
@@ -383,6 +394,7 @@ export class WorkflowService {
         'wl."startedAt" AS "startedAt"',
         'wl.status AS "status"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'imageUrl', c."imageUrl") AS chain`,
+        `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name, 'description', e.description) AS event`,
         `JSONB_BUILD_OBJECT('id', w.id, 'name', w.name) AS workflow`,
       ]);
   }
@@ -399,7 +411,7 @@ export class WorkflowService {
         'w."updatedAt" AS "updatedAt"',
         'w.status AS "status"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
-        `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name) AS event`,
+        `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name, 'description', e.description) AS event`,
       ]);
   }
 }
