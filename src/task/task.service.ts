@@ -321,7 +321,7 @@ export class TaskService {
   ) {
     let decryptedSecret;
     const headers = { Accept: 'application/json' };
-    let errorMessage = 'Failed to process webhook task.';
+    const errorMessage = 'Failed to process webhook task.';
     const failedResult = {
       input,
       status: TaskStatus.FAILED,
@@ -463,11 +463,6 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { message } = this.getTelegramTaskInput(config, input);
-
-    const rs: TaskResult = {
-      input: { message },
-      status: TaskStatus.RUNNING,
-    };
 
     try {
       await this.validateTelegramChatId(config.chatId);
