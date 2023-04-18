@@ -124,7 +124,6 @@ export class WorkflowService {
 
       const tasksObject: { [key: string]: string } = {};
       const taskRepo = queryRunner.manager.getRepository(TaskEntity);
-      console.log({ tasks: input.tasks });
 
       for (const taskInput of input.tasks) {
         if (taskInput.type === TaskType.WEBHOOK) {
@@ -137,8 +136,6 @@ export class WorkflowService {
             encrypted: !isNil(taskInput.config.secret),
           };
         }
-
-        console.log('create task xxx:', taskInput.config);
 
         const { id: taskId } = await taskRepo.save({
           id: ulid(),

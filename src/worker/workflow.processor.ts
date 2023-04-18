@@ -36,48 +36,60 @@ export class WorkflowProcessor {
 
     const filterTask = find(tasks, { type: TaskType.FILTER });
 
-    if (
-      filterTask &&
-      workflowResult[filterTask.id].status === TaskStatus.SUCCESS &&
-      workflowResult[filterTask.id]?.output?.match === false
-    ) {
-      this.logger.debug(`Event not match!`);
-      return;
-    }
+    this.logger.error('workflowResult', JSON.stringify(workflowResult));
 
-    let workflowLogStatus = TaskStatus.SUCCESS;
-    const workflowLogId = await this.workflowService.createWorkflowLog({
-      input: input.event.data,
-      workflowId: input.workflow.id,
-    });
+    try {
+      console.log({ filterTask });
 
-    const taskLogs = map(schema, (task) => {
-      const log = workflowResult[task.id];
-      const status = log ? log.status : TaskStatus.SKIPPED;
-      if (log) {
-        workflowLogStatus = log.status;
+      if (
+        filterTask &&
+        workflowResult[filterTask.id].status === TaskStatus.SUCCESS &&
+        workflowResult[filterTask.id]?.output?.match === false
+      ) {
+        this.logger.debug(`Event not match!`);
+        return;
       }
 
-      return {
-        id: ulid(),
-        status: status,
-        taskId: task.id,
+      let workflowLogStatus = TaskStatus.SUCCESS;
+      const workflowLogId = await this.workflowService.createWorkflowLog({
+        input: input.event.data,
+        workflowId: input.workflow.id,
+      });
+
+      this.logger.error({ workflowLogId });
+
+      const taskLogs = map(schema, (task) => {
+        const log = workflowResult[task.id];
+        const status = log ? log.status : TaskStatus.SKIPPED;
+        if (log) {
+          workflowLogStatus = log.status;
+        }
+
+        return {
+          id: ulid(),
+          status: status,
+          taskId: task.id,
+          workflowLogId,
+          output: log.output,
+          startedAt: log.startedAt,
+          finishedAt: log.finishedAt,
+          input: log.input,
+          error: log.error,
+        };
+      });
+
+      this.logger.error({ taskLogs });
+
+      await this.taskService.createTaskLogs(taskLogs);
+
+      await this.workflowService.finishWorkflowLog(
         workflowLogId,
-        output: log.output,
-        startedAt: log.startedAt,
-        finishedAt: log.finishedAt,
-        input: log.input,
-        error: log.error,
-      };
-    });
+        workflowLogStatus,
+      );
 
-    await this.taskService.createTaskLogs(taskLogs);
-
-    await this.workflowService.finishWorkflowLog(
-      workflowLogId,
-      workflowLogStatus,
-    );
-
-    this.logger.debug('Finished process workflow');
+      this.logger.debug('[Workflow] Finished process workflow');
+    } catch (error) {
+      this.logger.error('[Workflow] Failed to process workflow', error);
+    }
   }
 }

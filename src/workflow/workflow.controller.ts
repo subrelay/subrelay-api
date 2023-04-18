@@ -11,11 +11,21 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { filter, findIndex, isEmpty, map, orderBy, uniq } from 'lodash';
+import {
+  filter,
+  findIndex,
+  forEach,
+  groupBy,
+  isEmpty,
+  map,
+  orderBy,
+  toPairs,
+  uniq,
+} from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
-import { TaskType } from '../task/type/task.type';
+import { TaskType, validateTaskConfig } from '../task/type/task.type';
 import { User } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
@@ -156,6 +166,20 @@ export class WorkflowController {
         )} task(s) depend on invalid task.`,
       );
     }
+
+    tasks.forEach((task) => {
+      validateTaskConfig(task.type, task.config);
+    });
+
+    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([key, value]) => {
+      if (value.length > 1) {
+        throw new BadRequestException(
+          `${map(value, 'name').join(
+            ', ',
+          )} task(s) are depend on the same task.`,
+        );
+      }
+    });
   }
 
   modifyTaskRequests(
