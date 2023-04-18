@@ -122,4 +122,29 @@ export class BaseTask {
   }
 }
 
+export function validateTaskConfig(type: TaskType, config: any) {
+  switch (type) {
+    case TaskType.FILTER:
+      new FilterTaskConfig(config);
+      break;
+    case TaskType.WEBHOOK:
+      new WebhookTaskConfig(config);
+      break;
+    case TaskType.EMAIL:
+      new EmailTaskConfig(config);
+      break;
+    case TaskType.TELEGRAM:
+      new TelegramTaskConfig(config);
+      break;
+    case TaskType.TRIGGER:
+      new TriggerTaskConfig(config);
+      break;
+    case TaskType.DISCORD:
+      new DiscordTaskConfig(config);
+      break;
+    default:
+      throw new Error(`Unsupported type: ${type}`);
+  }
+}
+
 export type ProcessTaskInput = ProcessWorkflowInput;

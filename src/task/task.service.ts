@@ -112,8 +112,6 @@ export class TaskService {
     const startedAt = new Date();
     let result;
 
-    console.log({ task });
-
     try {
       switch (task.type) {
         case TaskType.TRIGGER:
@@ -154,8 +152,6 @@ export class TaskService {
         default:
           throw new TaskValidationError(`Unsupported type: ${task.type}`);
       }
-
-      console.log({ result });
 
       return {
         ...result,
@@ -268,6 +264,16 @@ export class TaskService {
     config: FilterTaskConfig,
     input: ProcessTaskInput,
   ): TaskResult {
+    if (config.conditions.length === 0) {
+      return {
+        input: input,
+        status: TaskStatus.SUCCESS,
+        output: {
+          match: true,
+        },
+      };
+    }
+
     try {
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
@@ -313,14 +319,19 @@ export class TaskService {
     { url, secret, encrypted }: WebhookTaskConfig,
     input: ProcessTaskInput,
   ) {
-    const rs: TaskResult = {
-      input: input,
-      status: TaskStatus.RUNNING,
+    let decryptedSecret;
+    const headers = { Accept: 'application/json' };
+    const errorMessage = 'Failed to process webhook task.';
+    const failedResult = {
+      input,
+      status: TaskStatus.FAILED,
+      error: {
+        message: errorMessage,
+      },
     };
+
     try {
       const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
-      const headers = { Accept: 'application/json' };
-      let decryptedSecret;
       if (secret) {
         if (encrypted) {
           decryptedSecret = decryptText(secret, webhookSecretKey);
@@ -328,30 +339,49 @@ export class TaskService {
           decryptedSecret = secret;
         }
       }
+    } catch (error) {
+      this.logger.error('[Webhook] Failed to decrypt secret', error);
 
-      console.log({ decryptedSecret });
+      return failedResult;
+    }
 
-      console.log({ decryptedSecret, webhookSecretKey });
-
+    try {
       if (decryptedSecret) {
         headers['X-Hub-Signature-256'] = generateWebhookSignature(
           decryptedSecret,
           input,
         );
       }
+    } catch (error) {
+      this.logger.error(
+        '[Webhook] Failed to generate webhook signature',
+        error,
+      );
 
+      return failedResult;
+    }
+
+    try {
       await this.httpService.axiosRef.post(url, input, {
         headers,
       });
-      rs.status = TaskStatus.SUCCESS;
+
+      return {
+        input,
+        status: TaskStatus.SUCCESS,
+      };
     } catch (error) {
-      console.log({ error });
+      this.logger.error('[Webhook] Failed to send data to webhook', error);
+      if (error.response.status === 404) {
+        failedResult.error.message = 'Webhook URL does not exist.';
+      } else if (error.response.status) {
+        failedResult.error.message = `Sending request to webhook URL failed with status code ${error.response.status}.`;
+      } else {
+        failedResult.error.message = error.message;
+      }
 
-      rs.status = TaskStatus.FAILED;
-      rs.error.message = error?.message;
+      return failedResult;
     }
-
-    return rs;
   }
 
   private buildCustomMessage(messageTemplate: string, data: ProcessTaskInput) {
@@ -377,10 +407,7 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { subject, body } = this.getEmailTaskInput(config, input);
-    const rs: TaskResult = {
-      input: { subject, body },
-      status: TaskStatus.RUNNING,
-    };
+    const taskInput = { subject, body };
 
     try {
       const now = Date.now();
@@ -397,17 +424,20 @@ export class TaskService {
         `[Email Task] Took ${Date.now() - now} ms to send email`,
       );
 
-      rs.input = {
-        subject,
-        body,
+      return {
+        input: taskInput,
+        status: TaskStatus.SUCCESS,
       };
-      rs.status = TaskStatus.SUCCESS;
     } catch (error) {
-      rs.status = TaskStatus.FAILED;
-      rs.error = { message: error.message };
+      this.logger.error('[Email] Failed to process email task', error);
+      return {
+        input: taskInput,
+        status: TaskStatus.FAILED,
+        error: {
+          message: error.message || 'Failed to process email task.',
+        },
+      };
     }
-
-    return rs;
   }
 
   private getTelegramTaskInput(
@@ -434,11 +464,6 @@ export class TaskService {
   ) {
     const { message } = this.getTelegramTaskInput(config, input);
 
-    const rs: TaskResult = {
-      input: { message },
-      status: TaskStatus.RUNNING,
-    };
-
     try {
       await this.validateTelegramChatId(config.chatId);
 
@@ -446,17 +471,20 @@ export class TaskService {
         parse_mode: 'HTML',
       });
 
-      rs.input = {
-        message,
+      return {
+        input: { message },
+        status: TaskStatus.SUCCESS,
       };
-
-      rs.status = TaskStatus.SUCCESS;
     } catch (error) {
-      rs.status = TaskStatus.FAILED;
-      rs.error = { message: error.message };
+      this.logger.error('[Telegram] Failed to process telegram task', error);
+      return {
+        input: { message },
+        status: TaskStatus.FAILED,
+        error: {
+          message: error.message || 'Failed to process telegram task.',
+        },
+      };
     }
-
-    return rs;
   }
 
   private async processDiscordTask(
@@ -501,15 +529,25 @@ export class TaskService {
         });
       }
 
-      rs.status = TaskStatus.SUCCESS;
+      return {
+        input: { message },
+        status: TaskStatus.SUCCESS,
+      };
     } catch (error) {
-      rs.status = TaskStatus.FAILED;
-
+      let errorMessage = 'Failed to process discord task.';
       if (error.message === 'Invalid Recipient(s)') {
-        error.message = 'User not found';
+        errorMessage = 'User not found';
       }
 
-      rs.error = { message: error.message };
+      this.logger.error('[Discord] Failed to process discord task', error);
+
+      return {
+        input: { message },
+        status: TaskStatus.FAILED,
+        error: {
+          message: errorMessage,
+        },
+      };
     }
 
     return rs;

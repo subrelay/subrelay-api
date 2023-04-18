@@ -1,13 +1,14 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsString,
   ValidateIf,
+  ValidateNested,
   validateSync,
 } from 'class-validator';
 import { TaskValidationError } from './task.type';
 import { isEmpty } from 'lodash';
-import { IsFilterConditions } from '../validator/filter.validator';
 
 export enum FilterVariableOperator {
   GREATER_THAN_EQUAL = 'greaterThanEqual',
@@ -43,8 +44,10 @@ export class FilterCondition {
 }
 
 export class FilterTaskConfig {
-  @IsFilterConditions()
-  conditions?: Array<FilterCondition[]>;
+  @ValidateNested()
+  @IsNotEmpty()
+  @IsArray()
+  conditions: Array<FilterCondition[]>;
 
   constructor(config: any) {
     Object.assign(this, config);

@@ -42,7 +42,6 @@ export class ChainWorker implements OnModuleInit {
       removeOnFail: true,
     };
     await this.chainQueue.add(chains, jobOption);
-    console.log({ chains });
 
     this.logger.debug(
       `Start worker for chain ${map(chains, 'chainId').join(', ')}`,
