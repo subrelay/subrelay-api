@@ -25,7 +25,7 @@ import { GatewayIntentBits } from 'discord.js';
         transport: {
           host: configService.get('EMAIL_HOST'),
           port: configService.get('EMAIL_PORT'),
-          secure: true,
+          secure: false,
           auth: {
             user: configService.get('EMAIL_USERNAME'),
             pass: configService.get('EMAIL_PASSWORD'),
