@@ -534,7 +534,7 @@ export class TaskService {
         status: TaskStatus.SUCCESS,
       };
     } catch (error) {
-      let errorMessage = 'Failed to process discord task.';
+      let errorMessage = error.message || 'Failed to process discord task.';
       if (error.message === 'Invalid Recipient(s)') {
         errorMessage = 'User not found';
       }
@@ -549,8 +549,6 @@ export class TaskService {
         },
       };
     }
-
-    return rs;
   }
 
   private async validateTelegramChatId(chatId: string) {
