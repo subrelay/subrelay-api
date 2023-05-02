@@ -1,21 +1,8 @@
-import {
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  validateSync,
-} from 'class-validator';
+import { IsNotEmpty, IsString, validateSync } from 'class-validator';
 import { isEmpty } from 'lodash';
 import { TaskValidationError } from './task.type';
 
 export class DiscordTaskConfig {
-  @IsString()
-  @IsOptional()
-  channelId: string;
-
-  @IsString()
-  @IsOptional()
-  userId: string;
-
   @IsString()
   @IsNotEmpty()
   messageTemplate: string;
@@ -29,16 +16,6 @@ export class DiscordTaskConfig {
         .map((e) => Object.values(e.constraints).join('. '))
         .join('. ');
       throw new TaskValidationError(message);
-    }
-
-    if (!this.channelId && !this.userId) {
-      throw new TaskValidationError('Channel id or user id is required.');
-    }
-
-    if (this.channelId && this.userId) {
-      throw new TaskValidationError(
-        'Require only channel id or user id. Should not provider both.',
-      );
     }
   }
 }

@@ -22,6 +22,7 @@
     "typeorm": "typeorm-ts-node-commonjs --dataSource ./src/config/cli-ormconfig.ts"
   },
   "dependencies": {
+    "@discord-nestjs/common": "^5.2.3",
     "@discord-nestjs/core": "^5.3.5",
     "@nestjs-modules/mailer": "^1.8.1",
     "@nestjs/axios": "^1.0.0",

@@ -15,6 +15,8 @@ import { BaseTask, ProcessTaskInput, TaskType } from './type/task.type';
 import { DataField } from '../event/event.dto';
 import { EventEntity } from '../event/event.entity';
 import { ulid } from 'ulid';
+import { UserEntity } from '../user/user.entity';
+import { UserInfo } from '../common/user-info.decorator';
 
 @Controller('tasks')
 export class TaskController {
@@ -27,6 +29,7 @@ export class TaskController {
   @HttpCode(200)
   async processTask(
     @Body() input: ProcessTaskRequest,
+    @UserInfo() user: UserEntity,
   ): Promise<ProcessTaskResponse> {
     const event = await this.eventService.getEventById(input.data.eventId);
     if (!event) {
@@ -44,7 +47,7 @@ export class TaskController {
     });
     const result = await this.taskService.processTask(
       baseTask,
-      this.createProcessTaskInput(event),
+      this.createProcessTaskInput(user, event),
     );
 
     return {
@@ -91,7 +94,10 @@ export class TaskController {
     return this.taskService.getCustomMessageFields(event);
   }
 
-  createProcessTaskInput(event: EventEntity): ProcessTaskInput {
+  createProcessTaskInput(
+    user: UserEntity,
+    event: EventEntity,
+  ): ProcessTaskInput {
     const eventRawData = this.eventService.generateEventRawDataSample(event);
     return {
       event: {
@@ -107,6 +113,7 @@ export class TaskController {
         name: event.chain.name,
         uuid: event.chain.uuid,
       },
+      user,
     };
   }
 }

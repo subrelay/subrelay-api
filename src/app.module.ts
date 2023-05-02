@@ -22,6 +22,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
 import { WorkerModule } from './worker/worker.module';
+import { DiscordProcessorModule } from './discord/discord.module';
 
 @Module({
   imports: [
@@ -36,7 +37,7 @@ import { WorkerModule } from './worker/worker.module';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        synchronize: true, // TODO Should not automatically synchronize in prod
+        synchronize: false, // TODO Should not automatically synchronize in prod
         logging: true,
         autoLoadEntities: true,
       }),
@@ -60,6 +61,7 @@ import { WorkerModule } from './worker/worker.module';
     TaskModule,
     WorkflowModule,
     WorkerModule,
+    DiscordProcessorModule,
   ],
   controllers: [AppController],
   providers: [

@@ -7,6 +7,7 @@ import { EventService } from '../event/event.service';
 import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from '../workflow/workflow.service';
 import { createProcessWorkflowInput } from '../workflow/workflow.type';
+import { UserService } from '../user/user.service';
 
 @Processor('block')
 export class BlockProcessor {
@@ -15,6 +16,7 @@ export class BlockProcessor {
     @InjectQueue('workflow') private workflowQueue: Queue,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
+    private readonly userService: UserService,
   ) {}
 
   @Process({ concurrency: 10 })
@@ -42,6 +44,10 @@ export class BlockProcessor {
       this.logger.debug(`Not found running workflows match with events`);
       return true;
     }
+
+    const users = await this.userService.getUserByIds(
+      map(runningWorkflows, 'userId'),
+    );
 
     const jobOption = {
       removeOnComplete: true,
@@ -73,8 +79,10 @@ export class BlockProcessor {
         data: blockEventData,
       };
 
+      const user = find(users, { id: workflow.userId });
+
       return {
-        data: createProcessWorkflowInput(workflow, eventRawData),
+        data: createProcessWorkflowInput(workflow, eventRawData, user),
         opts: {
           ...jobOption,
           jobId: `${workflow.id}_${data.hash}`,

@@ -4,6 +4,7 @@ import { EventRawData } from '../common/queue.type';
 import { EventEntity } from '../event/event.entity';
 import { WorkflowLogEntity } from './entity/workflow-log.entity';
 import { WorkflowEntity } from './entity/workflow.entity';
+import { UserEntity } from '../user/user.entity';
 
 export enum WorkflowStatus {
   RUNNING = 'running',
@@ -16,7 +17,7 @@ export type WorkflowSummary = Pick<WorkflowEntity, 'id' | 'name' | 'event'> & {
 
 export type Workflow = Pick<
   WorkflowEntity,
-  'id' | 'name' | 'status' | 'createdAt' | 'updatedAt'
+  'id' | 'name' | 'status' | 'createdAt' | 'updatedAt' | 'userId'
 > & {
   chain: Pick<ChainEntity, 'uuid' | 'name' | 'imageUrl'>;
   event: Pick<EventEntity, 'id' | 'name' | 'description'>;
@@ -35,11 +36,13 @@ export class ProcessWorkflowInput {
     EventRawData & { time: Date };
   workflow: Pick<WorkflowEntity, 'id' | 'name'>;
   chain: Pick<ChainEntity, 'uuid' | 'name'>;
+  user: UserEntity;
 }
 
 export function createProcessWorkflowInput(
   workflow: Workflow,
   eventData: EventRawData,
+  user: UserEntity,
 ): ProcessWorkflowInput {
   return {
     event: {
@@ -49,5 +52,6 @@ export function createProcessWorkflowInput(
     },
     workflow: pick(workflow, ['id', 'name']),
     chain: pick(workflow.chain, ['uuid', 'name']),
+    user,
   };
 }

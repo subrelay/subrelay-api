@@ -18,6 +18,7 @@ import {
   isEmpty,
   map,
   orderBy,
+  some,
   toPairs,
   uniq,
 } from 'lodash';
@@ -25,7 +26,7 @@ import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
 import { TaskType, validateTaskConfig } from '../task/type/task.type';
-import { User } from '../user/user.entity';
+import { UserEntity } from '../user/user.entity';
 import {
   CreateWorkFlowRequest,
   CreateWorkflowTaskRequest,
@@ -46,7 +47,7 @@ export class WorkflowController {
   @Get()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
-    @UserInfo() user: User,
+    @UserInfo() user: UserEntity,
   ) {
     const { workflows, total } =
       await this.workflowService.getWorkflowsAndTotal(queryParams, user.id);
@@ -60,7 +61,7 @@ export class WorkflowController {
   }
 
   @Get(':id')
-  async getWorkflow(@Param('id') id: string, @UserInfo() user: User) {
+  async getWorkflow(@Param('id') id: string, @UserInfo() user: UserEntity) {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
@@ -80,7 +81,7 @@ export class WorkflowController {
   async updateWorkflow(
     @Param('id') id: string,
     @Body() input: UpdateWorkflowRequest,
-    @UserInfo() user: User,
+    @UserInfo() user: UserEntity,
   ) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
@@ -91,7 +92,7 @@ export class WorkflowController {
 
   @Delete(':id')
   @HttpCode(204)
-  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: User) {
+  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: UserEntity) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
@@ -102,10 +103,10 @@ export class WorkflowController {
   @Post()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
-    @UserInfo() user: User,
+    @UserInfo() user: UserEntity,
   ) {
     input.tasks = this.modifyTaskRequests(input.tasks);
-    await this.validateWorkflowTasks(input.tasks);
+    await this.validateWorkflowTasks(user, input.tasks);
 
     const workflow = await this.workflowService.createWorkflow(input, user.id);
 
@@ -117,7 +118,10 @@ export class WorkflowController {
     };
   }
 
-  private async validateWorkflowTasks(tasks: CreateWorkflowTaskRequest[]) {
+  private async validateWorkflowTasks(
+    user: UserEntity,
+    tasks: CreateWorkflowTaskRequest[],
+  ) {
     if (tasks.length < 2) {
       throw new BadRequestException('Workflow should have at least 2 tasks.');
     }
@@ -170,7 +174,7 @@ export class WorkflowController {
       validateTaskConfig(task.type, task.config);
     });
 
-    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([key, value]) => {
+    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([_, value]) => {
       if (value.length > 1) {
         throw new BadRequestException(
           `${map(value, 'name').join(
@@ -179,6 +183,21 @@ export class WorkflowController {
         );
       }
     });
+
+    if (
+      some(tasks, { type: TaskType.TELEGRAM }) &&
+      !user.integration.telegram
+    ) {
+      throw new BadRequestException(
+        "The integration with Telegram does't set up yet.",
+      );
+    }
+
+    if (some(tasks, { type: TaskType.DISCORD }) && !user.integration.discord) {
+      throw new BadRequestException(
+        "The integration with Discord does't set up yet.",
+      );
+    }
   }
 
   modifyTaskRequests(
