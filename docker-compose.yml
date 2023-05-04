@@ -41,7 +41,7 @@ services:
       - "3001:3001"
     restart: always
     env_file:
-      - .env
+      - self-hosted.env
     depends_on:
       - redis
       - postgres
