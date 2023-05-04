@@ -7,6 +7,7 @@ import { BaseTask, TaskStatus, TaskType } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ulid } from 'ulid';
 import { ProcessWorkflowInput } from '../workflow/workflow.type';
+import { UserService } from '../user/user.service';
 
 @Processor('workflow')
 export class WorkflowProcessor {
@@ -14,6 +15,7 @@ export class WorkflowProcessor {
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly taskService: TaskService,
+    private readonly userService: UserService,
   ) {}
 
   @Process({ concurrency: 10 })

@@ -1,4 +1,4 @@
-import { User } from '../../user/user.entity';
+import { UserEntity } from '../../user/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -27,9 +27,9 @@ export class WorkflowEntity {
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'userId', referencedColumnName: 'id' }])
-  user: User;
+  user: UserEntity;
 
   @Column({ name: 'userId', type: 'char', length: 26 })
   userId: string;

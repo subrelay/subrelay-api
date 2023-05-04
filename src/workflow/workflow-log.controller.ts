@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { UserInfo } from '../common/user-info.decorator';
 import { TaskService } from '../task/task.service';
-import { User } from '../user/user.entity';
+import { UserEntity } from '../user/user.entity';
 import {
   GetWorkflowLogsQueryParams,
   GetWorkflowLogsResponse,
@@ -24,7 +24,7 @@ export class WorkflowLogController {
   @Get()
   async getWorkflowLogs(
     @Query() queryParams: GetWorkflowLogsQueryParams,
-    @UserInfo() user: User,
+    @UserInfo() user: UserEntity,
   ): Promise<GetWorkflowLogsResponse> {
     const { workflowLogs, total } =
       await await this.workflowService.getWorkflowLogsAndTotal(
@@ -40,7 +40,7 @@ export class WorkflowLogController {
   }
 
   @Get(':id')
-  async getWorkflowLog(@Param('id') id: string, @UserInfo() user: User) {
+  async getWorkflowLog(@Param('id') id: string, @UserInfo() user: UserEntity) {
     const workflowLog = await this.workflowService.getWorkflowLog(id, user.id);
 
     if (!workflowLog) {

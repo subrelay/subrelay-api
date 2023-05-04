@@ -8,6 +8,7 @@ import { WorkflowLogController } from './workflow-log.controller';
 import { TaskModule } from '../task/task.module';
 import { EventModule } from '../event/event.module';
 import { ChainModule } from '../chain/chain.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ChainModule } from '../chain/chain.module';
     TaskModule,
     EventModule,
     ChainModule,
+    UserModule,
   ],
   controllers: [WorkflowController, WorkflowLogController],
   providers: [WorkflowService],

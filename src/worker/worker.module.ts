@@ -7,6 +7,7 @@ import { EventModule } from '../event/event.module';
 import { ChainModule } from '../chain/chain.module';
 import { BlockProcessor } from './block.processor';
 import { WorkflowProcessor } from './workflow.processor';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { WorkflowProcessor } from './workflow.processor';
     TaskModule,
     EventModule,
     ChainModule,
+    UserModule,
   ],
   providers: [ChainWorker, BlockProcessor, WorkflowProcessor],
 })

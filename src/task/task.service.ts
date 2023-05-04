@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { findIndex, get, map, template } from 'lodash';
+import { findIndex, get, map, omit, template } from 'lodash';
 import {
   BaseTask,
   ProcessTaskInput,
@@ -9,36 +9,24 @@ import {
   TaskType,
   TaskValidationError,
 } from './type/task.type';
-import { HttpService } from '@nestjs/axios';
 import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
 import { GeneralTypeEnum } from '../substrate/substrate.data';
-import { MailerService } from '@nestjs-modules/mailer';
-import { ConfigService } from '@nestjs/config';
-import { InjectBot } from 'nestjs-telegraf';
-import { Telegraf } from 'telegraf';
 import { ulid } from 'ulid';
 import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
-import {
-  TelegramTaskConfig,
-  TelegramTaskError,
-  TelegramTaskInput,
-} from './type/telegram.type';
+import { TelegramTaskConfig, TelegramTaskInput } from './type/telegram.type';
 import { WebhookTaskConfig } from './type/webhook.type';
 import { EventService } from '../event/event.service';
 import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
-import { InjectDiscordClient } from '@discord-nestjs/core';
-import { Client, TextChannel } from 'discord.js';
-import {
-  DiscordTaskConfig,
-  DiscordTaskError,
-  DiscordTaskInput,
-} from './type/discord.type';
-import { decryptText, generateWebhookSignature } from '../common/crypto.util';
+import { DiscordTaskConfig, DiscordTaskInput } from './type/discord.type';
 import { EventEntity } from '../event/event.entity';
 import { DataField } from '../event/event.dto';
+import { DiscordService } from '../discord/discord.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { EmailService } from '../email/email.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 @Injectable()
 export class TaskService {
@@ -50,15 +38,11 @@ export class TaskService {
     @InjectRepository(TaskLogEntity)
     private taskLogRepository: Repository<TaskLogEntity>,
 
-    @InjectBot()
-    private telegramBot: Telegraf,
+    private readonly discordService: DiscordService,
+    private readonly telegramService: TelegramService,
 
-    @InjectDiscordClient()
-    private readonly discordClient: Client,
-
-    private readonly httpService: HttpService,
-    private readonly mailerService: MailerService,
-    private readonly configService: ConfigService,
+    private readonly webhookService: WebhookService,
+    private readonly emailService: EmailService,
     private readonly eventService: EventService,
   ) {}
 
@@ -319,11 +303,11 @@ export class TaskService {
     { url, secret, encrypted }: WebhookTaskConfig,
     input: ProcessTaskInput,
   ) {
-    let decryptedSecret;
-    const headers = { Accept: 'application/json' };
+    let signatureHeader;
     const errorMessage = 'Failed to process webhook task.';
+    const message = omit(input, 'user');
     const failedResult = {
-      input,
+      input: message,
       status: TaskStatus.FAILED,
       error: {
         message: errorMessage,
@@ -331,27 +315,11 @@ export class TaskService {
     };
 
     try {
-      const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
-      if (secret) {
-        if (encrypted) {
-          decryptedSecret = decryptText(secret, webhookSecretKey);
-        } else {
-          decryptedSecret = secret;
-        }
-      }
-    } catch (error) {
-      this.logger.error('[Webhook] Failed to decrypt secret', error);
-
-      return failedResult;
-    }
-
-    try {
-      if (decryptedSecret) {
-        headers['X-Hub-Signature-256'] = generateWebhookSignature(
-          decryptedSecret,
-          input,
-        );
-      }
+      signatureHeader = this.webhookService.generateSignatureHeader(
+        secret,
+        encrypted,
+        message,
+      );
     } catch (error) {
       this.logger.error(
         '[Webhook] Failed to generate webhook signature',
@@ -362,12 +330,10 @@ export class TaskService {
     }
 
     try {
-      await this.httpService.axiosRef.post(url, input, {
-        headers,
-      });
+      await this.webhookService.sendMessage(url, message, signatureHeader);
 
       return {
-        input,
+        input: message,
         status: TaskStatus.SUCCESS,
       };
     } catch (error) {
@@ -411,18 +377,9 @@ export class TaskService {
 
     try {
       const now = Date.now();
-      await this.mailerService.sendMail({
-        from: `SubRelay Notifications ${this.configService.get(
-          'EMAIL_SENDER',
-        )}`,
-        to: config.addresses,
-        subject,
-        html: body,
-      });
+      await this.emailService.sendEmails(config.addresses, subject, body);
 
-      this.logger.debug(
-        `[Email Task] Took ${Date.now() - now} ms to send email`,
-      );
+      this.logger.debug(`[Email] Took ${Date.now() - now} ms to send email`);
 
       return {
         input: taskInput,
@@ -463,13 +420,21 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { message } = this.getTelegramTaskInput(config, input);
+    const chatId = input.user.integration.telegram;
+
+    if (!chatId) {
+      return {
+        input: { message },
+        status: TaskStatus.FAILED,
+        error: {
+          message: "Telegram integration does't set up yet.",
+        },
+      };
+    }
 
     try {
-      await this.validateTelegramChatId(config.chatId);
-
-      await this.telegramBot.telegram.sendMessage(config.chatId, message, {
-        parse_mode: 'HTML',
-      });
+      await this.telegramService.validateChatId(chatId);
+      await this.telegramService.sendDirectMessage(chatId, message);
 
       return {
         input: { message },
@@ -492,49 +457,25 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { message } = this.getDiscordTaskInput(config, input);
-
-    const rs: TaskResult = {
-      input: { message },
-      status: TaskStatus.RUNNING,
-    };
-
+    const chatId = input.user.integration.discord;
+    if (!chatId) {
+      return {
+        input: { message },
+        status: TaskStatus.FAILED,
+        error: {
+          message: "Discord integration does't set up yet.",
+        },
+      };
+    }
     try {
-      if (config.channelId) {
-        const channel = (await this.discordClient.channels.cache.get(
-          config.channelId,
-        )) as unknown as TextChannel;
-
-        if (!channel) {
-          throw new DiscordTaskError('Channel not found');
-        }
-
-        channel.send({
-          embeds: [
-            {
-              color: 0,
-              description: message,
-            },
-          ],
-        });
-      }
-
-      if (config.userId) {
-        await this.discordClient.users.send(config.userId, {
-          embeds: [
-            {
-              color: 0,
-              description: message,
-            },
-          ],
-        });
-      }
+      await this.discordService.sendDirectMessage(chatId, message);
 
       return {
         input: { message },
         status: TaskStatus.SUCCESS,
       };
     } catch (error) {
-      let errorMessage = 'Failed to process discord task.';
+      let errorMessage = error.message || 'Failed to process discord task.';
       if (error.message === 'Invalid Recipient(s)') {
         errorMessage = 'User not found';
       }
@@ -548,24 +489,6 @@ export class TaskService {
           message: errorMessage,
         },
       };
-    }
-
-    return rs;
-  }
-
-  private async validateTelegramChatId(chatId: string) {
-    try {
-      await this.telegramBot.telegram.getChat(chatId);
-    } catch (error) {
-      if (error.response.error_code === 400) {
-        throw new TelegramTaskError('Chat not found');
-      }
-
-      this.logger.debug(
-        'Failed to check telegram chatId:',
-        JSON.stringify(error),
-      );
-      throw new Error('Failed to check chat ID');
     }
   }
 

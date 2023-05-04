@@ -407,6 +407,7 @@ export class WorkflowService {
         'w."createdAt" AS "createdAt"',
         'w."updatedAt" AS "updatedAt"',
         'w.status AS "status"',
+        'w."userId" AS "userId"',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
         `JSONB_BUILD_OBJECT('id', e.id, 'name', e.name, 'description', e.description) AS event`,
       ]);

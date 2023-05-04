@@ -5,10 +5,6 @@ import { TaskValidationError } from './task.type';
 export class TelegramTaskConfig {
   @IsString()
   @IsNotEmpty()
-  chatId: string;
-
-  @IsString()
-  @IsNotEmpty()
   messageTemplate: string;
 
   constructor(config: any) {
