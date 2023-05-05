@@ -45,6 +45,20 @@ services:
     depends_on:
       - redis
       - postgres
+      - api
+
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - self-hosted.env
+    ports:
+      - 3000:3000
+    restart: always
+    depends_on:
+      - postgres
+      - redis
 
 volumes:
   pgdata:

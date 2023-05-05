@@ -37,7 +37,7 @@ import { DiscordProcessorModule } from './discord/discord.module';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        synchronize: false, // TODO Should not automatically synchronize in prod
+        synchronize: configService.get('NODE_ENV') != 'prod', // TODO Should not automatically synchronize in prod
         logging: true,
         autoLoadEntities: true,
       }),
