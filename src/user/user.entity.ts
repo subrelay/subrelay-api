@@ -19,6 +19,6 @@ export class UserEntity {
   })
   key: string;
 
-  @Column({ type: 'jsonb' })
-  integration: UserIntegration;
+  @Column({ type: 'jsonb', nullable: true })
+  integration?: UserIntegration;
 }
