@@ -21,6 +21,7 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse();
+    const req = ctx.getRequest();
 
     if (exception instanceof HttpException) {
       res.status(exception.getStatus()).json(exception.getResponse());
@@ -36,13 +37,16 @@ export class InternalServerExceptionsFilter implements ExceptionFilter {
       return;
     }
 
-    const rollbarAccessToken = this.configService.get('ROLLBAR_ACCESS_TOKEN');
+    const rollbarAccessToken = this.configService.get(
+      'API_ROLLBAR_ACCESS_TOKEN',
+    );
     if (rollbarAccessToken) {
       const rollbar = new Rollbar({
         accessToken: rollbarAccessToken,
         captureUncaught: true,
         captureUnhandledRejections: true,
         environment: this.configService.get('NODE_ENV'),
+        addRequestData: req,
       });
       rollbar.error(exception as Error);
     }
