@@ -270,21 +270,7 @@ export class WorkflowService {
       });
     }
 
-    let order;
-    switch (requestedOrder) {
-      case GetWorkflowsOrderBy.CREATED_AT:
-        order = `w."${requestedOrder}"`;
-        break;
-      case GetWorkflowsOrderBy.UPDATED_AT:
-        order = `w."createdAt"`;
-        break;
-      case GetWorkflowsOrderBy.NAME:
-        order = `w."${requestedOrder}"`;
-        break;
-      default:
-        order = `w."${requestedOrder}"`;
-        break;
-    }
+    let order = `w."${requestedOrder}"` || GetWorkflowsOrderBy.UPDATED_AT;
     queryBuilder = queryBuilder.addOrderBy(order, sort);
 
     const total = await queryBuilder.getCount();

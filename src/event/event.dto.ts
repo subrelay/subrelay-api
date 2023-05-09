@@ -10,7 +10,10 @@ export class DataField {
   data?: any;
 
   type: GeneralTypeEnum;
+
   originalType?: string;
+
+  display?: string;
 }
 
 export type GetOneEventResponse = EventSummary & {

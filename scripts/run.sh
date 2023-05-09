@@ -49,8 +49,8 @@ if [ "$2" == "--clear-all" ]; then
   clearAll=true
 fi
 
-
 cd subrelay-backend/subrelay-api
+
 git checkout $branch
 git reset --hard
 git pull

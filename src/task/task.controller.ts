@@ -7,7 +7,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { mapValues, pick, startCase } from 'lodash';
+import { mapValues, pick, startCase, upperFirst } from 'lodash';
 import { EventService } from '../event/event.service';
 import { ProcessTaskRequest, ProcessTaskResponse } from './task.dto';
 import { TaskService } from './task.service';
@@ -91,7 +91,10 @@ export class TaskController {
       throw new NotFoundException('Event not found');
     }
 
-    return this.taskService.getCustomMessageFields(event);
+    const rs = this.taskService.getCustomMessageFields(event);
+    console.log(rs);
+
+    return rs;
   }
 
   createProcessTaskInput(
@@ -101,9 +104,10 @@ export class TaskController {
     const eventRawData = this.eventService.generateEventRawDataSample(event);
     return {
       event: {
-        ...pick(event, ['id', 'name', 'description']),
+        ...pick(event, ['id', 'name']),
         ...eventRawData,
         time: new Date(),
+        description: upperFirst(event.description),
       },
       workflow: {
         id: ulid(),

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { findIndex, get, map, omit, template } from 'lodash';
+import { findIndex, get, map, omit, template, upperFirst } from 'lodash';
 import {
   BaseTask,
   ProcessTaskInput,
@@ -194,6 +194,7 @@ export class TaskService {
       ...map([...eventDataFields, ...eventStatusFields], (field) => ({
         ...field,
         name: `event.${field.name}`,
+        description: upperFirst(field.description),
       })),
     ];
   }
@@ -207,34 +208,31 @@ export class TaskService {
     return [
       {
         name: 'workflow.id',
-        description: ' The workflow ID',
+        description: 'The workflow ID',
         type: GeneralTypeEnum.STRING,
         data: ulid(),
+        display: 'Workflow ID',
       },
       {
         name: 'workflow.name',
-        description: ' The workflow name',
+        description: 'The workflow name',
         type: GeneralTypeEnum.STRING,
         data: `Workflow for event ${event.name}`,
-      },
-      {
-        name: 'chain.uuid',
-        description: ' The chain UUID',
-        type: GeneralTypeEnum.STRING,
-        data: event.chain.uuid,
+        display: 'Workflow Name',
       },
       {
         name: 'chain.name',
-        description: ' The chain name',
+        description: 'The chain name',
         type: GeneralTypeEnum.STRING,
         data: event.chain.name,
+        display: 'Chain Name',
       },
       ...map(
         [
           ...eventInfoFields,
           ...eventStatusFields,
-          ...eventDataFields,
           ...eventExtraFields,
+          ...eventDataFields,
         ],
         (field) => ({
           ...field,
