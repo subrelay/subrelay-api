@@ -31,6 +31,7 @@ import { ulid } from 'ulid';
 import { EventEntity } from '../event/event.entity';
 import { encryptText } from '../common/crypto.util';
 import { ConfigService } from '@nestjs/config';
+import { SortType } from '../common/pagination.type';
 
 @Injectable()
 export class WorkflowService {
@@ -271,7 +272,7 @@ export class WorkflowService {
     }
 
     let order = `w."${requestedOrder}"` || GetWorkflowsOrderBy.UPDATED_AT;
-    queryBuilder = queryBuilder.addOrderBy(order, sort);
+    queryBuilder = queryBuilder.addOrderBy(order, sort || SortType.DESC);
 
     const total = await queryBuilder.getCount();
 

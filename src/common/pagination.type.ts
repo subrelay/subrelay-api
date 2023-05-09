@@ -29,5 +29,5 @@ export class Pagination {
   @IsString()
   @IsOptional()
   @IsEnum(SortType)
-  sort: SortType;
+  sort?: SortType;
 }
