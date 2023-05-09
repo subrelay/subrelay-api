@@ -22,7 +22,6 @@ import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
 import { WorkerModule } from './worker/worker.module';
-import { DiscordProcessorModule } from './discord/discord.module';
 
 @Module({
   imports: [
@@ -61,7 +60,6 @@ import { DiscordProcessorModule } from './discord/discord.module';
     TaskModule,
     WorkflowModule,
     WorkerModule,
-    DiscordProcessorModule,
   ],
   controllers: [AppController],
   providers: [
