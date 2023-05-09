@@ -11,8 +11,8 @@ import { TaskStatus, TaskType } from '../task/type/task.type';
 import { Workflow, WorkflowLogSummary, WorkflowStatus } from './workflow.type';
 
 export enum GetWorkflowsOrderBy {
-  CREATEDAT = 'createdAt',
-  UPDATEDAT = 'updatedAt',
+  CREATED_AT = 'createdAt',
+  UPDATED_AT = 'updatedAt',
   NAME = 'name',
 }
 

@@ -50,17 +50,7 @@ if [ "$2" == "--clear-all" ]; then
 fi
 
 
-$folder = "subrelay-backend"
-cd $folder
-
-# Event service
-cd event-service
-git checkout $branch
-git reset --hard
-git pull
-docker build -t subrelay-event-service .
-
-cd ../subrelay-api
+cd subrelay-backend/subrelay-api
 git checkout $branch
 git reset --hard
 git pull

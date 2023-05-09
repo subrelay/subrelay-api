@@ -420,7 +420,7 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { message } = this.getTelegramTaskInput(config, input);
-    const chatId = input.user.integration.telegram;
+    const chatId = input.user?.integration?.telegram;
 
     if (!chatId) {
       return {
@@ -457,7 +457,7 @@ export class TaskService {
     input: ProcessTaskInput,
   ) {
     const { message } = this.getDiscordTaskInput(config, input);
-    const chatId = input.user.integration.discord;
+    const chatId = input.user?.integration?.discord;
     if (!chatId) {
       return {
         input: { message },

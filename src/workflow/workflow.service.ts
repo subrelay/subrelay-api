@@ -272,17 +272,17 @@ export class WorkflowService {
 
     let order;
     switch (requestedOrder) {
-      case GetWorkflowsOrderBy.CREATEDAT:
+      case GetWorkflowsOrderBy.CREATED_AT:
         order = `w."${requestedOrder}"`;
         break;
-      case GetWorkflowsOrderBy.UPDATEDAT:
+      case GetWorkflowsOrderBy.UPDATED_AT:
         order = `w."createdAt"`;
         break;
       case GetWorkflowsOrderBy.NAME:
         order = `w."${requestedOrder}"`;
         break;
       default:
-        order = `w."${GetWorkflowsOrderBy.NAME}"`;
+        order = `w."${requestedOrder}"`;
         break;
     }
     queryBuilder = queryBuilder.addOrderBy(order, sort);
