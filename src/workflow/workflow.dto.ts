@@ -40,7 +40,7 @@ export class GetWorkflowsQueryParams extends Pagination {
       GetWorkflowsOrderBy,
     ).join(', ')}`,
   })
-  order: GetWorkflowsOrderBy = GetWorkflowsOrderBy.NAME;
+  order: GetWorkflowsOrderBy = GetWorkflowsOrderBy.UPDATED_AT;
 
   id?: number;
 }

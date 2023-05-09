@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { isNil, set, words } from 'lodash';
+import { isNil, set, upperFirst, words } from 'lodash';
 import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
@@ -111,9 +111,10 @@ export class EventService {
 
       return {
         name,
-        description: field.description || words(field.name).join(' '),
+        description: field.description || upperFirst(words(field.name).join(' ')),
         type: field.type as GeneralTypeEnum,
         data: field.example,
+        display: upperFirst(words(field.name.replace('data.', '')).join(' ')),
       };
     });
   }
@@ -125,6 +126,7 @@ export class EventService {
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
         data: true,
+        display: 'Status',
       },
     ];
   }
@@ -136,12 +138,14 @@ export class EventService {
         description: 'The hash of the block',
         type: GeneralTypeEnum.STRING,
         data: blake2AsHex(ulid()),
+        display: 'Block Hash',
       },
       {
         name: 'time',
         description: 'The time that the event happened',
         type: GeneralTypeEnum.STRING,
         data: new Date(Date.now()),
+        display: 'Time',
       },
     ];
   }
@@ -153,18 +157,21 @@ export class EventService {
         description: 'The Id of the event',
         type: GeneralTypeEnum.NUMBER,
         data: event.id,
+        display: 'Event ID',
       },
       {
         name: 'name',
         description: 'The name of the event',
         type: GeneralTypeEnum.STRING,
         data: event.name,
+        display: 'Event Name',
       },
       {
         name: 'description',
         description: 'The description of the event',
         type: GeneralTypeEnum.STRING,
         data: event.description,
+        display: 'Event Description',
       },
     ];
   }

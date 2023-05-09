@@ -29,7 +29,7 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: npm run build
-  deploy-alpha:
+  deploy-develop:
     needs: [build, lint]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
@@ -41,5 +41,6 @@ jobs:
         username: ${{ secrets.SSH_USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
+          cd subrelay-backend/subrelay-api
           chmod a+rx ./scripts/run.sh
           ./scripts/run.sh --env=dev
