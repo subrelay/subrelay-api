@@ -41,8 +41,6 @@ export class WorkflowProcessor {
     this.logger.error('workflowResult', JSON.stringify(workflowResult));
 
     try {
-      console.log({ filterTask });
-
       if (
         filterTask &&
         workflowResult[filterTask.id].status === TaskStatus.SUCCESS &&

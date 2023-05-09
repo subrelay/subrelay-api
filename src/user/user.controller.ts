@@ -21,18 +21,28 @@ export class UserController implements OnModuleInit {
 
   @Get('/info')
   async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
-    const telegramInfo = await this.telegramService.getChatInfo(
-      user.integration?.telegram,
-    );
-    user.integration.telegram = `${get(telegramInfo, 'first_name')} (@${get(
-      telegramInfo,
-      'username',
-    )})`;
+    if (!user.integration?.telegram) {
+      const telegramInfo = await this.telegramService.getChatInfo(
+        user.integration?.telegram,
+      );
+      user.integration.telegram = `${get(telegramInfo, 'first_name')} (@${get(
+        telegramInfo,
+        'username',
+      )})`;
+    } else {
+      user.integration.telegram = null;
+    }
 
-    const discordInfo = await this.discordService.getChatInfo(
-      user.integration?.discord,
-    );
-    user.integration.discord = `@${discordInfo.username}`;
+    if (!user.integration?.discord) {
+      const discordInfo = await this.discordService.getChatInfo(
+        user.integration?.discord,
+      );
+      user.integration.discord = `@${discordInfo.username}`;
+    } else {
+      user.integration.discord = null;
+    }
+
+    throw new Error('Test adding req');
 
     return user;
   }

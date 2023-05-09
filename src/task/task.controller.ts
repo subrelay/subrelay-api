@@ -91,10 +91,7 @@ export class TaskController {
       throw new NotFoundException('Event not found');
     }
 
-    const rs = this.taskService.getCustomMessageFields(event);
-    console.log(rs);
-
-    return rs;
+    return this.taskService.getCustomMessageFields(event);
   }
 
   createProcessTaskInput(
