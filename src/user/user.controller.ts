@@ -4,7 +4,7 @@ import { ModuleRef } from '@nestjs/core';
 import { UserEntity } from './user.entity';
 import { TelegramService } from '../telegram/telegram.service';
 import { DiscordService } from '../discord/discord.service';
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 
 @Controller('user')
 export class UserController implements OnModuleInit {
@@ -21,7 +21,7 @@ export class UserController implements OnModuleInit {
 
   @Get('/info')
   async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
-    if (!user.integration?.telegram) {
+    if (!isEmpty(user.integration?.telegram)) {
       const telegramInfo = await this.telegramService.getChatInfo(
         user.integration?.telegram,
       );
@@ -33,16 +33,15 @@ export class UserController implements OnModuleInit {
       user.integration.telegram = null;
     }
 
-    if (!user.integration?.discord) {
+    if (!isEmpty(user.integration?.discord)) {
       const discordInfo = await this.discordService.getChatInfo(
         user.integration?.discord,
       );
+
       user.integration.discord = `@${discordInfo.username}`;
     } else {
       user.integration.discord = null;
     }
-
-    throw new Error('Test adding req');
 
     return user;
   }
