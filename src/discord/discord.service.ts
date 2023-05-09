@@ -1,9 +1,12 @@
 import { InjectDiscordClient } from '@discord-nestjs/core';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Client } from 'discord.js';
+import { isEmpty } from 'lodash';
 
 @Injectable()
 export class DiscordService {
+  private readonly logger = new Logger(DiscordService.name);
+
   constructor(
     @InjectDiscordClient()
     private readonly discordClient: Client,
@@ -21,6 +24,15 @@ export class DiscordService {
   }
 
   async getChatInfo(chatId: string) {
-    return await this.discordClient.users.cache.get(chatId);
+    try {
+      if (isEmpty(chatId)) {
+        return null;
+      }
+
+      return await this.discordClient.users.cache.get(chatId);
+    } catch (error) {
+      this.logger.debug('Failed to get discord info', JSON.stringify(error));
+      return null;
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isEmpty } from 'lodash';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 
@@ -18,22 +19,22 @@ export class TelegramService {
   }
 
   async validateChatId(chatId: string) {
-    return this.getChatInfo(chatId);
+    const info = await this.getChatInfo(chatId);
+    if (!info) {
+      throw new Error('Chat not found.');
+    }
   }
 
   async getChatInfo(chatId: string) {
     try {
-      return await this.telegramBot.telegram.getChat(chatId);
-    } catch (error) {
-      if (error.response.error_code === 400) {
-        throw new Error('Chat not found.');
+      if (isEmpty(chatId)) {
+        return null;
       }
 
-      this.logger.debug(
-        'Failed to check telegram chatId:',
-        JSON.stringify(error),
-      );
-      throw new Error('Failed to check chat ID.');
+      return await this.telegramBot.telegram.getChat(chatId);
+    } catch (error) {
+      this.logger.debug('Failed to get telegram info', JSON.stringify(error));
+      return null;
     }
   }
 }
