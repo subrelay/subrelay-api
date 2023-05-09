@@ -19,4 +19,8 @@ export class DiscordService {
       ],
     });
   }
+
+  async getChatInfo(chatId: string) {
+    return await this.discordClient.users.cache.get(chatId);
+  }
 }

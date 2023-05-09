@@ -18,8 +18,12 @@ export class TelegramService {
   }
 
   async validateChatId(chatId: string) {
+    return this.getChatInfo(chatId);
+  }
+
+  async getChatInfo(chatId: string) {
     try {
-      await this.telegramBot.telegram.getChat(chatId);
+      return await this.telegramBot.telegram.getChat(chatId);
     } catch (error) {
       if (error.response.error_code === 400) {
         throw new Error('Chat not found.');
