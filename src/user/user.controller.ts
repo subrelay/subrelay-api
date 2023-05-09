@@ -25,10 +25,11 @@ export class UserController implements OnModuleInit {
       const telegramInfo = await this.telegramService.getChatInfo(
         user.integration?.telegram,
       );
-      user.integration.telegram = `${get(telegramInfo, 'first_name')} (@${get(
+      user.integration.telegram = `${get(
         telegramInfo,
-        'username',
-      )})`;
+        'first_name',
+        'Undefined',
+      )} (@${get(telegramInfo, 'username', 'undefined')})`;
     } else {
       user.integration.telegram = null;
     }
@@ -38,7 +39,7 @@ export class UserController implements OnModuleInit {
         user.integration?.discord,
       );
 
-      user.integration.discord = `@${discordInfo.username}`;
+      user.integration.discord = `@${discordInfo?.username || 'undefined'}`;
     } else {
       user.integration.discord = null;
     }
