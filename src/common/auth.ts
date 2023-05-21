@@ -15,6 +15,11 @@ export class AuthInfo {
   address: string;
 }
 
+export class StateInfo {
+  timestamp: number;
+  userId: string;
+}
+
 export function getAuthInfo(req: Request): AuthInfo {
   const { authorization } = req.headers;
   if (!authorization) {
@@ -42,5 +47,16 @@ export function verifyUser(authInfo: AuthInfo, data) {
 
   if (!isValid) {
     throw new ForbiddenException('Token invalid');
+  }
+}
+
+export function isAuthStateExpired(state: string) {
+  try {
+    const buffer = Buffer.from(state, 'base64');
+    const stateInfo: StateInfo = JSON.parse(buffer.toString('utf8'));
+
+    return Date.now() - stateInfo.timestamp < 30 * 60 * 1000;
+  } catch (error) {
+    return false;
   }
 }

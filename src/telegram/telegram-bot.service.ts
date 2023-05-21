@@ -8,6 +8,8 @@ export class TelegramBotService {
 
   @Start()
   async start(@Ctx() ctx) {
+    console.log({ ctx: JSON.stringify(ctx) });
+
     await ctx.reply(
       `<b>Thanks for the invitation. I am SubRelay Bot!</b>
 

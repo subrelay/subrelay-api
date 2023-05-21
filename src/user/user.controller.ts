@@ -1,10 +1,21 @@
-import { Controller, Get, OnModuleInit } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  OnModuleInit,
+  Post,
+  Query,
+  Redirect,
+} from '@nestjs/common';
 import { UserInfo } from '../common/user-info.decorator';
 import { ModuleRef } from '@nestjs/core';
 import { UserEntity } from './user.entity';
 import { TelegramService } from '../telegram/telegram.service';
 import { DiscordService } from '../discord/discord.service';
 import { get, isEmpty } from 'lodash';
+import { log } from 'console';
+import { DiscordAuthQueryParams } from '../discord/discord.type';
 
 @Controller('user')
 export class UserController implements OnModuleInit {
@@ -45,5 +56,35 @@ export class UserController implements OnModuleInit {
     }
 
     return user;
+  }
+
+  @Get('/connections/discord-auth')
+  @HttpCode(302)
+  @Redirect()
+  async authorizeDiscordConnection(
+    @Query() { access_token, state }: DiscordAuthQueryParams,
+  ) {
+    console.log({
+      que,
+      bo,
+    });
+
+    return {
+      que,
+      bo,
+    };
+  }
+
+  @Get('/connections/discord')
+  async getDiscordConnection(@UserInfo() user: any) {
+    console.log({
+      que,
+      bo,
+    });
+
+    return {
+      que,
+      bo,
+    };
   }
 }
