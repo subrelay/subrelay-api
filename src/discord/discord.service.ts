@@ -35,8 +35,4 @@ export class DiscordService {
       return null;
     }
   }
-
-  async getUserInfo() {
-    
-  }
 }

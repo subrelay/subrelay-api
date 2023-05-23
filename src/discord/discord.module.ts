@@ -3,9 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DiscordModule } from '@discord-nestjs/core';
 import { GatewayIntentBits } from 'discord.js';
 import { UserModule } from '../user/user.module';
-import { SetUpKeyCommand } from './set-up-key.command';
-import { GetKeyCommand } from './get-key.command';
-import { HelpCommand } from './help.command';
 import { DiscordService } from './discord.service';
 
 @Module({
@@ -23,7 +20,7 @@ import { DiscordService } from './discord.service';
       }),
     }),
   ],
-  providers: [SetUpKeyCommand, GetKeyCommand, HelpCommand, DiscordService],
+  providers: [DiscordService],
   exports: [DiscordService],
 })
 export class DiscordProcessorModule {}

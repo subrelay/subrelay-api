@@ -1,11 +1,29 @@
-export class DiscordUserInfo {
+import { IsNotEmpty, IsString } from 'class-validator';
+
+export class DiscordAuthQueryParams {
+  @IsString()
+  @IsNotEmpty()
   id: string;
-  name: string;
+
+  @IsString()
+  @IsNotEmpty()
   username: string;
+
+  @IsString()
+  @IsNotEmpty()
   avatar: string;
 }
 
-export class DiscordAuthQueryParams {
-  access_token: string;
-  state: string;
+export class TelegramAuthQueryParams {
+  @IsString()
+  @IsNotEmpty()
+  id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
+  @IsString()
+  @IsNotEmpty()
+  avatar: string;
 }

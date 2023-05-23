@@ -37,17 +37,4 @@ export class TelegramService {
       return null;
     }
   }
-
-  async getGroups(chatId: string) {
-    try {
-      const me = await this.telegramBot.telegram.getMe();
-
-      console.log({ me });
-
-      return { me };
-    } catch (error) {
-      this.logger.debug('Failed to get telegram info', JSON.stringify(error));
-      return null;
-    }
-  }
 }
