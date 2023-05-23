@@ -271,7 +271,7 @@ export class WorkflowService {
       });
     }
 
-    let order = `w."${requestedOrder}"` || GetWorkflowsOrderBy.UPDATED_AT;
+    const order = `w."${requestedOrder}"` || GetWorkflowsOrderBy.UPDATED_AT;
     queryBuilder = queryBuilder.addOrderBy(order, sort || SortType.DESC);
 
     const total = await queryBuilder.getCount();

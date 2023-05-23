@@ -105,16 +105,20 @@ export class EventService {
 
   getEventDataFields(event: EventEntity): DataField[] {
     return event.schema.map((field) => {
-      const name = isNaN(parseInt(field.name))
-        ? `data.${field.name}`
-        : `data[${field.name}]`;
+      let name = `data.${field.name}`;
+      let display = upperFirst(words(field.name).join(' '));
+
+      if (isNaN(parseInt(field.name))) {
+        name = `data[${field.name}]`;
+        display = `Event argument ${field.name}`;
+      }
 
       return {
         name,
-        description: field.description || upperFirst(words(field.name).join(' ')),
+        description: field.description || display,
         type: field.type as GeneralTypeEnum,
         data: field.example,
-        display: upperFirst(words(field.name.replace('data.', '')).join(' ')),
+        display,
       };
     });
   }

@@ -1,4 +1,10 @@
 export class UserIntegration {
-  telegram?: string;
-  discord?: string;
+  telegram?: Connection;
+  discord?: Connection;
+}
+
+export class Connection {
+  id: string;
+  username: string;
+  avatar: string;
 }
