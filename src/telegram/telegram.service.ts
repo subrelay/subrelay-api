@@ -37,4 +37,17 @@ export class TelegramService {
       return null;
     }
   }
+
+  async getAvatar(photoId: string) {
+    try {
+      if (isEmpty(photoId)) {
+        return null;
+      }
+
+      return await this.telegramBot.telegram.getFileLink(photoId);
+    } catch (error) {
+      this.logger.debug('Failed to get user photo', JSON.stringify(error));
+      return null;
+    }
+  }
 }

@@ -1,4 +1,10 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  OnModuleInit,
+  Query,
+} from '@nestjs/common';
 import { UserInfo } from '../common/user-info.decorator';
 import { UserEntity } from './user.entity';
 import {
@@ -6,10 +12,19 @@ import {
   TelegramAuthQueryParams,
 } from '../discord/discord.type';
 import { UserService } from './user.service';
+import { ModuleRef } from '@nestjs/core';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Controller('user')
-export class UserController {
-  constructor(private userService: UserService) {}
+export class UserController implements OnModuleInit {
+  private telegramService: TelegramService;
+
+  onModuleInit() {
+    this.telegramService = this.moduleRef.get(TelegramService, {
+      strict: false,
+    });
+  }
+  constructor(private userService: UserService, private moduleRef: ModuleRef) {}
 
   @Get('/info')
   async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
@@ -38,14 +53,22 @@ export class UserController {
     @Query() query: TelegramAuthQueryParams,
     @UserInfo() user: UserEntity,
   ) {
-    const { id, avatar, username } = query;
+    const { id, username } = query;
+
+    const telegramUser = await this.telegramService.getChatInfo(id);
+    if (!telegramUser) {
+      throw new NotFoundException();
+    }
+
+    const photoId = telegramUser.photo.small_file_id;
+    const avatar = await this.telegramService.getAvatar(photoId);
 
     const integration = {
       ...user.integration,
       telegram: {
         id,
         username,
-        avatar,
+        avatar: avatar.href,
       },
     };
 
