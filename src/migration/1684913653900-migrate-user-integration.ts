@@ -1,12 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm"
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class migrateUserIntegration1684913653900 implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`UPDATE "user" SET integration = NULL`);
+  }
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`UPDATE "user" SET integration = NULL`);
-    }
-
-    public async down(queryRunner: QueryRunner): Promise<void> {
-    }
-
+  public async down(): Promise<void> {
+    // Do nothing
+  }
 }
