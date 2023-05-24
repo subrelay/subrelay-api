@@ -29,24 +29,6 @@ export class UserService {
     return this.usersRepository.findBy({ id: In(ids) });
   }
 
-  getUserByIntegrationKey(key: string): Promise<UserEntity> {
-    return this.usersRepository.findOneBy({ key });
-  }
-
-  getUserByTelegramIntegration(telegram: string): Promise<UserEntity> {
-    return this.usersRepository
-      .createQueryBuilder('u')
-      .where(`integration ->> 'telegram' = :telegram`, { telegram })
-      .getOne();
-  }
-
-  getUserByDiscordIntegration(discord: string): Promise<UserEntity> {
-    return this.usersRepository
-      .createQueryBuilder('u')
-      .where(`integration ->> 'discord' = :discord`, { discord })
-      .getOne();
-  }
-
   async updateUserIntegration(userId: string, integration: UserIntegration) {
     await this.usersRepository.update({ id: userId }, { integration });
   }

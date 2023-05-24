@@ -12,13 +12,6 @@ export class UserEntity {
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 
-  @Column({
-    name: 'key',
-    default: () => 'substring(sha256(gen_random_uuid()::text::bytea)::text, 2)',
-    nullable: false,
-  })
-  key: string;
-
   @Column({ type: 'jsonb', nullable: true })
   integration?: UserIntegration;
 }
