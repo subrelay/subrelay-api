@@ -22,8 +22,4 @@ export class TelegramAuthQueryParams {
   @IsString()
   @IsNotEmpty()
   username: string;
-
-  @IsString()
-  @IsNotEmpty()
-  avatar: string;
 }
