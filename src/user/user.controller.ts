@@ -42,7 +42,7 @@ export class UserController {
 
     const integration = {
       ...user.integration,
-      discord: {
+      telegram: {
         id,
         username,
         avatar,
