@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { isEmpty } from 'lodash';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
+import { ChatFromGetChat } from 'telegraf/typings/core/types/typegram';
 
 @Injectable()
 export class TelegramService {
@@ -38,13 +39,15 @@ export class TelegramService {
     }
   }
 
-  async getAvatar(photoId: string) {
+  async getAvatar(user: ChatFromGetChat) {
     try {
-      if (isEmpty(photoId)) {
+      if (isEmpty(user)) {
         return null;
       }
 
-      return await this.telegramBot.telegram.getFileLink(photoId);
+      const photoId = user.photo?.small_file_id || user.photo?.big_file_id;
+
+      return photoId && await this.telegramBot.telegram.getFileLink(photoId);
     } catch (error) {
       this.logger.debug('Failed to get user photo', JSON.stringify(error));
       return null;

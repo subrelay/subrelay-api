@@ -60,8 +60,7 @@ export class UserController implements OnModuleInit {
       throw new NotFoundException();
     }
 
-    const photoId = telegramUser.photo.small_file_id;
-    const avatar = await this.telegramService.getAvatar(photoId);
+    const avatar = await this.telegramService.getAvatar(telegramUser);
 
     const integration = {
       ...user.integration,
