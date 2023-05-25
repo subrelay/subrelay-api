@@ -47,7 +47,7 @@ export class TelegramService {
 
       const photoId = user.photo?.small_file_id || user.photo?.big_file_id;
 
-      return await this.telegramBot.telegram.getFileLink(photoId);
+      return photoId && await this.telegramBot.telegram.getFileLink(photoId);
     } catch (error) {
       this.logger.debug('Failed to get user photo', JSON.stringify(error));
       return null;
