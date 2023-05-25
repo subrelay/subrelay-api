@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { isEmpty } from 'lodash';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
-import { ChatFromGetChat } from 'telegraf/typings/core/types/typegram';
 
 @Injectable()
 export class TelegramService {
@@ -32,32 +31,43 @@ export class TelegramService {
         return null;
       }
 
-      return await this.telegramBot.telegram.getChat(chatId);
+      return (
+        await this.telegramBot.telegram.getChatMember(chatId, parseInt(chatId))
+      ).user;
     } catch (error) {
       this.logger.debug('Failed to get telegram info', JSON.stringify(error));
       return null;
     }
   }
 
-  async getAvatar(userId: number) {
+  async getUser(userId: string) {
     try {
-      console.log({ userId });
-
-      const photo = await this.telegramBot.telegram.getUserProfilePhotos(
-        userId,
-      );
-
-      if (photo.total_count < 1) {
+      if (isEmpty(userId)) {
         return null;
       }
 
-      let fileId = photo.photos[0][0]?.file_id;
-      let avatar =
-        fileId && (await this.telegramBot.telegram.getFileLink(fileId));
+      const user = await this.getChatInfo(userId);
+      if (isEmpty(user)) {
+        return null;
+      }
 
-      return avatar?.href;
+      const photo = await this.telegramBot.telegram.getUserProfilePhotos(
+        parseInt(userId),
+      );
+      let avatar = null;
+      if (photo.total_count > 1) {
+        const fileId = photo.photos[0][0]?.file_id;
+        avatar =
+          fileId && (await this.telegramBot.telegram.getFileLink(fileId));
+      }
+
+      return {
+        id: userId,
+        username: user.username,
+        avatar: avatar?.href,
+      };
     } catch (error) {
-      this.logger.debug('Failed to get user photo', JSON.stringify(error));
+      this.logger.debug('Failed to get user', JSON.stringify(error));
       return null;
     }
   }

@@ -108,7 +108,7 @@ export class EventService {
       let name = `data.${field.name}`;
       let display = upperFirst(words(field.name).join(' '));
 
-      if (isNaN(parseInt(field.name))) {
+      if (!isNaN(parseInt(field.name))) {
         name = `data[${field.name}]`;
         display = `Event argument ${field.name}`;
       }

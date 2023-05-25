@@ -29,10 +29,28 @@ export class DiscordService {
         return null;
       }
 
-      return await this.discordClient.users.cache.get(chatId);
+      return await this.discordClient.users.fetch(chatId);
     } catch (error) {
       this.logger.debug('Failed to get discord info', JSON.stringify(error));
       return null;
     }
+  }
+
+  async getUser(userId: string) {
+    if (isEmpty(userId)) {
+      return null;
+    }
+
+    const user = await this.getChatInfo(userId);
+
+    if (isEmpty(user)) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      username: `${user.username}#${user.discriminator}`,
+      avatar: user.avatarURL(),
+    };
   }
 }
