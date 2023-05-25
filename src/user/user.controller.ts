@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   NotFoundException,
   OnModuleInit,
@@ -97,6 +98,26 @@ export class UserController implements OnModuleInit {
     const integration = {
       ...user.integration,
       telegram: telegramUser,
+    };
+
+    await this.userService.updateUserIntegration(user.id, integration);
+  }
+
+  @Delete('/connections/telegram')
+  async deleteTelegramConnection(@UserInfo() user: UserEntity) {
+    const integration = {
+      ...user.integration,
+      telegram: null,
+    };
+
+    await this.userService.updateUserIntegration(user.id, integration);
+  }
+
+  @Delete('/connections/discord')
+  async deleteDiscordConnection(@UserInfo() user: UserEntity) {
+    const integration = {
+      ...user.integration,
+      discord: null,
     };
 
     await this.userService.updateUserIntegration(user.id, integration);
