@@ -39,15 +39,23 @@ export class TelegramService {
     }
   }
 
-  async getAvatar(user: ChatFromGetChat) {
+  async getAvatar(userId: number) {
     try {
-      if (isEmpty(user)) {
+      console.log({ userId });
+
+      const photo = await this.telegramBot.telegram.getUserProfilePhotos(
+        userId,
+      );
+
+      if (photo.total_count < 1) {
         return null;
       }
 
-      const photoId = user.photo?.small_file_id || user.photo?.big_file_id;
+      let fileId = photo.photos[0][0]?.file_id;
+      let avatar =
+        fileId && (await this.telegramBot.telegram.getFileLink(fileId));
 
-      return photoId && await this.telegramBot.telegram.getFileLink(photoId);
+      return avatar?.href;
     } catch (error) {
       this.logger.debug('Failed to get user photo', JSON.stringify(error));
       return null;
