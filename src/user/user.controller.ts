@@ -59,15 +59,14 @@ export class UserController implements OnModuleInit {
     if (!telegramUser) {
       throw new NotFoundException();
     }
-
-    const avatar = await this.telegramService.getAvatar(telegramUser);
+    const avatar = await this.telegramService.getAvatar(parseInt(id));
 
     const integration = {
       ...user.integration,
       telegram: {
         id,
         username,
-        avatar: avatar.href,
+        avatar,
       },
     };
 

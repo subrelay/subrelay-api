@@ -144,13 +144,6 @@ export class EventService {
         data: blake2AsHex(ulid()),
         display: 'Block Hash',
       },
-      {
-        name: 'time',
-        description: 'The time that the event happened',
-        type: GeneralTypeEnum.STRING,
-        data: new Date(Date.now()),
-        display: 'Time',
-      },
     ];
   }
 
