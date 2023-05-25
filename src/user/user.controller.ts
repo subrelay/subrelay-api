@@ -14,13 +14,18 @@ import {
 import { UserService } from './user.service';
 import { ModuleRef } from '@nestjs/core';
 import { TelegramService } from '../telegram/telegram.service';
+import { DiscordService } from '../discord/discord.service';
 
 @Controller('user')
 export class UserController implements OnModuleInit {
   private telegramService: TelegramService;
+  private discordService: DiscordService;
 
   onModuleInit() {
     this.telegramService = this.moduleRef.get(TelegramService, {
+      strict: false,
+    });
+    this.discordService = this.moduleRef.get(DiscordService, {
       strict: false,
     });
   }
@@ -28,6 +33,28 @@ export class UserController implements OnModuleInit {
 
   @Get('/info')
   async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
+    const telegramId = user.integration?.telegram?.id;
+    if (telegramId) {
+      const telegramUser = await this.telegramService.getUser(telegramId);
+      if (telegramUser) {
+        user.integration = {
+          ...user.integration,
+          telegram: telegramUser,
+        };
+      }
+    }
+
+    const discordId = user.integration?.discord?.id;
+    if (discordId) {
+      const discordUser = await this.discordService.getUser(discordId);
+      if (discordUser) {
+        user.integration = {
+          ...user.integration,
+          discord: discordUser,
+        };
+      }
+    }
+
     return user;
   }
 
@@ -36,13 +63,18 @@ export class UserController implements OnModuleInit {
     @Query() query: DiscordAuthQueryParams,
     @UserInfo() user: UserEntity,
   ) {
+    const { id } = query;
+
+    const discordUser = await this.discordService.getUser(id);
+    if (!discordUser) {
+      throw new NotFoundException();
+    }
+
+    console.log({ discordUser });
+
     const integration = {
       ...user.integration,
-      discord: {
-        id: query.id,
-        username: `${query.username}`,
-        avatar: `https://cdn.discordapp.com/avatars/${query.id}/${query.avatar}.png`,
-      },
+      discord: discordUser,
     };
 
     await this.userService.updateUserIntegration(user.id, integration);
@@ -53,21 +85,18 @@ export class UserController implements OnModuleInit {
     @Query() query: TelegramAuthQueryParams,
     @UserInfo() user: UserEntity,
   ) {
-    const { id, username } = query;
+    const { id } = query;
 
-    const telegramUser = await this.telegramService.getChatInfo(id);
+    const telegramUser = await this.telegramService.getUser(id);
     if (!telegramUser) {
       throw new NotFoundException();
     }
-    const avatar = await this.telegramService.getAvatar(parseInt(id));
+
+    console.log({ telegramUser });
 
     const integration = {
       ...user.integration,
-      telegram: {
-        id,
-        username,
-        avatar,
-      },
+      telegram: telegramUser,
     };
 
     await this.userService.updateUserIntegration(user.id, integration);
