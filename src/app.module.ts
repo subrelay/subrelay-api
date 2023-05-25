@@ -77,6 +77,8 @@ export class AppModule implements NestModule {
       .forRoutes(
         { method: RequestMethod.POST, path: '/chains' },
         { method: RequestMethod.PUT, path: '/chains/:uuid' },
+        { method: RequestMethod.DELETE, path: '/user/connections/telegram' },
+        { method: RequestMethod.DELETE, path: '/user/connections/discord' },
       );
 
     consumer
