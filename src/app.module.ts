@@ -54,12 +54,9 @@ import { WorkerModule } from './worker/worker.module';
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
     UserModule,
-    EventModule,
     ChainModule,
-    SubstrateModule,
     TaskModule,
     WorkflowModule,
-    WorkerModule,
   ],
   controllers: [AppController],
   providers: [

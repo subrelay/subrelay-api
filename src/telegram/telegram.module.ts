@@ -12,12 +12,6 @@ import { TelegrafModule } from 'nestjs-telegraf';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         token: configService.get('TELEGRAM_BOT_TOKEN'),
-        launchOptions: {
-          webhook: {
-            domain: configService.get('API_BASE_URL'),
-            hookPath: '/telegram-bot',
-          },
-        },
       }),
     }),
   ],
