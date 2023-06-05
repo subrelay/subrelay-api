@@ -71,8 +71,6 @@ export class UserController implements OnModuleInit {
       throw new NotFoundException();
     }
 
-    console.log({ discordUser });
-
     const integration = {
       ...user.integration,
       discord: discordUser,
@@ -92,8 +90,6 @@ export class UserController implements OnModuleInit {
     if (!telegramUser) {
       throw new NotFoundException();
     }
-
-    console.log({ telegramUser });
 
     const integration = {
       ...user.integration,

@@ -9,9 +9,7 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
-import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { AdminAuthMiddleware } from './common/admin-auth.middleware';
@@ -21,7 +19,6 @@ import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
-import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
@@ -74,8 +71,6 @@ export class AppModule implements NestModule {
       .forRoutes(
         { method: RequestMethod.POST, path: '/chains' },
         { method: RequestMethod.PUT, path: '/chains/:uuid' },
-        { method: RequestMethod.DELETE, path: '/user/connections/telegram' },
-        { method: RequestMethod.DELETE, path: '/user/connections/discord' },
       );
 
     consumer
@@ -92,6 +87,8 @@ export class AppModule implements NestModule {
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
         { method: RequestMethod.POST, path: '/chains' },
         { method: RequestMethod.PUT, path: '/chains/:uuid' },
+        { method: RequestMethod.DELETE, path: '/user/connections/telegram' },
+        { method: RequestMethod.DELETE, path: '/user/connections/discord' },
       )
       .forRoutes('*');
   }

@@ -1,7 +1,7 @@
-import { DataSource, DataSourceOptions } from 'typeorm';
+import { DataSourceOptions } from 'typeorm';
 import 'dotenv/config';
 
-export const cliOrmConfig: DataSourceOptions = {
+const config: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DB_HOST,
   port: process.env.DB_PORT as any as number,
@@ -12,6 +12,4 @@ export const cliOrmConfig: DataSourceOptions = {
   migrations: ['./src/migration/*.ts'],
 };
 
-const dataSource = new DataSource(cliOrmConfig);
-
-export default dataSource;
+export default config;

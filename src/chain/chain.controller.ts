@@ -33,21 +33,6 @@ export class ChainController {
     return this.chainService.getChains();
   }
 
-  @Post()
-  async createChain(@Body() input: CreateChainRequest): Promise<ChainSummary> {
-    return await this.chainService.createChain(input);
-  }
-
-  @Delete(':uuid')
-  @HttpCode(204)
-  async deleteChain(@Param() pathParams: { uuid?: string }) {
-    if (!(await this.chainService.chainExist(pathParams.uuid))) {
-      throw new NotFoundException('Chain not found');
-    }
-
-    await this.chainService.deleteChainByChainId(pathParams.uuid);
-  }
-
   @Put(':uuid')
   @HttpCode(200)
   async updateChain(
