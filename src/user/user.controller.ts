@@ -34,29 +34,31 @@ export class UserController implements OnModuleInit {
 
   @Get('/info')
   async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
-    const telegramId = user.integration?.telegram?.id;
+    const currentUser = await this.userService.getUserById(user.id);
+
+    const telegramId = currentUser.integration?.telegram?.id;
     if (telegramId) {
       const telegramUser = await this.telegramService.getUser(telegramId);
       if (telegramUser) {
-        user.integration = {
-          ...user.integration,
+        currentUser.integration = {
+          ...currentUser.integration,
           telegram: telegramUser,
         };
       }
     }
 
-    const discordId = user.integration?.discord?.id;
+    const discordId = currentUser.integration?.discord?.id;
     if (discordId) {
       const discordUser = await this.discordService.getUser(discordId);
       if (discordUser) {
-        user.integration = {
-          ...user.integration,
+        currentUser.integration = {
+          ...currentUser.integration,
           discord: discordUser,
         };
       }
     }
 
-    return user;
+    return currentUser;
   }
 
   @Get('/connections/discord')
@@ -77,6 +79,7 @@ export class UserController implements OnModuleInit {
     };
 
     await this.userService.updateUserIntegration(user.id, integration);
+    return this.userService.getUserById(user.id);
   }
 
   @Get('/connections/telegram')
@@ -97,6 +100,7 @@ export class UserController implements OnModuleInit {
     };
 
     await this.userService.updateUserIntegration(user.id, integration);
+    return this.userService.getUserById(user.id);
   }
 
   @Delete('/connections/telegram')

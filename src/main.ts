@@ -16,8 +16,8 @@ async function bootstrap() {
   );
   app.enableCors();
 
-  const bot = app.get(getBotToken());
-  app.use(bot.webhookCallback('/telegram-bot'));
+  // const bot = app.get(getBotToken());
+  // app.use(bot.webhookCallback('/telegram-bot'));
 
   await app.listen(3000);
 }

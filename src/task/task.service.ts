@@ -336,12 +336,12 @@ export class TaskService {
       };
     } catch (error) {
       this.logger.error('[Webhook] Failed to send data to webhook', error);
-      if (error.response.status === 404) {
+      if (error?.response?.status === 404) {
         failedResult.error.message = 'Webhook URL does not exist.';
-      } else if (error.response.status) {
+      } else if (error?.response?.status) {
         failedResult.error.message = `Sending request to webhook URL failed with status code ${error.response.status}.`;
       } else {
-        failedResult.error.message = error.message;
+        failedResult.error.message = error?.message;
       }
 
       return failedResult;
