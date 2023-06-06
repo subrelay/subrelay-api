@@ -15,7 +15,7 @@ import { WebhookModule } from '../webhook/webhook.module';
   imports: [
     TypeOrmModule.forFeature([TaskEntity, TaskLogEntity]),
     EventModule,
-    // UserModule,
+    UserModule,
     EmailModule,
     DiscordProcessorModule,
     TelegramModule,

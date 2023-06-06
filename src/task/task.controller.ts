@@ -17,12 +17,14 @@ import { EventEntity } from '../event/event.entity';
 import { ulid } from 'ulid';
 import { UserEntity } from '../user/user.entity';
 import { UserInfo } from '../common/user-info.decorator';
+import { UserService } from '../user/user.service';
 
 @Controller('tasks')
 export class TaskController {
   constructor(
     private readonly taskService: TaskService,
     private readonly eventService: EventService,
+    private readonly userService: UserService,
   ) {}
 
   @Post('/run')
@@ -47,7 +49,10 @@ export class TaskController {
     });
     const result = await this.taskService.processTask(
       baseTask,
-      this.createProcessTaskInput(user, event),
+      this.createProcessTaskInput(
+        await this.userService.getUserById(user.id),
+        event,
+      ),
     );
 
     return {

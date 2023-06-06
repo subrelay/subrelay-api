@@ -20,19 +20,29 @@ import { TaskModule } from '../src/task/task.module';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { mockUser } from './mock-data';
+import { mockDiscordUser, mockUser } from './mock-data';
+import { UserService } from '../src/user/user.service';
 
 describe('Task', () => {
   let app: INestApplication;
   let telegramService = { getUser: jest.fn() };
-  let discordService = { getUser: jest.fn() };
+  let discordService = {
+    getUser: jest.fn(),
+    sendDirectMessage: jest.fn(),
+    getChatInfo: jest.fn(),
+  };
   let webhookService = {
     sendMessage: jest.fn(),
     generateSignatureHeader: jest.fn(),
   };
-  let emailService = {};
+  let emailService = {
+    sendEmails: jest.fn(),
+    sendDirectMessage: jest.fn(),
+    getChatInfo: jest.fn(),
+  };
   let substrateService = {};
   let event: EventEntity;
+  let userRepository: Repository<UserEntity>;
 
   const user = mockUser();
 
@@ -50,6 +60,7 @@ describe('Task', () => {
         WebhookService,
         EmailService,
         SubstrateService,
+        UserService,
         {
           provide: APP_FILTER,
           useClass: InternalServerExceptionsFilter,
@@ -83,7 +94,7 @@ describe('Task', () => {
     );
     await app.init();
 
-    const userRepository = moduleRef.get(getRepositoryToken(UserEntity));
+    userRepository = moduleRef.get(getRepositoryToken(UserEntity));
     const eventRepository: Repository<EventEntity> = moduleRef.get(
       getRepositoryToken(EventEntity),
     );
@@ -116,12 +127,6 @@ describe('Task', () => {
         .expect(200);
     });
   });
-
-  /* Webhook task
-    1. Do not have secret
-    2. Invalid Url
-    2. Have secret -> verify header
-   */
 
   describe('POST /tasks/run', () => {
     describe('Webhook task', () => {
@@ -207,6 +212,9 @@ describe('Task', () => {
           .expect(200)
           .then((res) => {
             expect(res.headers['x-hub-signature-256']).toBeUndefined();
+            expect(res.body).toEqual({
+              status: 'success',
+            });
           });
       });
 
@@ -228,22 +236,241 @@ describe('Task', () => {
           .expect(200)
           .then((res) => {
             expect(res.headers['x-hub-signature-256']).not.toBe(null);
+            expect(res.body).toEqual({
+              status: 'success',
+            });
+          });
+      });
+    });
+
+    // Email
+    describe('Email task', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it(`Failed with nonexistence event ID`, () => {
+        const input = {
+          type: 'email',
+          config: {
+            addresses: ['example@gmail.com'],
+            subjectTemplate:
+              '<p><b>Your event <b>has</b> been triggered</b></p>',
+            bodyTemplate: ' has been sent to  DOT',
+          },
+          data: {
+            eventId: 'FooAndBarId',
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(404);
+      });
+
+      it(`Failed with missing data`, () => {
+        const input = {
+          type: 'email',
+          config: {
+            addresses: ['example@gmail.com'],
+            subjectTemplate:
+              '<p><b>Your event <b>has</b> been triggered</b></p>',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(400);
+      });
+
+      it(`Failed to send email`, () => {
+        const errorMsg = 'Failed to send email';
+        jest.spyOn(emailService, 'sendEmails').mockImplementation(() => {
+          throw new Error(errorMsg);
+        });
+
+        const input = {
+          type: 'email',
+          config: {
+            addresses: ['example@gmail.com'],
+            subjectTemplate:
+              '<p><b>Your event <b>has</b> been triggered</b></p>',
+            bodyTemplate: ' has been sent to  DOT',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(200)
+          .then((res) => {
+            expect(res.body).toEqual({
+              status: 'failed',
+              error: {
+                message: errorMsg,
+              },
+            });
+          });
+      });
+
+      it(`Success`, () => {
+        jest.spyOn(emailService, 'sendEmails').mockImplementation(() => {});
+        const input = {
+          type: 'email',
+          config: {
+            addresses: ['example@gmail.com'],
+            subjectTemplate:
+              '<p><b>Your event <b>has</b> been triggered</b></p>',
+            bodyTemplate: ' has been sent to  DOT',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(200)
+          .then((res) => {
+            expect(res.body).toEqual({
+              status: 'success',
+            });
+          });
+      });
+    });
+
+    // Discord
+    describe('Discord task', () => {
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it(`Failed with nonexistence event ID`, () => {
+        const input = {
+          type: 'discord',
+          config: {
+            messageTemplate:
+              'Hello,\n\nHere is the summary of what happened in the event you are subscribing:\n\nChain: 8506ee1b-6821-4d38-b3ba-e935525c446a\n\nSample Data:\n\nVar1: ${event.success}',
+          },
+          data: {
+            eventId: 'FooAndBar',
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(404);
+      });
+
+      it(`Failed with missing data`, () => {
+        const input = {
+          type: 'discord',
+          config: {},
+          data: {
+            eventId: event.id,
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(400);
+      });
+
+      it(`Failed to send message to user that does not set up connection yet`, () => {
+        const input = {
+          type: 'discord',
+          config: {
+            messageTemplate:
+              'Hello,\n\nHere is the summary of what happened in the event you are subscribing:\n\nChain: 8506ee1b-6821-4d38-b3ba-e935525c446a\n\nSample Data:\n\nVar1: ${event.success}',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(200)
+          .then((res) => {
+            expect(res.body).toEqual({
+              status: 'failed',
+              error: {
+                message: "Discord integration does't set up yet.",
+              },
+            });
+          });
+      });
+
+      it(`Failed to send message to user`, async () => {
+        const discordUser = mockDiscordUser();
+        await userRepository.update(
+          { id: user.id },
+          { integration: { discord: discordUser } },
+        );
+
+        const errorMsg = 'Failed to send message xxx';
+        jest
+          .spyOn(discordService, 'sendDirectMessage')
+          .mockImplementation(() => {
+            throw new Error(errorMsg);
+          });
+
+        const input = {
+          type: 'discord',
+          config: {
+            messageTemplate:
+              'Hello,\n\nHere is the summary of what happened in the event you are subscribing:\n\nChain: 8506ee1b-6821-4d38-b3ba-e935525c446a\n\nSample Data:\n\nVar1: ${event.success}',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+        request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(200)
+          .then((res) => {
+            expect(res.body).toEqual({
+              status: 'failed',
+              error: {
+                message: errorMsg,
+              },
+            });
+          });
+      });
+
+      it(`Success`, () => {
+        jest
+          .spyOn(discordService, 'sendDirectMessage')
+          .mockImplementation(() => {});
+        const input = {
+          type: 'discord',
+          config: {
+            messageTemplate:
+              'Hello,\n\nHere is the summary of what happened in the event you are subscribing:\n\nChain: 8506ee1b-6821-4d38-b3ba-e935525c446a\n\nSample Data:\n\nVar1: ${event.success}',
+          },
+          data: {
+            eventId: event.id,
+          },
+        };
+
+        return request(app.getHttpServer())
+          .post('/tasks/run')
+          .send(input)
+          .expect(200)
+          .then((res) => {
+            expect(res.body).toEqual({
+              status: 'success',
+            });
           });
       });
     });
   });
-
-  /* Email task
-    1. Invalid email address
-    2. Successfully
-    3. Invalid config
-   */
-
-  /* Discord task
-    1. Use does not have Discord connection
-    2. Successfully
-    3. Invalid config
-   */
 
   /* Telegram task
     1. Use does not have Telegram connection
