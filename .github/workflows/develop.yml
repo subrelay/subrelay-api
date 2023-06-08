@@ -51,6 +51,7 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: echo "${{secrets.E2E_TESTING_ENV}}" > .env
+      - run: npm run typeorm migration:run
       - run: npm run test:e2e
   deploy-develop:
     needs: [build, lint]
