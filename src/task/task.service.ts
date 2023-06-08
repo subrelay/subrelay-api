@@ -431,7 +431,6 @@ export class TaskService {
     }
 
     try {
-      await this.telegramService.validateChatId(chatId);
       await this.telegramService.sendDirectMessage(chatId, message);
 
       return {

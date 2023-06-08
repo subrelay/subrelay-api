@@ -79,7 +79,7 @@ describe('User', () => {
         .mockImplementation((id) => discordUser);
 
       const queryParams = { id: 'discordId' };
-      request(app.getHttpServer())
+      return request(app.getHttpServer())
         .get('/user/connections/discord')
         .query(queryParams)
         .expect(200)
@@ -96,14 +96,14 @@ describe('User', () => {
       jest.restoreAllMocks();
     });
 
-    // it(`Update nonexistence telegram connection`, () => {
-    //   jest.spyOn(telegramService, 'getUser').mockImplementation((id) => null);
+    it(`Update nonexistence telegram connection`, () => {
+      jest.spyOn(telegramService, 'getUser').mockImplementation(() => null);
 
-    //   return request(app.getHttpServer())
-    //     .get('/user/connections/telegram')
-    //     .query({ id: 'invalidConnectionId' })
-    //     .expect(404);
-    // });
+      return request(app.getHttpServer())
+        .get('/user/connections/telegram')
+        .query({ id: 'invalidConnectionId' })
+        .expect(404);
+    });
 
     it(`Update telegram connection`, () => {
       const telegramUser = mockTelegramUser();
@@ -112,14 +112,14 @@ describe('User', () => {
         .mockImplementation(() => telegramUser);
       const queryParams = { id: 'telegramId' };
 
-      request(app.getHttpServer())
+      return request(app.getHttpServer())
         .get('/user/connections/telegram')
         .query(queryParams)
         .expect(200)
         .then((res) => {
           expect(res.body.id).toEqual(user.id);
           expect(res.body.address).toEqual(user.address);
-          expect(res.body.integration.discord).toEqual(telegramUser);
+          expect(res.body.integration.telegram).toEqual(telegramUser);
         });
     });
   });
@@ -128,9 +128,9 @@ describe('User', () => {
     it(`Delete discord connection`, () => {
       request(app.getHttpServer())
         .delete('/user/connections/discord')
-        .expect(204);
+        .expect(200);
 
-      request(app.getHttpServer())
+      return request(app.getHttpServer())
         .get('/user/info')
         .expect(200)
         .then((res) => {
@@ -144,9 +144,9 @@ describe('User', () => {
     it(`Delete telegram connection`, () => {
       request(app.getHttpServer())
         .delete('/user/connections/telegram')
-        .expect(204);
+        .expect(200);
 
-      request(app.getHttpServer())
+      return request(app.getHttpServer())
         .get('/user/info')
         .expect(200)
         .then((res) => {

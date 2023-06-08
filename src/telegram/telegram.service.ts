@@ -13,12 +13,14 @@ export class TelegramService {
   ) {}
 
   async sendDirectMessage(chatId: string, message: string) {
+    await this.validateChatId(chatId);
+
     await this.telegramBot.telegram.sendMessage(chatId, message, {
       parse_mode: 'HTML',
     });
   }
 
-  async validateChatId(chatId: string) {
+  private async validateChatId(chatId: string) {
     const info = await this.getChatInfo(chatId);
     if (!info) {
       throw new Error('Chat not found.');

@@ -2,11 +2,11 @@ name: Develop
 
 on:
   push:
-    branches: [ develop ]
+    branches: [develop]
   pull_request:
-    branches: [ develop ]
+    branches: [develop]
   release:
-    types: [ created ]
+    types: [created]
 
 jobs:
   lint:
@@ -29,18 +29,40 @@ jobs:
           node-version: 18.x
       - run: npm ci
       - run: npm run build
+  e2e-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: ${{ secrets.E2E_TESTING_POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.E2E_TESTING_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.E2E_TESTING_POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+      redis:
+        image: redis
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js v18.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+      - run: npm ci
+      - run: echo "$secrets.E2E_TESTING_ENV" > .env
+      - run: npm run test:e2e
   deploy-develop:
     needs: [build, lint]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
-    - name: SSH and deploy node app
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.DEV_SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd subrelay-backend/subrelay-api
-          chmod a+rx ./scripts/run.sh
-          ./scripts/run.sh --env=dev
+      - name: SSH and deploy node app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd subrelay-backend/subrelay-api
+            chmod a+rx ./scripts/run.sh
+            ./scripts/run.sh --env=dev
