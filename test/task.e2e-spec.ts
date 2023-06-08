@@ -22,25 +22,25 @@ import { UserService } from '../src/user/user.service';
 
 describe('Task', () => {
   let app: INestApplication;
-  let telegramService = {
+  const telegramService = {
     getUser: jest.fn(),
     sendDirectMessage: jest.fn(),
   };
-  let discordService = {
+  const discordService = {
     getUser: jest.fn(),
     sendDirectMessage: jest.fn(),
     getChatInfo: jest.fn(),
   };
-  let webhookService = {
+  const webhookService = {
     sendMessage: jest.fn(),
     generateSignatureHeader: jest.fn(),
   };
-  let emailService = {
+  const emailService = {
     sendEmails: jest.fn(),
     sendDirectMessage: jest.fn(),
     getChatInfo: jest.fn(),
   };
-  let substrateService = {};
+  const substrateService = {};
   let event: EventEntity;
   let userRepository: Repository<UserEntity>;
 

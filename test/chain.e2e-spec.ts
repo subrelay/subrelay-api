@@ -11,7 +11,7 @@ import { EventEntity } from '../src/event/event.entity';
 
 describe('Chain', () => {
   let app: INestApplication;
-  let substrateService = { findAll: () => ['test'] };
+  const substrateService = { findAll: () => ['test'] };
   let chains: ChainSummary[];
   let events: EventEntity[];
 
@@ -40,7 +40,7 @@ describe('Chain', () => {
 
   describe('PUT /chains/{id}', () => {
     it(`Update chain successfully`, () => {
-      let chainUuid = chains[0].uuid;
+      const chainUuid = chains[0].uuid;
       const input = {
         name: ulid(),
         imageUrl: `https://${ulid()}.com/${ulid()}.png`,

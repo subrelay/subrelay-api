@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
 import ormConfig from '../src/config/ormconfig';
-import { ulid } from 'ulid';
 import { UserModule } from '../src/user/user.module';
 import { TelegramService } from '../src/telegram/telegram.service';
 import { DiscordService } from '../src/discord/discord.service';
@@ -14,10 +13,10 @@ import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data';
 
 describe('User', () => {
   let app: INestApplication;
-  let telegramService = { getUser: jest.fn() };
-  let discordService = { getUser: jest.fn() };
+  const telegramService = { getUser: jest.fn() };
+  const discordService = { getUser: jest.fn() };
   let userRepository: Repository<UserEntity>;
-  let user = mockUser();
+  const user = mockUser();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -64,7 +63,7 @@ describe('User', () => {
     });
 
     it(`Update nonexistence discord connection`, () => {
-      jest.spyOn(discordService, 'getUser').mockImplementation((id) => null);
+      jest.spyOn(discordService, 'getUser').mockImplementation(() => null);
 
       return request(app.getHttpServer())
         .get('/user/connections/discord')
@@ -76,7 +75,7 @@ describe('User', () => {
       const discordUser = mockDiscordUser();
       jest
         .spyOn(discordService, 'getUser')
-        .mockImplementation((id) => discordUser);
+        .mockImplementation(() => discordUser);
 
       const queryParams = { id: 'discordId' };
       return request(app.getHttpServer())
