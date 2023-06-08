@@ -174,7 +174,7 @@ export class WorkflowController {
       validateTaskConfig(task.type, task.config);
     });
 
-    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([_, value]) => {
+    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([, value]) => {
       if (value.length > 1) {
         throw new BadRequestException(
           `${map(value, 'name').join(

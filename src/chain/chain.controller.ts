@@ -1,12 +1,10 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   NotFoundException,
   Param,
-  Post,
   Put,
   Query,
 } from '@nestjs/common';
@@ -14,11 +12,7 @@ import { map, omit, pick } from 'lodash';
 import { Pagination } from '../common/pagination.type';
 import { GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
-import {
-  ChainSummary,
-  CreateChainRequest,
-  UpdateChainRequest,
-} from './chain.dto';
+import { ChainSummary, UpdateChainRequest } from './chain.dto';
 import { ChainService } from './chain.service';
 
 @Controller('chains')
