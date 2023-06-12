@@ -19,6 +19,8 @@ import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data.util';
 import { UserService } from '../src/user/user.service';
+import { ChainService } from '../src/chain/chain.service';
+import { ChainEntity } from '../src/chain/chain.entity';
 
 describe('Task', () => {
   let app: INestApplication;
@@ -50,10 +52,11 @@ describe('Task', () => {
       imports: [
         TaskModule,
         TypeOrmModule.forRoot(ormConfig),
-        TypeOrmModule.forFeature([EventEntity, UserEntity]),
+        TypeOrmModule.forFeature([EventEntity, UserEntity, ChainEntity]),
       ],
       providers: [
         TelegramService,
+        ChainService,
         DiscordService,
         EventService,
         WebhookService,
