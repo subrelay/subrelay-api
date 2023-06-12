@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: yarn ci
+      - run: yarn install
       - run: yarn run build
   e2e-test:
     runs-on: ubuntu-latest
@@ -49,12 +49,12 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: yarn ci
+      - run: yarn install
       - run: echo "${{secrets.E2E_TESTING_ENV}}" > .env
       - run: yarn run typeorm migration:run
       - run: yarn run test:e2e
   deploy-develop:
-    needs: [build, lint]
+    needs: [build, lint, e2e-test]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:

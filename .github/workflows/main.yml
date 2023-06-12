@@ -2,13 +2,13 @@ name: Main
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     tags:
       - v[0-9]*
   pull_request:
-    branches: [ main ]
+    branches: [main]
   release:
-    types: [ created ]
+    types: [created]
 
 jobs:
   lint:
@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: yarn ci
+      - run: yarn install
       - run: yarn run lint
   build:
     runs-on: ubuntu-latest
@@ -29,21 +29,21 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: yarn ci
+      - run: yarn install
       - run: yarn run build
   deploy-stg:
     needs: [build, lint]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-    - name: SSH and deploy node app
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          cd subrelay-backend/subrelay-api/
-          git reset --hard
-          git pull origin main
-          docker-compose up -d --build
+      - name: SSH and deploy node app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd subrelay-backend/subrelay-api/
+            git reset --hard
+            git pull origin main
+            docker-compose up -d --build
