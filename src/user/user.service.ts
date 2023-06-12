@@ -26,10 +26,12 @@ export class UserService {
   ): Promise<Pick<UserEntity, 'id' | 'address'>> {
     const user = await this.usersRepository.findOneBy({ address });
 
-    return {
-      id: user.id,
-      address: user.address,
-    };
+    return (
+      user && {
+        id: user.id,
+        address: user.address,
+      }
+    );
   }
 
   getUserById(id: string): Promise<UserEntity> {

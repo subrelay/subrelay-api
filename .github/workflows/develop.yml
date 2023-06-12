@@ -66,5 +66,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd subrelay-backend/subrelay-api
-            chmod a+rx ./scripts/run.sh
-            ./scripts/run.sh --env=dev
+            git checkout develop
+            git reset --hard
+            git pull
+            yarn install
+            yarn build
+            pm2 start dist/main.js
