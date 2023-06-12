@@ -21,6 +21,17 @@ export class UserService {
     return this.usersRepository.findOneBy({ address });
   }
 
+  async getUserSummary(
+    address: string,
+  ): Promise<Pick<UserEntity, 'id' | 'address'>> {
+    const user = await this.usersRepository.findOneBy({ address });
+
+    return {
+      id: user.id,
+      address: user.address,
+    };
+  }
+
   getUserById(id: string): Promise<UserEntity> {
     return this.usersRepository.findOneBy({ id });
   }

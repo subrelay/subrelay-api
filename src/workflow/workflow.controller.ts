@@ -35,6 +35,8 @@ import {
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 import { TriggerTaskConfig } from '../task/type/trigger.type';
+import { UserSummary } from '../user/user.dto';
+import { UserService } from '../user/user.service';
 
 @Controller('workflows')
 export class WorkflowController {
@@ -42,12 +44,13 @@ export class WorkflowController {
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
     private readonly taskService: TaskService,
+    private readonly userService: UserService,
   ) {}
 
   @Get()
   async getWorkflows(
     @Query() queryParams: GetWorkflowsQueryParams,
-    @UserInfo() user: UserEntity,
+    @UserInfo() user: UserSummary,
   ) {
     const { workflows, total } =
       await this.workflowService.getWorkflowsAndTotal(queryParams, user.id);
@@ -61,7 +64,7 @@ export class WorkflowController {
   }
 
   @Get(':id')
-  async getWorkflow(@Param('id') id: string, @UserInfo() user: UserEntity) {
+  async getWorkflow(@Param('id') id: string, @UserInfo() user: UserSummary) {
     const workflow = await this.workflowService.getWorkflow(id, user.id);
 
     if (!workflow) {
@@ -81,7 +84,7 @@ export class WorkflowController {
   async updateWorkflow(
     @Param('id') id: string,
     @Body() input: UpdateWorkflowRequest,
-    @UserInfo() user: UserEntity,
+    @UserInfo() user: UserSummary,
   ) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
@@ -92,7 +95,7 @@ export class WorkflowController {
 
   @Delete(':id')
   @HttpCode(204)
-  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: UserEntity) {
+  async deleteWorkflow(@Param('id') id: string, @UserInfo() user: UserSummary) {
     if (!(await this.workflowService.workflowExists(id, user.id))) {
       throw new NotFoundException('Workflow not found');
     }
@@ -103,12 +106,15 @@ export class WorkflowController {
   @Post()
   async createWorkflow(
     @Body() input: CreateWorkFlowRequest,
-    @UserInfo() user: UserEntity,
+    @UserInfo() userInfo: UserSummary,
   ) {
     input.tasks = this.modifyTaskRequests(input.tasks);
-    await this.validateWorkflowTasks(user, input.tasks);
+    await this.validateWorkflowTasks(
+      await this.userService.getUserById(userInfo.id),
+      input.tasks,
+    );
 
-    const workflow = await this.workflowService.createWorkflow(input, user.id);
+    const workflow = await this.workflowService.createWorkflow(input, userInfo.id);
 
     const tasks = await this.taskService.getTasks(workflow.id);
 
@@ -174,7 +180,7 @@ export class WorkflowController {
       validateTaskConfig(task.type, task.config);
     });
 
-    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([_, value]) => {
+    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([, value]) => {
       if (value.length > 1) {
         throw new BadRequestException(
           `${map(value, 'name').join(

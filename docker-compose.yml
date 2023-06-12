@@ -10,15 +10,19 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - ${DB_PORT}
+      - ${DB_PORT}:${DB_PORT}
     restart: always
     env_file:
-      - .env
+      - self-hosted.env
 
   redis:
     image: redis
     volumes:
       - redis_data:/data
+    restart: always
+    env_file:
+      - self-hosted.env
+
 
   event-service:
     image: subrelay-event-service:latest

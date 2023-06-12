@@ -1,12 +1,10 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   NotFoundException,
   Param,
-  Post,
   Put,
   Query,
 } from '@nestjs/common';
@@ -14,11 +12,7 @@ import { map, omit, pick } from 'lodash';
 import { Pagination } from '../common/pagination.type';
 import { GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
-import {
-  ChainSummary,
-  CreateChainRequest,
-  UpdateChainRequest,
-} from './chain.dto';
+import { ChainSummary, UpdateChainRequest } from './chain.dto';
 import { ChainService } from './chain.service';
 
 @Controller('chains')
@@ -31,21 +25,6 @@ export class ChainController {
   @Get()
   async getChains(): Promise<ChainSummary[]> {
     return this.chainService.getChains();
-  }
-
-  @Post()
-  async createChain(@Body() input: CreateChainRequest): Promise<ChainSummary> {
-    return await this.chainService.createChain(input);
-  }
-
-  @Delete(':uuid')
-  @HttpCode(204)
-  async deleteChain(@Param() pathParams: { uuid?: string }) {
-    if (!(await this.chainService.chainExist(pathParams.uuid))) {
-      throw new NotFoundException('Chain not found');
-    }
-
-    await this.chainService.deleteChainByChainId(pathParams.uuid);
   }
 
   @Put(':uuid')

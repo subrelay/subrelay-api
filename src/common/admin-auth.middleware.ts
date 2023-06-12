@@ -33,7 +33,7 @@ export class AdminAuthMiddleware implements NestMiddleware {
     const authInfo = getAuthInfo(req);
     authorize(authInfo);
     const user =
-      (await this.userService.getUser(authInfo.address)) ||
+      (await this.userService.getUserSummary(authInfo.address)) ||
       (await this.userService.createUser({ address: authInfo.address }));
     req.user = user;
 

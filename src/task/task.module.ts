@@ -5,7 +5,6 @@ import { TaskEntity } from './entity/task.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
 import { EventModule } from '../event/event.module';
-import { TelegramBotService } from '../telegram/telegram-bot.service';
 import { UserModule } from '../user/user.module';
 import { DiscordProcessorModule } from '../discord/discord.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -22,7 +21,7 @@ import { WebhookModule } from '../webhook/webhook.module';
     TelegramModule,
     WebhookModule,
   ],
-  providers: [TaskService, TelegramBotService],
+  providers: [TaskService],
   controllers: [TaskController],
   exports: [TaskService],
 })
