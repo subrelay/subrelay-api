@@ -40,7 +40,6 @@ describe('Task', () => {
     sendDirectMessage: jest.fn(),
     getChatInfo: jest.fn(),
   };
-  const substrateService = {};
   let event: EventEntity;
   let userRepository: Repository<UserEntity>;
 
@@ -68,8 +67,6 @@ describe('Task', () => {
         ConfigService,
       ],
     })
-      .overrideProvider(SubstrateService)
-      .useValue(substrateService)
       .overrideProvider(TelegramService)
       .useValue(telegramService)
       .overrideProvider(DiscordService)
