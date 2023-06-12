@@ -17,8 +17,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: npm ci
-      - run: npm run lint
+      - run: yarn install
+      - run: yarn lint
   build:
     runs-on: ubuntu-latest
     steps:
@@ -27,8 +27,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: npm ci
-      - run: npm run build
+      - run: yarn ci
+      - run: yarn run build
   e2e-test:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -49,10 +49,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18.x
-      - run: npm ci
+      - run: yarn ci
       - run: echo "${{secrets.E2E_TESTING_ENV}}" > .env
-      - run: npm run typeorm migration:run
-      - run: npm run test:e2e
+      - run: yarn run typeorm migration:run
+      - run: yarn run test:e2e
   deploy-develop:
     needs: [build, lint]
     if: github.ref == 'refs/heads/develop'

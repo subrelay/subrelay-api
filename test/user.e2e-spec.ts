@@ -52,7 +52,7 @@ describe('User', () => {
         .then((res) => {
           expect(res.body.id).toEqual(user.id);
           expect(res.body.address).toEqual(user.address);
-          expect(res.body.integration).toEqual(user.integration);
+          expect(res.body.integration).toBe(null);
         });
     });
   });
@@ -123,9 +123,14 @@ describe('User', () => {
     });
   });
 
-  describe('DELETE /connections/discord', () => {
-    it(`Delete discord connection`, () => {
-      request(app.getHttpServer())
+  describe('DELETE user/connections/discord', () => {
+    it(`Delete discord connection`, async () => {
+      await userRepository.update(
+        { id: user.id },
+        { integration: { telegram: null, discord: mockDiscordUser() } },
+      );
+
+      await request(app.getHttpServer())
         .delete('/user/connections/discord')
         .expect(200);
 
@@ -134,14 +139,19 @@ describe('User', () => {
         .expect(200)
         .then((res) => {
           expect(res.body.id).toEqual(user.id);
-          expect(res.body.integration.discord).toBe(undefined);
+          expect(res.body.integration.discord).toBe(null);
         });
     });
   });
 
-  describe('DELETE /connections/telegram', () => {
-    it(`Delete telegram connection`, () => {
-      request(app.getHttpServer())
+  describe('DELETE user/connections/telegram', () => {
+    it(`Delete telegram connection`, async () => {
+      await userRepository.update(
+        { id: user.id },
+        { integration: { discord: null, telegram: mockTelegramUser() } },
+      );
+
+      await request(app.getHttpServer())
         .delete('/user/connections/telegram')
         .expect(200);
 
@@ -150,7 +160,7 @@ describe('User', () => {
         .expect(200)
         .then((res) => {
           expect(res.body.id).toEqual(user.id);
-          expect(res.body.integration.telegram).toBe(undefined);
+          expect(res.body.integration.telegram).toBe(null);
         });
     });
   });

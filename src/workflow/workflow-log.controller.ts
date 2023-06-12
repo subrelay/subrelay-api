@@ -13,6 +13,7 @@ import {
   GetWorkflowLogsResponse,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
+import { UserSummary } from '../user/user.dto';
 
 @Controller('workflow-logs')
 export class WorkflowLogController {
@@ -24,7 +25,7 @@ export class WorkflowLogController {
   @Get()
   async getWorkflowLogs(
     @Query() queryParams: GetWorkflowLogsQueryParams,
-    @UserInfo() user: UserEntity,
+    @UserInfo() user: UserSummary,
   ): Promise<GetWorkflowLogsResponse> {
     const { workflowLogs, total } =
       await await this.workflowService.getWorkflowLogsAndTotal(
@@ -40,7 +41,7 @@ export class WorkflowLogController {
   }
 
   @Get(':id')
-  async getWorkflowLog(@Param('id') id: string, @UserInfo() user: UserEntity) {
+  async getWorkflowLog(@Param('id') id: string, @UserInfo() user: UserSummary) {
     const workflowLog = await this.workflowService.getWorkflowLog(id, user.id);
 
     if (!workflowLog) {

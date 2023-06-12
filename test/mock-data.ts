@@ -20,6 +20,5 @@ export function mockUser() {
   return {
     id: ulid(),
     address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
-    integration: {},
   };
 }

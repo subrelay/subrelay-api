@@ -87,8 +87,6 @@ export class AppModule implements NestModule {
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
         { method: RequestMethod.POST, path: '/chains' },
         { method: RequestMethod.PUT, path: '/chains/:uuid' },
-        { method: RequestMethod.DELETE, path: '/user/connections/telegram' },
-        { method: RequestMethod.DELETE, path: '/user/connections/discord' },
       )
       .forRoutes('*');
   }

@@ -18,6 +18,7 @@ import { ulid } from 'ulid';
 import { UserEntity } from '../user/user.entity';
 import { UserInfo } from '../common/user-info.decorator';
 import { UserService } from '../user/user.service';
+import { UserSummary } from '../user/user.dto';
 
 @Controller('tasks')
 export class TaskController {
@@ -31,7 +32,7 @@ export class TaskController {
   @HttpCode(200)
   async processTask(
     @Body() input: ProcessTaskRequest,
-    @UserInfo() user: UserEntity,
+    @UserInfo() user: UserSummary,
   ): Promise<ProcessTaskResponse> {
     const event = await this.eventService.getEventById(input.data.eventId);
     if (!event) {

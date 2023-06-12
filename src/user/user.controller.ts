@@ -16,6 +16,7 @@ import { UserService } from './user.service';
 import { ModuleRef } from '@nestjs/core';
 import { TelegramService } from '../telegram/telegram.service';
 import { DiscordService } from '../discord/discord.service';
+import { UserSummary } from './user.dto';
 
 @Controller('user')
 export class UserController implements OnModuleInit {
@@ -33,17 +34,14 @@ export class UserController implements OnModuleInit {
   constructor(private userService: UserService, private moduleRef: ModuleRef) {}
 
   @Get('/info')
-  async getUserInfo(@UserInfo() user: UserEntity): Promise<UserEntity> {
+  async getUserInfo(@UserInfo() user: UserSummary): Promise<UserEntity> {
     const currentUser = await this.userService.getUserById(user.id);
 
     const telegramId = currentUser.integration?.telegram?.id;
     if (telegramId) {
       const telegramUser = await this.telegramService.getUser(telegramId);
       if (telegramUser) {
-        currentUser.integration = {
-          ...currentUser.integration,
-          telegram: telegramUser,
-        };
+        currentUser.integration.telegram = telegramUser;
       }
     }
 
@@ -51,10 +49,7 @@ export class UserController implements OnModuleInit {
     if (discordId) {
       const discordUser = await this.discordService.getUser(discordId);
       if (discordUser) {
-        currentUser.integration = {
-          ...currentUser.integration,
-          discord: discordUser,
-        };
+        currentUser.integration.discord = discordUser;
       }
     }
 
@@ -64,7 +59,7 @@ export class UserController implements OnModuleInit {
   @Get('/connections/discord')
   async authorizeDiscordConnection(
     @Query() query: DiscordAuthQueryParams,
-    @UserInfo() user: UserEntity,
+    @UserInfo() userInfo: UserSummary,
   ) {
     const { id } = query;
 
@@ -73,19 +68,19 @@ export class UserController implements OnModuleInit {
       throw new NotFoundException();
     }
 
-    const integration = {
-      ...user.integration,
-      discord: discordUser,
-    };
+    const { integration } = await this.userService.getUserById(userInfo.id);
 
-    await this.userService.updateUserIntegration(user.id, integration);
-    return this.userService.getUserById(user.id);
+    await this.userService.updateUserIntegration(userInfo.id, {
+      ...integration,
+      discord: discordUser,
+    });
+    return this.userService.getUserById(userInfo.id);
   }
 
   @Get('/connections/telegram')
   async authorizeTelegramConnection(
     @Query() query: TelegramAuthQueryParams,
-    @UserInfo() user: UserEntity,
+    @UserInfo() userInfo: UserSummary,
   ) {
     const { id } = query;
 
@@ -94,32 +89,28 @@ export class UserController implements OnModuleInit {
       throw new NotFoundException();
     }
 
-    const integration = {
-      ...user.integration,
-      telegram: telegramUser,
-    };
+    const { integration } = await this.userService.getUserById(userInfo.id);
 
-    await this.userService.updateUserIntegration(user.id, integration);
-    return this.userService.getUserById(user.id);
+    await this.userService.updateUserIntegration(userInfo.id, {
+      ...integration,
+      telegram: telegramUser,
+    });
+    return this.userService.getUserById(userInfo.id);
   }
 
   @Delete('/connections/telegram')
-  async deleteTelegramConnection(@UserInfo() user: UserEntity) {
-    const integration = {
-      ...user.integration,
-      telegram: null,
-    };
+  async deleteTelegramConnection(@UserInfo() userInfo: UserSummary) {
+    const { integration } = await this.userService.getUserById(userInfo.id);
+    integration.telegram = null;
 
-    await this.userService.updateUserIntegration(user.id, integration);
+    await this.userService.updateUserIntegration(userInfo.id, integration);
   }
 
   @Delete('/connections/discord')
-  async deleteDiscordConnection(@UserInfo() user: UserEntity) {
-    const integration = {
-      ...user.integration,
-      discord: null,
-    };
+  async deleteDiscordConnection(@UserInfo() userInfo: UserEntity) {
+    const { integration } = await this.userService.getUserById(userInfo.id);
+    integration.discord = null;
 
-    await this.userService.updateUserIntegration(user.id, integration);
+    await this.userService.updateUserIntegration(userInfo.id, integration);
   }
 }

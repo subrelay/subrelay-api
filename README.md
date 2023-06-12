@@ -7,7 +7,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 - Node.js
-- NPM
+- Yarn
 - Redis
 - Postgres
 
@@ -26,30 +26,30 @@ $ cd subrelay-api
 
 4. Install the dependencies
 ```
-$ npm install
+$ yarn install
 ```
 
 5. Start the server
 ```
-$ npm start
+$ yarn start
 ```
 
 ### Migration
 
 #### Generate new migration
 ```
-npm run typeorm migration:generate ./src/migration/{your_migration_name}
+yarn run typeorm migration:generate ./src/migration/{your_migration_name}
 ```
 
 #### Run migration
 ```
-npm run typeorm migration:run
+yarn run typeorm migration:run
 ```
 
 #### Revert migration
 
 ```
-npm run typeorm migration:revert
+yarn run typeorm migration:revert
 ```
 
 

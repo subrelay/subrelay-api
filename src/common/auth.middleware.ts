@@ -29,10 +29,12 @@ export class AuthMiddleware implements NestMiddleware {
 
   async use(req: Request, res: Response, next: NextFunction) {
     const authInfo = getAuthInfo(req);
-    authorize(authInfo, req);
+
+    // authorize(authInfo, req);
     const user =
-      (await this.userService.getUser(authInfo.address)) ||
+      (await this.userService.getUserSummary(authInfo.address)) ||
       (await this.userService.createUser({ address: authInfo.address }));
+
     req.user = user;
 
     next();

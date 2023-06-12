@@ -341,7 +341,7 @@ export class WorkflowService {
         order = `wl."${requestedOrder}"`;
         break;
       case GetWorkflowLogsOrderBy.NAME:
-        order = `wl."${requestedOrder}"`;
+        order = `w."${requestedOrder}"`;
         break;
       case GetWorkflowLogsOrderBy.STARTED_AT:
         order = `wl."${requestedOrder}"`;
