@@ -41,7 +41,10 @@ export class UserController implements OnModuleInit {
     if (telegramId) {
       const telegramUser = await this.telegramService.getUser(telegramId);
       if (telegramUser) {
-        currentUser.integration.telegram = telegramUser;
+        currentUser.integration = {
+          ...currentUser.integration,
+          telegram: telegramUser,
+        };
       }
     }
 
@@ -49,7 +52,10 @@ export class UserController implements OnModuleInit {
     if (discordId) {
       const discordUser = await this.discordService.getUser(discordId);
       if (discordUser) {
-        currentUser.integration.discord = discordUser;
+        currentUser.integration = {
+          ...currentUser.integration,
+          discord: discordUser,
+        };
       }
     }
 
