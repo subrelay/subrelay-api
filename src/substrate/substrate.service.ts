@@ -10,8 +10,6 @@ import {
 } from './substrate.data';
 
 import { isEmpty, map, random } from 'lodash';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AppEvent } from '../common/app-event.type';
 import { blake2AsHex } from '@polkadot/util-crypto';
 import { ulid } from 'ulid';
 import * as base58 from 'bs58';
@@ -19,7 +17,7 @@ import { numberToHex } from '@polkadot/util';
 
 @Injectable()
 export class SubstrateService {
-  constructor(private eventEmitter: EventEmitter2) {}
+  constructor() {}
 
   async createAPI(rpc: string): Promise<ApiPromise> {
     const wsProvider = new WsProvider(rpc);
@@ -46,17 +44,6 @@ export class SubstrateService {
 
     api.disconnect();
     return chainInfo;
-  }
-
-  async subscribeNewHeads(api: ApiPromise, chainUuid: string) {
-    await api.rpc.chain.subscribeFinalizedHeads((lastHeader) => {
-      this.eventEmitter.emit(
-        AppEvent.BLOCK_CREATED,
-        api.rpc,
-        lastHeader.hash as unknown as string,
-        chainUuid,
-      );
-    });
   }
 
   isPrimitiveType(type: string) {

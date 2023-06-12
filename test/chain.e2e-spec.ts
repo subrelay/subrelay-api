@@ -8,22 +8,30 @@ import ormConfig from '../src/config/ormconfig';
 import { ChainSummary } from '../src/chain/chain.dto';
 import { ulid } from 'ulid';
 import { EventEntity } from '../src/event/event.entity';
+import { APP_FILTER } from '@nestjs/core';
+import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
+import { ConfigService } from '@nestjs/config';
 
 describe('Chain', () => {
   let app: INestApplication;
-  const substrateService = { findAll: () => ['test'] };
   let chains: ChainSummary[];
   let events: EventEntity[];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ChainModule, TypeOrmModule.forRoot(ormConfig)],
-    })
-      .overrideProvider(SubstrateService)
-      .useValue(substrateService)
-      .compile();
+      providers: [
+        SubstrateService,
+        ConfigService,
+        {
+          provide: APP_FILTER,
+          useClass: InternalServerExceptionsFilter,
+        },
+      ],
+    }).compile();
 
     app = moduleRef.createNestApplication();
+
     await app.init();
   });
 

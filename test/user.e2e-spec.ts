@@ -9,7 +9,7 @@ import { DiscordService } from '../src/discord/discord.service';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../src/user/user.entity';
 import 'dotenv/config';
-import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data';
+import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data.util';
 
 describe('User', () => {
   let app: INestApplication;

@@ -17,7 +17,7 @@ import { TaskModule } from '../src/task/task.module';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data';
+import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data.util';
 import { UserService } from '../src/user/user.service';
 
 describe('Task', () => {
