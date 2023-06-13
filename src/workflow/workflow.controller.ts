@@ -192,14 +192,14 @@ export class WorkflowController {
 
     if (
       some(tasks, { type: TaskType.TELEGRAM }) &&
-      !user.integration.telegram
+      !user?.integration?.telegram
     ) {
       throw new BadRequestException(
         "The integration with Telegram does't set up yet.",
       );
     }
 
-    if (some(tasks, { type: TaskType.DISCORD }) && !user.integration.discord) {
+    if (some(tasks, { type: TaskType.DISCORD }) && !user?.integration?.discord) {
       throw new BadRequestException(
         "The integration with Discord does't set up yet.",
       );
