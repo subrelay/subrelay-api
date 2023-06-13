@@ -10,6 +10,7 @@ import { DataField } from './event.dto';
 import { EventEntity } from './event.entity';
 import { ChainEntity } from '../chain/chain.entity';
 import { blake2AsHex } from '@polkadot/util-crypto';
+import { Event, EventSummary } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -36,7 +37,7 @@ export class EventService {
       .getMany();
   }
 
-  generateEventRawDataSample(event: EventEntity): EventRawData {
+  generateEventRawDataSample(event: Event): EventRawData {
     const fields = this.getEventDataFields(event);
 
     const eventRawData: EventRawData = {
@@ -52,10 +53,7 @@ export class EventService {
     return eventRawData;
   }
 
-  async getEventById(
-    eventId: string,
-    chainUuid?: string,
-  ): Promise<EventEntity> {
+  async getEventById(eventId: string, chainUuid?: string): Promise<Event> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('e')
       .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
@@ -80,10 +78,17 @@ export class EventService {
   getEventsByChain(
     chainUuid: string,
     queryParams?: Pagination,
-  ): Promise<EventEntity[]> {
+  ): Promise<EventSummary[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
-      .where('event."chainUuid" = :chainUuid', { chainUuid });
+      .where('event."chainUuid" = :chainUuid', { chainUuid })
+      .select([
+        'e.id AS id',
+        'e.name AS name',
+        'e.description AS description',
+        'e.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
@@ -103,7 +108,7 @@ export class EventService {
     return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
   }
 
-  getEventDataFields(event: EventEntity): DataField[] {
+  getEventDataFields(event: Event): DataField[] {
     return event.schema.map((field) => {
       let name = `data.${field.name}`;
       let display = upperFirst(words(field.name).join(' '));
@@ -147,7 +152,7 @@ export class EventService {
     ];
   }
 
-  getEventInfoFields(event: EventEntity): DataField[] {
+  getEventInfoFields(event: Event): DataField[] {
     return [
       {
         name: 'id',

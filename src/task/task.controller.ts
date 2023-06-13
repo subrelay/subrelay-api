@@ -19,6 +19,7 @@ import { UserEntity } from '../user/user.entity';
 import { UserInfo } from '../common/user-info.decorator';
 import { UserService } from '../user/user.service';
 import { UserSummary } from '../user/user.dto';
+import { Event } from '../event/event.type';
 
 @Controller('tasks')
 export class TaskController {
@@ -102,7 +103,7 @@ export class TaskController {
 
   createProcessTaskInput(
     user: UserEntity,
-    event: EventEntity,
+    event: Event,
   ): ProcessTaskInput {
     const eventRawData = this.eventService.generateEventRawDataSample(event);
     return {
