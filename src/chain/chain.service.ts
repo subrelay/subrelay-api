@@ -125,11 +125,11 @@ export class ChainService implements OnModuleInit {
     return chain;
   }
 
-  private insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
+  insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
     return this.chainRepository.save({ ...input, uuid: ulid() });
   }
 
-  private async getChainInfoByRpcs(rpcs: string[]) {
+  async getChainInfoByRpcs(rpcs: string[]) {
     let chainInfo: ChainInfo;
     const validRpcs: string[] = [];
 

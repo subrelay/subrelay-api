@@ -72,13 +72,10 @@ export class EventService {
       });
     }
 
-    return (await queryBuilder.getRawOne()) as EventEntity;
+    return (await queryBuilder.getRawOne()) as Event;
   }
 
-  getEventsByChain(
-    chainUuid: string,
-    queryParams?: Pagination,
-  ): Promise<EventSummary[]> {
+  async getEventsByChain(chainUuid: string, queryParams?: Pagination): Promise<Event[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
       .where('event."chainUuid" = :chainUuid', { chainUuid })
@@ -105,7 +102,9 @@ export class EventService {
         .limit(queryParams.limit)
         .offset(queryParams.offset);
     }
-    return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
+    return (await queryBuilder
+      .orderBy(order, sort, 'NULLS LAST')
+      .getMany()) as unknown as Event[];
   }
 
   getEventDataFields(event: Event): DataField[] {

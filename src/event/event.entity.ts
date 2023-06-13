@@ -1,6 +1,7 @@
 import { ChainEntity } from '../chain/chain.entity';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn } from 'typeorm';
 import { TypeSchema } from '../substrate/substrate.data';
+import { ChainSummary } from '../chain/chain.dto';
 
 @Entity('event')
 export class EventEntity {
@@ -24,5 +25,5 @@ export class EventEntity {
 
   @ManyToOne(() => ChainEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'chainUuid', referencedColumnName: 'uuid' }])
-  chain: ChainEntity;
+  chain?: ChainSummary;
 }
