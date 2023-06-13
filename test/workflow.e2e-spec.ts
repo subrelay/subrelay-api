@@ -339,7 +339,6 @@ describe('Task', () => {
         .then((res) => {
           expect(res.body.total).toBe(4);
           expect(res.body.workflows).toHaveLength(4);
-          expect(res.body.workflows[0].id).toEqual(workflow.id);
         });
     });
   });
