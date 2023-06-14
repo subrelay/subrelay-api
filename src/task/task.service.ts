@@ -13,7 +13,7 @@ import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import { GeneralTypeEnum } from '../substrate/substrate.data';
+import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { ulid } from 'ulid';
 import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
 import { TelegramTaskConfig, TelegramTaskInput } from './type/telegram.type';
@@ -27,6 +27,7 @@ import { DiscordService } from '../discord/discord.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { EmailService } from '../email/email.service';
 import { WebhookService } from '../webhook/webhook.service';
+import { Event } from '../event/event.type';
 
 @Injectable()
 export class TaskService {
@@ -187,7 +188,7 @@ export class TaskService {
     };
   }
 
-  getFilterFields(event: EventEntity): DataField[] {
+  getFilterFields(event: Event): DataField[] {
     const eventDataFields = this.eventService.getEventDataFields(event);
     const eventStatusFields = this.eventService.getEventStatusFields();
     return [
@@ -199,7 +200,7 @@ export class TaskService {
     ];
   }
 
-  getCustomMessageFields(event: EventEntity): DataField[] {
+  getCustomMessageFields(event: Event): DataField[] {
     const eventDataFields = this.eventService.getEventDataFields(event);
     const eventStatusFields = this.eventService.getEventStatusFields();
     const eventInfoFields = this.eventService.getEventInfoFields(event);

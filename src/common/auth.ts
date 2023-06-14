@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { stringToHex } from '@polkadot/util';
+import { isHex, stringToHex } from '@polkadot/util';
 import { signatureVerify } from '@polkadot/util-crypto';
 import { IsNumber, IsString } from 'class-validator';
 import { Request } from 'express';
@@ -27,20 +27,40 @@ export function getAuthInfo(req: Request): AuthInfo {
 
     return authInfo;
   } catch (error) {
-    console.error(error);
-    throw new ForbiddenException();
+    throw new ForbiddenException('Invalid token');
   }
 }
 
-export function verifyUser(authInfo: AuthInfo, data) {
-  const message = stringToHex(JSON.stringify(data));
-  const { isValid } = signatureVerify(
-    message,
-    authInfo.signature,
-    authInfo.address,
-  );
-
-  if (!isValid) {
-    throw new ForbiddenException('Token invalid');
+export function verifyUserSignature(
+  message: string,
+  signature: string,
+  address: string,
+): boolean {
+  if (!isHex(signature)) {
+    return false;
   }
+
+  const res = signatureVerify(message, signature, address);
+
+  return res.isValid;
+}
+
+export function tokenExpired(timestamp: number): boolean {
+  return Date.now() - timestamp > 24 * 60 * 60 * 1000;
+}
+
+export function getUserMessage(timestamp: number, req: Request) {
+  const data = {
+    endpoint: req.originalUrl,
+    method: req.method,
+    body: req.body,
+    timestamp,
+  };
+
+  if (req.method.toLowerCase() === 'get') {
+    data.endpoint = `/*`;
+    data.method = 'GET';
+  }
+
+  return stringToHex(JSON.stringify(data));
 }

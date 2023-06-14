@@ -5,11 +5,12 @@ import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
 import { EventRawData } from '../common/queue.type';
-import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
+import { EventDef, GeneralTypeEnum } from '../substrate/substrate.type';
 import { DataField } from './event.dto';
 import { EventEntity } from './event.entity';
 import { ChainEntity } from '../chain/chain.entity';
 import { blake2AsHex } from '@polkadot/util-crypto';
+import { Event } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -36,7 +37,7 @@ export class EventService {
       .getMany();
   }
 
-  generateEventRawDataSample(event: EventEntity): EventRawData {
+  generateEventRawDataSample(event: Event): EventRawData {
     const fields = this.getEventDataFields(event);
 
     const eventRawData: EventRawData = {
@@ -52,10 +53,7 @@ export class EventService {
     return eventRawData;
   }
 
-  async getEventById(
-    eventId: string,
-    chainUuid?: string,
-  ): Promise<EventEntity> {
+  async getEventById(eventId: string, chainUuid?: string): Promise<Event> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('e')
       .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
@@ -74,16 +72,24 @@ export class EventService {
       });
     }
 
-    return (await queryBuilder.getRawOne()) as EventEntity;
+    return (await queryBuilder.getRawOne()) as Event;
   }
 
-  getEventsByChain(
+  async getEventsByChain(
     chainUuid: string,
     queryParams?: Pagination,
-  ): Promise<EventEntity[]> {
+  ): Promise<Event[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
-      .where('event."chainUuid" = :chainUuid', { chainUuid });
+      .innerJoin(ChainEntity, 'c', 'c.uuid = event."chainUuid"')
+      .where('event."chainUuid" = :chainUuid', { chainUuid })
+      .select([
+        'event.id AS id',
+        'event.name AS name',
+        'event.description AS description',
+        'event.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
 
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
@@ -92,7 +98,7 @@ export class EventService {
       );
     }
 
-    const order = queryParams?.order || 'name';
+    const order = queryParams?.order || 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
     if (queryParams.order && queryParams.offset) {
@@ -100,10 +106,12 @@ export class EventService {
         .limit(queryParams.limit)
         .offset(queryParams.offset);
     }
-    return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
+    return (await queryBuilder
+      .orderBy(order, sort, 'NULLS LAST')
+      .getRawMany()) as unknown as Event[];
   }
 
-  getEventDataFields(event: EventEntity): DataField[] {
+  getEventDataFields(event: Event): DataField[] {
     return event.schema.map((field) => {
       let name = `data.${field.name}`;
       let display = upperFirst(words(field.name).join(' '));
@@ -147,7 +155,7 @@ export class EventService {
     ];
   }
 
-  getEventInfoFields(event: EventEntity): DataField[] {
+  getEventInfoFields(event: Event): DataField[] {
     return [
       {
         name: 'id',

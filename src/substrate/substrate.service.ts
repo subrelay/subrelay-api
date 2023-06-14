@@ -7,7 +7,7 @@ import {
   EventDef,
   GeneralTypeEnum,
   TypeSchema,
-} from './substrate.data';
+} from './substrate.type';
 
 import { isEmpty, map, random } from 'lodash';
 import { blake2AsHex } from '@polkadot/util-crypto';

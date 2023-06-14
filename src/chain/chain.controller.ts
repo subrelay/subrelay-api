@@ -1,18 +1,15 @@
 import {
-  Body,
   Controller,
   Get,
-  HttpCode,
   NotFoundException,
   Param,
-  Put,
   Query,
 } from '@nestjs/common';
 import { map, omit, pick } from 'lodash';
 import { Pagination } from '../common/pagination.type';
 import { GetOneEventResponse } from '../event/event.dto';
 import { EventService } from '../event/event.service';
-import { ChainSummary, UpdateChainRequest } from './chain.dto';
+import { ChainSummary } from './chain.dto';
 import { ChainService } from './chain.service';
 
 @Controller('chains')
@@ -24,20 +21,7 @@ export class ChainController {
 
   @Get()
   async getChains(): Promise<ChainSummary[]> {
-    return this.chainService.getChains();
-  }
-
-  @Put(':uuid')
-  @HttpCode(200)
-  async updateChain(
-    @Param() pathParams: { uuid?: string },
-    @Body() input: UpdateChainRequest,
-  ) {
-    if (!(await this.chainService.chainExist(pathParams.uuid))) {
-      throw new NotFoundException('Chain not found');
-    }
-
-    return this.chainService.updateChain(pathParams.uuid, input);
+    return this.chainService.getChainsSummary();
   }
 
   @Get(':uuid/events')
@@ -72,11 +56,9 @@ export class ChainController {
       throw new NotFoundException('Event not found');
     }
 
-    const fields = this.eventService.getEventDataFields(event);
-
     return {
       ...omit(event, ['schema']),
-      fields,
+      fields: this.eventService.getEventDataFields(event),
     };
   }
 }

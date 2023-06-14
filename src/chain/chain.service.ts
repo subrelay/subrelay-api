@@ -8,7 +8,7 @@ import {
 } from './chain.dto';
 import { ChainEntity } from './chain.entity';
 import { SubstrateService } from '../substrate/substrate.service';
-import { ChainInfo } from '../substrate/substrate.data';
+import { ChainInfo } from '../substrate/substrate.type';
 import { EventService } from '../event/event.service';
 import { isEmpty } from 'lodash';
 import * as defaultChains from './chains.json';
@@ -29,7 +29,7 @@ export class ChainService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const chains = await this.getChains();
+    const chains = await this.getChainsSummary();
     if (isEmpty(chains)) {
       await Promise.all(defaultChains.map((data) => this.createChain(data)));
       this.logger.debug(`Inserted default chains`);
@@ -50,7 +50,7 @@ export class ChainService implements OnModuleInit {
       .getRawMany();
   }
 
-  getChains(): Promise<ChainSummary[]> {
+  getChainsSummary(): Promise<ChainSummary[]> {
     return this.chainRepository
       .createQueryBuilder()
       .select([
@@ -67,6 +67,21 @@ export class ChainService implements OnModuleInit {
       .getRawMany();
   }
 
+  getChainSummary(chainUuid: string): Promise<ChainSummary> {
+    return this.chainRepository
+      .createQueryBuilder()
+      .select([
+        'uuid',
+        'name',
+        '"createdAt"',
+        'version',
+        '"imageUrl"',
+        '"chainId"',
+      ])
+      .where({ uuid: chainUuid })
+      .getRawOne();
+  }
+
   async chainExist(uuid: string): Promise<boolean> {
     return (await this.chainRepository.countBy({ uuid })) > 0;
   }
@@ -75,27 +90,11 @@ export class ChainService implements OnModuleInit {
     return (await this.chainRepository.countBy({ chainId })) > 0;
   }
 
-  getChain(uuid: string): Promise<ChainEntity> {
-    return this.chainRepository.findOne({
-      where: { uuid },
-      relations: {
-        events: true,
-      },
-    });
+  async updateChain(uuid: string, input: UpdateChainRequest): Promise<void> {
+    await this.chainRepository.save({ uuid, ...input });
   }
 
-  async deleteChainByChainId(uuid: string) {
-    await this.chainRepository.delete({ uuid });
-  }
-
-  async updateChain(
-    uuid: string,
-    input: UpdateChainRequest,
-  ): Promise<ChainSummary> {
-    return this.chainRepository.save({ uuid, ...input });
-  }
-
-  async createChain(input: CreateChainRequest): Promise<ChainSummary> {
+  async createChain(input: CreateChainRequest): Promise<void> {
     const { chainInfo, validRpcs } = await this.getChainInfoByRpcs(input.rpcs);
 
     if (!chainInfo) {
@@ -106,8 +105,9 @@ export class ChainService implements OnModuleInit {
       throw new UserInputError(`"${chainInfo.chainId}" exists`);
     }
 
-    const chain = await this.insertChain({
-      uuid: ulid(),
+    const chainUuid = ulid();
+    await this.chainRepository.save({
+      uuid: chainUuid,
       name: input.name,
       imageUrl: input.imageUrl,
       version: chainInfo.runtimeVersion,
@@ -120,16 +120,10 @@ export class ChainService implements OnModuleInit {
       },
     });
 
-    await this.eventService.createEvents(chainInfo.events, chain.uuid);
-
-    return chain;
+    await this.eventService.createEvents(chainInfo.events, chainUuid);
   }
 
-  private insertChain(input: Partial<ChainEntity>): Promise<ChainEntity> {
-    return this.chainRepository.save({ ...input, uuid: ulid() });
-  }
-
-  private async getChainInfoByRpcs(rpcs: string[]) {
+  async getChainInfoByRpcs(rpcs: string[]) {
     let chainInfo: ChainInfo;
     const validRpcs: string[] = [];
 

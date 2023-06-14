@@ -46,36 +46,6 @@ describe('Chain', () => {
     });
   });
 
-  describe('PUT /chains/{id}', () => {
-    it(`Update chain successfully`, () => {
-      const chainUuid = chains[0].uuid;
-      const input = {
-        name: ulid(),
-        imageUrl: `https://${ulid()}.com/${ulid()}.png`,
-      };
-      return request(app.getHttpServer())
-        .put(`/chains/${chainUuid}`)
-        .send(input)
-        .expect(200)
-        .then((res) => {
-          expect(res.body.name).toEqual(input.name);
-          expect(res.body.imageUrl).toEqual(input.imageUrl);
-          expect(res.body.uuid).toEqual(chainUuid);
-        });
-    });
-
-    it(`Update nonexistent chain`, () => {
-      const input = {
-        name: ulid(),
-        imageUrl: `https://${ulid()}.com/${ulid()}.png`,
-      };
-      return request(app.getHttpServer())
-        .put(`/chains/foo`)
-        .send(input)
-        .expect(404);
-    });
-  });
-
   describe('GET /chains/{id}/events', () => {
     it(`Get all events`, () => {
       return request(app.getHttpServer())
