@@ -10,7 +10,7 @@ import { DataField } from './event.dto';
 import { EventEntity } from './event.entity';
 import { ChainEntity } from '../chain/chain.entity';
 import { blake2AsHex } from '@polkadot/util-crypto';
-import { Event, EventSummary } from './event.type';
+import { Event } from './event.type';
 
 @Injectable()
 export class EventService {
@@ -81,12 +81,13 @@ export class EventService {
   ): Promise<Event[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = event."chainUuid"')
       .where('event."chainUuid" = :chainUuid', { chainUuid })
       .select([
-        'e.id AS id',
-        'e.name AS name',
-        'e.description AS description',
-        'e.schema AS schema',
+        'event.id AS id',
+        'event.name AS name',
+        'event.description AS description',
+        'event.schema AS schema',
         `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
       ]);
 
@@ -97,7 +98,7 @@ export class EventService {
       );
     }
 
-    const order = queryParams?.order || 'name';
+    const order = queryParams?.order || 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
     if (queryParams.order && queryParams.offset) {
@@ -107,7 +108,7 @@ export class EventService {
     }
     return (await queryBuilder
       .orderBy(order, sort, 'NULLS LAST')
-      .getMany()) as unknown as Event[];
+      .getRawMany()) as unknown as Event[];
   }
 
   getEventDataFields(event: Event): DataField[] {

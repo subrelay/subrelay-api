@@ -33,7 +33,7 @@ import { AuthMiddleware } from './common/auth.middleware';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         synchronize: configService.get('NODE_ENV') != 'prod', // TODO Should not automatically synchronize in prod
-        logging: false,
+        logging: configService.get('NODE_ENV').startsWith('local'),
         autoLoadEntities: true,
       }),
     }),
