@@ -17,7 +17,7 @@ import { TaskModule } from '../src/task/task.module';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { mockDiscordUser, mockTelegramUser, mockUser } from './mock-data.util';
+import { mockDiscordUser, mockTelegramUser, mockUserInfo } from './mock-data.util';
 import { UserService } from '../src/user/user.service';
 import { ChainService } from '../src/chain/chain.service';
 import { ChainEntity } from '../src/chain/chain.entity';
@@ -45,7 +45,7 @@ describe('Task', () => {
   let event: EventEntity;
   let userRepository: Repository<UserEntity>;
 
-  const user = mockUser();
+  const user = mockUserInfo();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
