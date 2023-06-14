@@ -13,7 +13,7 @@ import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
-import { GeneralTypeEnum } from '../substrate/substrate.data';
+import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { ulid } from 'ulid';
 import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
 import { TelegramTaskConfig, TelegramTaskInput } from './type/telegram.type';

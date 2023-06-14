@@ -16,7 +16,7 @@ export function mockTelegramUser() {
   };
 }
 
-export function mockUser() {
+export function mockUserInfo() {
   return {
     id: ulid(),
     address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',

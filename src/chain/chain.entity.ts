@@ -9,11 +9,8 @@ import {
 
 export class ChainConfig {
   rpcs: string[];
-
   metadataVersion: number;
-
   chainTokens: string[];
-
   chainDecimals: number[];
 }
 

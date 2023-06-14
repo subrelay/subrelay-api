@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
 import { Pagination } from '../common/pagination.type';
 import { EventRawData } from '../common/queue.type';
-import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
+import { EventDef, GeneralTypeEnum } from '../substrate/substrate.type';
 import { DataField } from './event.dto';
 import { EventEntity } from './event.entity';
 import { ChainEntity } from '../chain/chain.entity';
@@ -75,7 +75,10 @@ export class EventService {
     return (await queryBuilder.getRawOne()) as Event;
   }
 
-  async getEventsByChain(chainUuid: string, queryParams?: Pagination): Promise<Event[]> {
+  async getEventsByChain(
+    chainUuid: string,
+    queryParams?: Pagination,
+  ): Promise<Event[]> {
     let queryBuilder = this.eventRepository
       .createQueryBuilder('event')
       .where('event."chainUuid" = :chainUuid', { chainUuid })

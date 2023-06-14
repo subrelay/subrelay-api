@@ -90,6 +90,17 @@
   },
   "jest": {
     "preset": "ts-jest",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.dto.ts",
+      "!src/**/*.entity.ts",
+      "!src/**/*.type.ts",
+      "!src/**/*.module.ts",
+      "!src/migration/*",
+      "!src/config/*",
+      "!src/main.ts"
+    ]
   }
 }

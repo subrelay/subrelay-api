@@ -26,14 +26,9 @@ export class UpdateChainRequest {
 
 export class ChainSummary {
   uuid: string;
-
   chainId: string;
-
   createdAt: string;
-
   version: string;
-
   name: string;
-
   imageUrl: string;
 }

@@ -12,7 +12,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChainModule } from './chain/chain.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { AdminAuthMiddleware } from './common/admin-auth.middleware';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bull';
@@ -66,13 +65,6 @@ import { AuthMiddleware } from './common/auth.middleware';
 })
 export class AppModule implements NestModule {
   public configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(AdminAuthMiddleware)
-      .forRoutes(
-        { method: RequestMethod.POST, path: '/chains' },
-        { method: RequestMethod.PUT, path: '/chains/:uuid' },
-      );
-
     consumer
       .apply(AuthMiddleware)
       .exclude(

@@ -1,6 +1,6 @@
 import { ChainEntity } from '../chain/chain.entity';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn } from 'typeorm';
-import { TypeSchema } from '../substrate/substrate.data';
+import { TypeSchema } from '../substrate/substrate.type';
 import { ChainSummary } from '../chain/chain.dto';
 
 @Entity('event')

@@ -1,4 +1,4 @@
-import { GeneralTypeEnum } from '../substrate/substrate.data';
+import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { EventEntity } from './event.entity';
 import { EventSummary } from './event.type';
 

@@ -6,8 +6,9 @@ import { EventService } from '../event/event.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEntity } from '../event/event.entity';
-import { GeneralTypeEnum } from '../substrate/substrate.data';
+import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { ApiPromise } from '@polkadot/api';
+import * as defaultChains from './chains.json';
 
 describe('ChainService', () => {
   let service: ChainService;
@@ -62,6 +63,15 @@ describe('ChainService', () => {
     events: [mockEventEntity],
   };
 
+  const mockChainInfo = {
+    chainId: mockChainEntity.chainId,
+    runtimeVersion: `1.0.0`,
+    chainDecimals: mockChainEntity.config.chainDecimals,
+    chainTokens: mockChainEntity.config.chainTokens,
+    metadataVersion: mockChainEntity.config.metadataVersion,
+    events: mockChainEntity.events,
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -105,7 +115,7 @@ describe('ChainService', () => {
     });
   });
 
-  describe('getChains', () => {
+  describe('getChainsSummary', () => {
     it('should return an array of ChainSummary', async () => {
       jest.spyOn(chainRepository, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
@@ -113,8 +123,75 @@ describe('ChainService', () => {
         addOrderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValueOnce([mockChainSummary]),
       } as any);
-      const result = await service.getChains();
+      const result = await service.getChainsSummary();
       expect(result).toEqual([mockChainSummary]);
+    });
+  });
+
+  describe('getChainSummary', () => {
+    it('should return an item of ChainSummary', async () => {
+      jest.spyOn(chainRepository, 'createQueryBuilder').mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValueOnce(mockChainSummary),
+      } as any);
+
+      const chainUuid = 'some-uuid';
+      const result = await service.getChainSummary(chainUuid);
+
+      expect(result).toEqual(mockChainSummary);
+      expect(chainRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(chainRepository.createQueryBuilder).toHaveBeenCalledWith();
+      expect(chainRepository.createQueryBuilder().select).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(chainRepository.createQueryBuilder().select).toHaveBeenCalledWith([
+        'uuid',
+        'name',
+        '"createdAt"',
+        'version',
+        '"imageUrl"',
+        '"chainId"',
+      ]);
+      expect(chainRepository.createQueryBuilder().where).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(chainRepository.createQueryBuilder().where).toHaveBeenCalledWith({
+        uuid: chainUuid,
+      });
+      expect(
+        chainRepository.createQueryBuilder().getRawOne,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        chainRepository.createQueryBuilder().getRawOne,
+      ).toHaveBeenCalledWith();
+    });
+  });
+
+  describe('onModuleInit', () => {
+    it('should create default chains if chains are empty', async () => {
+      const mockGetChainsSummary = jest
+        .spyOn(service, 'getChainsSummary')
+        .mockResolvedValue([]);
+      const createChainSpy = jest
+        .spyOn(service, 'createChain')
+        .mockImplementation(() => Promise.resolve());
+
+      await service.onModuleInit();
+
+      expect(createChainSpy).toHaveBeenCalledTimes(defaultChains.length);
+      expect(mockGetChainsSummary).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not create default chains if chains are not empty', async () => {
+      jest
+        .spyOn(service, 'getChainsSummary')
+        .mockResolvedValue([mockChainSummary]);
+      const createChainSpy = jest.spyOn(service, 'createChain');
+
+      await service.onModuleInit();
+
+      expect(createChainSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -147,26 +224,17 @@ describe('ChainService', () => {
       };
       mockSave.mockResolvedValueOnce(mockChainEntity);
 
-      const result = await service.updateChain(mockChainEntity.uuid, input);
+      await service.updateChain(mockChainEntity.uuid, input);
 
       expect(mockSave).toHaveBeenCalledWith({
         uuid: mockChainEntity.uuid,
         ...input,
       });
-      expect(result).toEqual(mockChainEntity);
     });
   });
 
   describe('getChainInfoByRpcs', () => {
     test('returns chainInfo and valid/invalid RPCs', async () => {
-      const mockChainInfo = {
-        chainId: mockChainEntity.chainId,
-        runtimeVersion: `1.0.0`,
-        chainDecimals: mockChainEntity.config.chainDecimals,
-        chainTokens: mockChainEntity.config.chainTokens,
-        metadataVersion: mockChainEntity.config.metadataVersion,
-        events: mockChainEntity.events,
-      };
       jest.spyOn(substrateService, 'createAPI').mockImplementation((rpc) =>
         Promise.resolve({
           isConnected: true,
@@ -203,27 +271,8 @@ describe('ChainService', () => {
     });
   });
 
-  describe('insertChain', () => {
-    it('should create new chain and return a summary', async () => {
-      const mockSave = jest.spyOn(chainRepository, 'save');
-      mockSave.mockResolvedValueOnce(mockChainEntity);
-
-      const result = await service.insertChain(mockChainEntity);
-
-      expect(result).toEqual(mockChainEntity);
-    });
-  });
-
   describe('createChain', () => {
     it('should create a chain successfully', async () => {
-      const mockChainInfo = {
-        chainId: mockChainEntity.chainId,
-        runtimeVersion: `1.0.0`,
-        chainDecimals: mockChainEntity.config.chainDecimals,
-        chainTokens: mockChainEntity.config.chainTokens,
-        metadataVersion: mockChainEntity.config.metadataVersion,
-        events: mockChainEntity.events,
-      };
       const mockGetChainInfoByRpcs = jest
         .spyOn(service, <any>'getChainInfoByRpcs')
         .mockResolvedValueOnce({
@@ -234,9 +283,9 @@ describe('ChainService', () => {
       const mockChainExistByChainId = jest
         .spyOn(service, 'chainExistByChainId')
         .mockResolvedValueOnce(false);
-      const mockInsertChain = jest
-        .spyOn(service, <any>'insertChain')
-        .mockResolvedValueOnce(mockEventEntity);
+      const mockSave = jest
+        .spyOn(chainRepository, 'save')
+        .mockResolvedValueOnce(mockChainEntity);
       const mockCreateEvents = jest
         .spyOn(eventService, 'createEvents')
         .mockImplementationOnce(() => Promise.resolve());
@@ -247,11 +296,10 @@ describe('ChainService', () => {
         rpcs: mockChainEntity.config.rpcs,
       };
 
-      const result = await service.createChain(mockInput);
-      expect(result).toEqual(mockEventEntity);
+      await service.createChain(mockInput);
       expect(mockGetChainInfoByRpcs).toHaveBeenCalled();
       expect(mockChainExistByChainId).toHaveBeenCalled();
-      expect(mockInsertChain).toHaveBeenCalled();
+      expect(mockSave).toHaveBeenCalled();
       expect(mockCreateEvents).toHaveBeenCalled();
     });
 
