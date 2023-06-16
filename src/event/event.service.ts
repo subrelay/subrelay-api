@@ -98,7 +98,9 @@ export class EventService {
       );
     }
 
-    const order = queryParams?.order || 'event.name';
+    const order = queryParams?.order
+      ? `event.${queryParams.order}`
+      : 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
     if (!isNaN(queryParams.limit) && !isNaN(queryParams.offset)) {

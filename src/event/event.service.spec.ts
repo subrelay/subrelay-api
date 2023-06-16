@@ -6,6 +6,7 @@ import { EventDef, GeneralTypeEnum } from '../substrate/substrate.type';
 import { Event } from './event.type';
 import { get } from 'lodash';
 import { DataField } from './event.dto';
+import { SortType } from '../common/pagination.type';
 
 describe('EventService', () => {
   let eventService: EventService;
@@ -125,14 +126,21 @@ describe('EventService', () => {
   });
 
   describe('getEventById', () => {
-    it('should call createQueryBuilder with correct params', async () => {
+    beforeEach(() => {
       jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValueOnce(eventDefs[0]),
       } as any);
+    });
 
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should call createQueryBuilder with correct params', async () => {
       await eventService.getEventById('1');
 
       expect(eventRepository.createQueryBuilder).toHaveBeenCalledWith('e');
@@ -156,14 +164,6 @@ describe('EventService', () => {
     });
 
     it('should add chainUuid to the query if chainUuid is provided', async () => {
-      jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValue({
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValueOnce(eventDefs[0]),
-      } as any);
-
       await eventService.getEventById('1', 'chain-uuid');
 
       expect(
@@ -174,13 +174,6 @@ describe('EventService', () => {
     });
 
     it('should return the correct event object', async () => {
-      jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValue({
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValueOnce(eventDefs[0]),
-      } as any);
-
       const result = await eventService.getEventById('1');
 
       expect(result).toEqual(eventDefs[0]);
@@ -188,7 +181,7 @@ describe('EventService', () => {
   });
 
   describe('getEventsByChain', () => {
-    it('should return an array of events', async () => {
+    beforeEach(() => {
       jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -200,7 +193,13 @@ describe('EventService', () => {
         orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValueOnce([event]),
       } as any);
+    });
 
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should return an array of events with default params', async () => {
       const result = await eventService.getEventsByChain(event.chain.uuid, {
         limit: 1,
         offset: 0,
@@ -230,7 +229,11 @@ describe('EventService', () => {
       expect(eventRepository.createQueryBuilder().offset).toHaveBeenCalledWith(
         0,
       );
-
+      expect(eventRepository.createQueryBuilder().orderBy).toHaveBeenCalledWith(
+        'event.name',
+        'ASC',
+        'NULLS LAST',
+      );
       expect(
         eventRepository.createQueryBuilder().getRawMany,
       ).toHaveBeenCalled();
@@ -238,21 +241,28 @@ describe('EventService', () => {
       expect(result).toEqual([event]);
     });
 
-    it('should handle when search provided', async () => {
-      jest.spyOn(eventRepository, 'createQueryBuilder').mockReturnValue({
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        search: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        offset: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValueOnce([event]),
-      } as any);
+    it('should handle when order and sort are provided', async () => {
+      const params = {
+        limit: 1,
+        offset: 0,
+        sort: SortType.DESC,
+        order: 'id',
+      };
+      await eventService.getEventsByChain(
+        event.chain.uuid,
+        params,
+      );
 
+      expect(eventRepository.createQueryBuilder().orderBy).toHaveBeenCalledWith(
+        `event.${params.order}`,
+        params.sort,
+        'NULLS LAST',
+      );
+    });
+
+    it('should handle when search provided', async () => {
       const search = 'doo';
-      const result = await eventService.getEventsByChain(event.chain.uuid, {
+      await eventService.getEventsByChain(event.chain.uuid, {
         limit: 1,
         offset: 0,
         search,
