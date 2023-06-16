@@ -101,7 +101,7 @@ export class EventService {
     const order = queryParams?.order || 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
-    if (queryParams.order && queryParams.offset) {
+    if (!isNaN(queryParams.limit) && !isNaN(queryParams.offset)) {
       queryBuilder = queryBuilder
         .limit(queryParams.limit)
         .offset(queryParams.offset);
