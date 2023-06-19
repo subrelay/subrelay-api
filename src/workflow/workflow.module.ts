@@ -9,6 +9,7 @@ import { TaskModule } from '../task/task.module';
 import { EventModule } from '../event/event.module';
 import { ChainModule } from '../chain/chain.module';
 import { UserModule } from '../user/user.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UserModule } from '../user/user.module';
     EventModule,
     ChainModule,
     UserModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [WorkflowController, WorkflowLogController],
   providers: [WorkflowService],

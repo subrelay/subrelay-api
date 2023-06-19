@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { find, get, isNil, isNull } from 'lodash';
+import { find, get, isEmpty, isNil, isNull, map, union } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
 import { TaskEntity } from '../task/entity/task.entity';
@@ -32,9 +32,12 @@ import { EventEntity } from '../event/event.entity';
 import { encryptText } from '../common/crypto.util';
 import { ConfigService } from '@nestjs/config';
 import { SortType } from '../common/pagination.type';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AppEvent } from '../common/app-event.type';
+import { ChainService } from '../chain/chain.service';
 
 @Injectable()
-export class WorkflowService {
+export class WorkflowService implements OnApplicationBootstrap {
   private readonly logger = new Logger(WorkflowService.name);
   constructor(
     @InjectRepository(WorkflowEntity)
@@ -47,7 +50,23 @@ export class WorkflowService {
 
     private readonly taskService: TaskService,
     private readonly configService: ConfigService,
+    private readonly chainService: ChainService,
+    private eventEmitter: EventEmitter2,
   ) {}
+
+  async onApplicationBootstrap() {
+    this.logger.debug('Checking running workflows to start chain worker');
+    const runningWorkflows = await this.getRunningWorkflows();
+
+    if (!isEmpty(runningWorkflows)) {
+      const chains = await this.chainService.getChainsByEventIds(
+        runningWorkflows.map((wf) => wf.event.id),
+      );
+      this.eventEmitter.emit(AppEvent.WORKFLOW_CREATED, chains);
+    } else {
+      this.logger.debug('Not found running workflows');
+    }
+  }
 
   async processWorkflow(
     input: ProcessWorkflowInput,
@@ -110,8 +129,8 @@ export class WorkflowService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    const { eventId } = find(input.tasks, { type: TaskType.TRIGGER }).config;
     try {
-      const { eventId } = find(input.tasks, { type: TaskType.TRIGGER }).config;
       const workflow = await queryRunner.manager
         .getRepository(WorkflowEntity)
         .save({
@@ -163,7 +182,10 @@ export class WorkflowService {
       throw err;
     }
 
-    return await this.getWorkflow(workflowId, userId);
+    this.eventEmitter.emit(AppEvent.WORKFLOW_CREATED, [eventId]);
+    const workflow = await this.getWorkflow(workflowId, userId);
+
+    return workflow;
   }
 
   async getRunningWorkflowsByEventIds(eventIds: string[]): Promise<Workflow[]> {
@@ -175,15 +197,12 @@ export class WorkflowService {
       .getRawMany();
   }
 
-  async getRunningWorkflows(): Promise<WorkflowEntity[]> {
-    return this.workflowRepository.find({
-      where: {
+  async getRunningWorkflows(): Promise<Workflow[]> {
+    return this.getWorkflowQueryBuilder()
+      .where('status = :status', {
         status: WorkflowStatus.RUNNING,
-      },
-      relations: {
-        event: true,
-      },
-    });
+      })
+      .getRawMany();
   }
 
   async workflowExists(id: string, userId: string): Promise<boolean> {

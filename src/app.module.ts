@@ -12,13 +12,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChainModule } from './chain/chain.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { ScheduleModule } from '@nestjs/schedule';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
-import { ChainWorker } from './worker/chain.worker';
 import { WorkerModule } from './worker/worker.module';
 
 @Module({
@@ -49,16 +46,11 @@ import { WorkerModule } from './worker/worker.module';
         },
       }),
     }),
-    BullModule.registerQueue({
-      name: 'chain',
-    }),
-    ScheduleModule.forRoot(),
-    EventEmitterModule.forRoot(),
+    WorkerModule,
     UserModule,
     ChainModule,
     TaskModule,
     WorkflowModule,
-    WorkerModule,
   ],
   controllers: [AppController],
   providers: [
@@ -67,7 +59,6 @@ import { WorkerModule } from './worker/worker.module';
       provide: APP_FILTER,
       useClass: InternalServerExceptionsFilter,
     },
-    ChainWorker,
   ],
 })
 export class AppModule implements NestModule {
