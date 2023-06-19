@@ -6,9 +6,13 @@ import { EventService } from '../event/event.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEntity } from '../event/event.entity';
-import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { ApiPromise } from '@polkadot/api';
 import * as defaultChains from './chains.json';
+import {
+  mockChainEntity,
+  mockChainSummary,
+  mockEventEntity,
+} from '../../test/mock-data.util';
 
 describe('ChainService', () => {
   let service: ChainService;
@@ -16,60 +20,15 @@ describe('ChainService', () => {
   let substrateService: SubstrateService;
   let eventService: EventService;
 
-  const mockChainSummary = {
-    uuid: '01H2QCFESCHJAHDJV1BRFKE2PQ',
-    name: '01H2S828695SQJ8PV131Y45RA7',
-    createdAt: '2023-06-12T01:45:05.201Z',
-    version: '9420',
-    imageUrl:
-      'https://01H2S82869WS23KJ6CF8PGKXRP.com/01H2S828691ZCXQAHVG9TAKMKC.png',
-    chainId: 'kusama',
-  };
-
-  const mockEventEntity: EventEntity = {
-    id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
-    name: 'balances.Deposit',
-    description: 'Some amount was deposited (e.g. for transaction fees).',
-    chainUuid: mockChainSummary.uuid,
-    index: 7,
-    schema: [
-      {
-        name: 'who',
-        type: GeneralTypeEnum.STRING,
-        example: '2UbGKDKa9Au5h3qYPsiKYFazNGWViMn38yBw',
-        typeName: 'T::AccountId',
-        description: '',
-        originalType: 'AccountId32',
-      },
-      {
-        name: 'amount',
-        type: GeneralTypeEnum.NUMBER,
-        example: 44000,
-        typeName: 'T::Balance',
-        description: '',
-        originalType: 'u128',
-      },
-    ],
-  };
-
-  const mockChainEntity: ChainEntity = {
-    ...mockChainSummary,
-    config: {
-      rpcs: ['wss://kusama-rpc.polkadot.io', 'wss://polkadot-rpc.polkadot.io'],
-      chainTokens: ['KSM'],
-      chainDecimals: [12],
-      metadataVersion: 14,
-    },
-    events: [mockEventEntity],
-  };
-
+  const mockedChainSummary = mockChainSummary();
+  const mockedChainEntity: ChainEntity = mockChainEntity();
   const mockChainInfo = {
-    chainId: mockChainEntity.chainId,
+    chainId: mockedChainEntity.chainId,
     runtimeVersion: `1.0.0`,
-    chainDecimals: mockChainEntity.config.chainDecimals,
-    chainTokens: mockChainEntity.config.chainTokens,
-    metadataVersion: mockChainEntity.config.metadataVersion,
-    events: mockChainEntity.events,
+    chainDecimals: mockedChainEntity.config.chainDecimals,
+    chainTokens: mockedChainEntity.config.chainTokens,
+    metadataVersion: mockedChainEntity.config.metadataVersion,
+    events: mockedChainEntity.events,
   };
 
   beforeEach(async () => {
@@ -107,11 +66,11 @@ describe('ChainService', () => {
         innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValueOnce([mockChainEntity]),
+        getRawMany: jest.fn().mockResolvedValueOnce([mockedChainEntity]),
       } as any);
       const result = await service.getChainsByEventIds(['test-event-id']);
 
-      expect(result).toEqual([mockChainEntity]);
+      expect(result).toEqual([mockedChainEntity]);
     });
   });
 
@@ -121,10 +80,10 @@ describe('ChainService', () => {
         select: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         addOrderBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValueOnce([mockChainSummary]),
+        getRawMany: jest.fn().mockResolvedValueOnce([mockedChainSummary]),
       } as any);
       const result = await service.getChainsSummary();
-      expect(result).toEqual([mockChainSummary]);
+      expect(result).toEqual([mockedChainSummary]);
     });
   });
 
@@ -133,13 +92,13 @@ describe('ChainService', () => {
       jest.spyOn(chainRepository, 'createQueryBuilder').mockReturnValue({
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValueOnce(mockChainSummary),
+        getRawOne: jest.fn().mockResolvedValueOnce(mockedChainSummary),
       } as any);
 
       const chainUuid = 'some-uuid';
       const result = await service.getChainSummary(chainUuid);
 
-      expect(result).toEqual(mockChainSummary);
+      expect(result).toEqual(mockedChainSummary);
       expect(chainRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
       expect(chainRepository.createQueryBuilder).toHaveBeenCalledWith();
       expect(chainRepository.createQueryBuilder().select).toHaveBeenCalledTimes(
@@ -186,7 +145,7 @@ describe('ChainService', () => {
     it('should not create default chains if chains are not empty', async () => {
       jest
         .spyOn(service, 'getChainsSummary')
-        .mockResolvedValue([mockChainSummary]);
+        .mockResolvedValue([mockedChainSummary]);
       const createChainSpy = jest.spyOn(service, 'createChain');
 
       await service.onModuleInit();
@@ -222,12 +181,12 @@ describe('ChainService', () => {
         name: 'new-chain-name',
         imageUrl: 'https://example.com/img.pgn',
       };
-      mockSave.mockResolvedValueOnce(mockChainEntity);
+      mockSave.mockResolvedValueOnce(mockedChainEntity);
 
-      await service.updateChain(mockChainEntity.uuid, input);
+      await service.updateChain(mockedChainEntity.uuid, input);
 
       expect(mockSave).toHaveBeenCalledWith({
-        uuid: mockChainEntity.uuid,
+        uuid: mockedChainEntity.uuid,
         ...input,
       });
     });
@@ -245,11 +204,11 @@ describe('ChainService', () => {
         .mockResolvedValueOnce(mockChainInfo);
 
       const result = await service.getChainInfoByRpcs(
-        mockChainEntity.config.rpcs,
+        mockedChainEntity.config.rpcs,
       );
 
       expect(result.chainInfo).toEqual(mockChainInfo);
-      expect(result.validRpcs).toEqual(mockChainEntity.config.rpcs);
+      expect(result.validRpcs).toEqual(mockedChainEntity.config.rpcs);
       expect(result.invalidRpcs).toEqual([]);
     });
 
@@ -263,9 +222,9 @@ describe('ChainService', () => {
         );
 
       await expect(
-        service.getChainInfoByRpcs(mockChainEntity.config.rpcs),
+        service.getChainInfoByRpcs(mockedChainEntity.config.rpcs),
       ).rejects.toThrow(
-        `Invalid rpc: ${mockChainEntity.config.rpcs[0]}. Connection failed.`,
+        `Invalid rpc: ${mockedChainEntity.config.rpcs[0]}. Connection failed.`,
       );
       expect(mockCreateAPI).toHaveBeenCalledTimes(1);
     });
@@ -277,7 +236,7 @@ describe('ChainService', () => {
         .spyOn(service, <any>'getChainInfoByRpcs')
         .mockResolvedValueOnce({
           chainInfo: mockChainInfo,
-          validRpcs: mockChainEntity.config.rpcs,
+          validRpcs: mockedChainEntity.config.rpcs,
           invalidRpcs: null,
         });
       const mockChainExistByChainId = jest
@@ -285,15 +244,15 @@ describe('ChainService', () => {
         .mockResolvedValueOnce(false);
       const mockSave = jest
         .spyOn(chainRepository, 'save')
-        .mockResolvedValueOnce(mockChainEntity);
+        .mockResolvedValueOnce(mockedChainEntity);
       const mockCreateEvents = jest
         .spyOn(eventService, 'createEvents')
         .mockImplementationOnce(() => Promise.resolve());
 
       const mockInput = {
-        name: mockChainEntity.name,
-        imageUrl: mockChainEntity.imageUrl,
-        rpcs: mockChainEntity.config.rpcs,
+        name: mockedChainEntity.name,
+        imageUrl: mockedChainEntity.imageUrl,
+        rpcs: mockedChainEntity.config.rpcs,
       };
 
       await service.createChain(mockInput);
