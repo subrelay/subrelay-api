@@ -19,8 +19,6 @@ export class ChainWorker implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    console.log(99999);
-
     await this.monitorRunningWorkflows();
   }
 

@@ -6,14 +6,15 @@ import { GeneralTypeEnum } from '../src/substrate/substrate.type';
 import { ChainSummary } from '../src/chain/chain.dto';
 
 import * as block from './sample/block.json';
+import { ChainEntity } from '../src/chain/chain.entity';
 
-const eventSummary = {
+const mockedEventSummary = {
   id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
   name: 'balances.Deposit',
   description: 'Some amount was deposited (e.g. for transaction fees).',
 };
 
-const chainSummary: ChainSummary = {
+export const mockedChainSummary: ChainSummary = {
   name: '01H2S828695SQJ8PV131Y45RA7',
   uuid: '01H2QCFESCHJAHDJV1BRFKE2PQ',
   chainId: 'kusama',
@@ -21,6 +22,12 @@ const chainSummary: ChainSummary = {
     'https://01H2S82869WS23KJ6CF8PGKXRP.com/01H2S828691ZCXQAHVG9TAKMKC.png',
   createdAt: '2023-06-12T01:45:05.201Z',
   version: '9420',
+};
+
+const userEntity = {
+  id: ulid(),
+  address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
+  createdAt: new Date('2023-06-19T02:37:30.588Z'),
 };
 
 export function mockDiscordUser() {
@@ -39,24 +46,18 @@ export function mockTelegramUser() {
   };
 }
 
-export function mockUserInfo() {
-  return {
-    id: '01H39NWDMQCXD308FH4Z0AR3MM',
-    address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
-  };
-}
-
 export function mockUserEntity(): UserEntity {
   return {
-    ...mockUserInfo(),
+    id: ulid(),
+    address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
     createdAt: new Date('2023-06-19T02:37:30.588Z'),
   };
 }
 
-export function mockEventEntity(): EventEntity {
+export function mockEventEntity(chainUuid: string): EventEntity {
   return {
-    ...eventSummary,
-    chainUuid: mockChainSummary().uuid,
+    ...mockedEventSummary,
+    chainUuid: chainUuid,
     index: 7,
     schema: [
       {
@@ -80,34 +81,38 @@ export function mockEventEntity(): EventEntity {
 }
 
 export function mockChainSummary() {
-  return chainSummary;
+  return mockedChainSummary;
 }
 
 export function mockChainEntity() {
   return {
-    ...chainSummary,
+    ...mockedChainSummary,
     config: {
       rpcs: ['wss://kusama-rpc.polkadot.io', 'wss://polkadot-rpc.polkadot.io'],
       chainTokens: ['KSM'],
       chainDecimals: [12],
       metadataVersion: 14,
     },
-    events: [mockEventEntity()],
+    events: [mockEventEntity(mockedChainSummary.uuid)],
   };
 }
 
-export function mockWorkflowEntity(id = null) {
+export function mockWorkflowEntity(
+  user: UserEntity,
+  event: EventEntity,
+  chain: ChainEntity,
+) {
   return {
-    id: id || ulid(),
+    id: ulid(),
     name: 'Dot webhook',
     createdAt: new Date('2023-06-19T02:37:30.588Z'),
     updatedAt: new Date('2023-06-19T09:37:30.590Z'),
     status: WorkflowStatus.RUNNING,
-    userId: mockUserEntity().id,
-    chain: mockChainEntity(),
-    event: mockEventEntity(),
-    eventId: eventSummary.id,
-    user: mockUserEntity(),
+    userId: user.id,
+    chain,
+    event: event,
+    eventId: event.id,
+    user,
     tasks: [
       {
         id: '01H39G8FGBF8ZWX9D31CF4MDDY',
@@ -115,7 +120,7 @@ export function mockWorkflowEntity(id = null) {
         name: 'trigger',
         dependOn: null,
         config: {
-          eventId: eventSummary.id,
+          eventId: mockedEventSummary.id,
         },
         workflowId: '01H39G8FEXCKD3AVZDEN6GA85W',
       },

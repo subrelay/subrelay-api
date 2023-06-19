@@ -9,7 +9,10 @@ import { Queue } from 'bull';
 import { Logger } from '@nestjs/common';
 import * as Bull from '@nestjs/bull';
 import {
+  mockChainEntity,
   mockChainSummary,
+  mockEventEntity,
+  mockUserEntity,
   mockWorkflowEntity,
 } from '../../test/mock-data.util';
 
@@ -25,7 +28,12 @@ describe('ChainWorker', () => {
     getJobCounts: jest.fn(),
   };
 
-  const mockedWorkflowEntity = mockWorkflowEntity();
+  const mockedChainEntity = mockChainEntity();
+  const mockedWorkflowEntity = mockWorkflowEntity(
+    mockUserEntity(),
+    mockEventEntity(mockedChainEntity.uuid),
+    mockedChainEntity,
+  );
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

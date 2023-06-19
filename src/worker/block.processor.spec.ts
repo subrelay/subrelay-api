@@ -8,7 +8,9 @@ import { UserService } from '../user/user.service';
 import { BlockProcessor } from './block.processor';
 import {
   mockBlockJobData,
+  mockChainEntity,
   mockEventEntity,
+  mockUserEntity,
   mockWorkflowEntity,
 } from '../../test/mock-data.util';
 
@@ -36,6 +38,9 @@ describe('BlockProcessor', () => {
   };
 
   let blockJobData;
+  const user = mockUserEntity();
+  const mockedChainEntity = mockChainEntity();
+  const mockedEventEntity = mockEventEntity(mockedChainEntity.uuid);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -72,7 +77,11 @@ describe('BlockProcessor', () => {
 
   describe('processNewBlock', () => {
     beforeEach(() => {
-      blockJobData = mockBlockJobData();
+      blockJobData = {
+        ...mockBlockJobData(),
+        userId: user.id,
+        user,
+      };
     });
 
     it('should not process block if no events found', async () => {
@@ -87,7 +96,7 @@ describe('BlockProcessor', () => {
 
       jest
         .spyOn(eventService, 'getEventsByChainIdAndName')
-        .mockResolvedValueOnce([mockEventEntity()]);
+        .mockResolvedValueOnce([mockedEventEntity]);
       jest
         .spyOn(workflowService, 'getRunningWorkflowsByEventIds')
         .mockResolvedValueOnce([]);
@@ -99,18 +108,22 @@ describe('BlockProcessor', () => {
 
     it('should process block and add jobs to the workflow queue', async () => {
       const job = { data: blockJobData } as any as Job;
-      const workflow = mockWorkflowEntity();
+      const mockedWorkflowEntity = mockWorkflowEntity(
+        user,
+        mockedEventEntity,
+        mockedChainEntity,
+      );
 
       jest
         .spyOn(eventService, 'getEventsByChainIdAndName')
-        .mockResolvedValueOnce([workflow.event]);
+        .mockResolvedValueOnce([mockedWorkflowEntity.event]);
       jest
         .spyOn(workflowService, 'getRunningWorkflowsByEventIds')
-        .mockResolvedValueOnce([workflow]);
+        .mockResolvedValueOnce([mockedWorkflowEntity]);
 
       jest
         .spyOn(userService, 'getUserByIds')
-        .mockResolvedValueOnce([workflow.user]);
+        .mockResolvedValueOnce([mockedWorkflowEntity.user]);
 
       const addBulkSpy = jest
         .spyOn(workflowQueue, 'addBulk')
@@ -136,17 +149,20 @@ describe('BlockProcessor', () => {
               },
               time: new Date('2023-06-19T10:47:00.000Z'),
             },
-            workflow: { id: workflow.id, name: workflow.name },
-            chain: {
-              uuid: workflow.chain.uuid,
-              name: workflow.chain.name,
+            workflow: {
+              id: mockedWorkflowEntity.id,
+              name: mockedWorkflowEntity.name,
             },
-            user: workflow.user,
+            chain: {
+              uuid: mockedWorkflowEntity.chain.uuid,
+              name: mockedWorkflowEntity.chain.name,
+            },
+            user: mockedWorkflowEntity.user,
           },
           opts: {
             removeOnComplete: true,
             removeOnFail: true,
-            jobId: `${workflow.id}_${blockJobData.hash}`,
+            jobId: `${mockedWorkflowEntity.id}_${blockJobData.hash}`,
           },
         },
       ]);
