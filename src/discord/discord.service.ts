@@ -23,25 +23,12 @@ export class DiscordService {
     });
   }
 
-  async getChatInfo(chatId: string) {
-    try {
-      if (isEmpty(chatId)) {
-        return null;
-      }
-
-      return await this.discordClient.users.fetch(chatId);
-    } catch (error) {
-      this.logger.debug('Failed to get discord info', JSON.stringify(error));
-      return null;
-    }
-  }
-
   async getUser(userId: string) {
     if (isEmpty(userId)) {
       return null;
     }
 
-    const user = await this.getChatInfo(userId);
+    const user = await this.discordClient.users.fetch(userId);
 
     if (isEmpty(user)) {
       return null;

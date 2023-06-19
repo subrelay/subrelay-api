@@ -7,7 +7,6 @@ import { DiscordService } from './discord.service';
 
 @Module({
   imports: [
-    UserModule,
     DiscordModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
