@@ -2,8 +2,8 @@ import { AuthMiddleware } from './auth.middleware';
 import { ForbiddenException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../user/user.service';
-import { mockUserInfo } from '../../test/mock-data.util';
 import * as Auth from './auth';
+import { mockUserEntity } from '../../test/mock-data.util';
 
 jest.mock('./auth', () => {
   return {
@@ -18,7 +18,7 @@ describe('AuthMiddleware', () => {
   let authMiddleware: AuthMiddleware;
   let userService: UserService;
 
-  const user = mockUserInfo();
+  const user = mockUserEntity();
   const authInfo = {
     address: user.id,
     signature: 'testSignature',

@@ -15,7 +15,11 @@ import { SubstrateService } from '../src/substrate/substrate.service';
 import { EventEntity } from '../src/event/event.entity';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { APP_FILTER } from '@nestjs/core';
-import { mockDiscordUser, mockTelegramUser, mockUserInfo } from './mock-data.util';
+import {
+  mockDiscordUser,
+  mockTelegramUser,
+  mockUserEntity,
+} from './mock-data.util';
 import { UserService } from '../src/user/user.service';
 import { ulid } from 'ulid';
 import { WorkflowModule } from '../src/workflow/workflow.module';
@@ -47,7 +51,7 @@ describe('Task', () => {
   let userRepository: Repository<UserEntity>;
   let workflowRepository: Repository<WorkflowEntity>;
 
-  const user = mockUserInfo();
+  const user = mockUserEntity();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -80,7 +84,10 @@ describe('Task', () => {
 
     app = moduleRef.createNestApplication();
     app.use((req, res, next) => {
-      req.user = user;
+      req.user = {
+        id: user.id,
+        address: user.address,
+      };
       next();
     });
     app.useGlobalPipes(

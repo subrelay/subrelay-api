@@ -17,7 +17,11 @@ import { TaskModule } from '../src/task/task.module';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { mockDiscordUser, mockTelegramUser, mockUserInfo } from './mock-data.util';
+import {
+  mockDiscordUser,
+  mockTelegramUser,
+  mockUserEntity,
+} from './mock-data.util';
 import { UserService } from '../src/user/user.service';
 import { ChainService } from '../src/chain/chain.service';
 import { ChainEntity } from '../src/chain/chain.entity';
@@ -45,7 +49,7 @@ describe('Task', () => {
   let event: EventEntity;
   let userRepository: Repository<UserEntity>;
 
-  const user = mockUserInfo();
+  const user = mockUserEntity();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -82,7 +86,10 @@ describe('Task', () => {
 
     app = moduleRef.createNestApplication();
     app.use((req, res, next) => {
-      req.user = user;
+      req.user = {
+        id: user.id,
+        address: user.address,
+      };
       next();
     });
     app.useGlobalPipes(

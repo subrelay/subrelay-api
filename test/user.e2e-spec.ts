@@ -9,14 +9,18 @@ import { DiscordService } from '../src/discord/discord.service';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../src/user/user.entity';
 import 'dotenv/config';
-import { mockDiscordUser, mockTelegramUser, mockUserInfo } from './mock-data.util';
+import {
+  mockDiscordUser,
+  mockTelegramUser,
+  mockUserEntity,
+} from './mock-data.util';
 
 describe('User', () => {
   let app: INestApplication;
   const telegramService = { getUser: jest.fn() };
   const discordService = { getUser: jest.fn() };
   let userRepository: Repository<UserEntity>;
-  const user = mockUserInfo();
+  const user = mockUserEntity();
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -35,7 +39,10 @@ describe('User', () => {
 
     app = moduleRef.createNestApplication();
     app.use((req, res, next) => {
-      req.user = user;
+      req.user = {
+        id: user.id,
+        address: user.address,
+      };
       next();
     });
     await app.init();
