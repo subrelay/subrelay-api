@@ -8,6 +8,7 @@ import { ChainModule } from '../chain/chain.module';
 import { BlockProcessor } from './block.processor';
 import { WorkflowProcessor } from './workflow.processor';
 import { UserModule } from '../user/user.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UserModule } from '../user/user.module';
     EventModule,
     ChainModule,
     UserModule,
+    EventEmitterModule.forRoot(),
   ],
   providers: [ChainWorker, BlockProcessor, WorkflowProcessor],
 })

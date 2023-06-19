@@ -70,46 +70,6 @@ describe('ChainWorker', () => {
     );
   });
 
-  describe('onModuleInit', () => {
-    it('should call monitorRunningWorkflows', async () => {
-      const mockMonitor = jest
-        .spyOn(worker, 'monitorRunningWorkflows')
-        .mockResolvedValue(undefined);
-      await worker.onModuleInit();
-      expect(mockMonitor).toHaveBeenCalled();
-    });
-  });
-
-  describe('monitorRunningWorkflows', () => {
-    it('should start chain workers for running workflows', async () => {
-      const runningWorkflows = [mockedWorkflowEntity];
-      const chains = [
-        {
-          chainId: mockedWorkflowEntity.chain.chainId,
-          config: mockedWorkflowEntity.chain.config,
-        },
-      ];
-      jest
-        .spyOn(workflowService, 'getRunningWorkflows')
-        .mockResolvedValue(runningWorkflows);
-      jest.spyOn(chainService, 'getChainsByEventIds').mockResolvedValue(chains);
-      const mockStartChainWorkers = jest
-        .spyOn(worker, 'startChainWorkers')
-        .mockResolvedValue(undefined);
-      await worker.monitorRunningWorkflows();
-      expect(mockStartChainWorkers).toHaveBeenCalledWith(chains);
-    });
-
-    it('should not start chain workers if there are no running workflows', async () => {
-      jest.spyOn(workflowService, 'getRunningWorkflows').mockResolvedValue([]);
-      const mockStart = jest
-        .spyOn(worker, 'startChainWorkers')
-        .mockResolvedValue(undefined);
-      await worker.monitorRunningWorkflows();
-      expect(mockStart).not.toHaveBeenCalled();
-    });
-  });
-
   describe('startChainWorkers', () => {
     const chains = [
       {

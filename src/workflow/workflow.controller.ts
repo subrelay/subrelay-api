@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   NotFoundException,
+  OnModuleInit,
   Param,
   Patch,
   Post,
@@ -114,7 +115,10 @@ export class WorkflowController {
       input.tasks,
     );
 
-    const workflow = await this.workflowService.createWorkflow(input, userInfo.id);
+    const workflow = await this.workflowService.createWorkflow(
+      input,
+      userInfo.id,
+    );
 
     const tasks = await this.taskService.getTasks(workflow.id);
 
@@ -199,7 +203,10 @@ export class WorkflowController {
       );
     }
 
-    if (some(tasks, { type: TaskType.DISCORD }) && !user?.integration?.discord) {
+    if (
+      some(tasks, { type: TaskType.DISCORD }) &&
+      !user?.integration?.discord
+    ) {
       throw new BadRequestException(
         "The integration with Discord does't set up yet.",
       );

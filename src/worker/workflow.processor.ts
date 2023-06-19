@@ -15,7 +15,6 @@ export class WorkflowProcessor {
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly taskService: TaskService,
-    private readonly userService: UserService,
   ) {}
 
   @Process({ concurrency: 10 })
@@ -38,8 +37,6 @@ export class WorkflowProcessor {
 
     const filterTask = find(tasks, { type: TaskType.FILTER });
 
-    this.logger.error('workflowResult', JSON.stringify(workflowResult));
-
     try {
       if (
         filterTask &&
@@ -55,8 +52,6 @@ export class WorkflowProcessor {
         input: input.event.data,
         workflowId: input.workflow.id,
       });
-
-      this.logger.error({ workflowLogId });
 
       const taskLogs = map(schema, (task) => {
         const log = workflowResult[task.id];
@@ -77,8 +72,6 @@ export class WorkflowProcessor {
           error: log.error,
         };
       });
-
-      this.logger.error({ taskLogs });
 
       await this.taskService.createTaskLogs(taskLogs);
 
