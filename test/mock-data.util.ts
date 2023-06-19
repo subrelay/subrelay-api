@@ -5,6 +5,8 @@ import { EventEntity } from '../src/event/event.entity';
 import { GeneralTypeEnum } from '../src/substrate/substrate.type';
 import { ChainSummary } from '../src/chain/chain.dto';
 
+import * as block from './sample/block.json';
+
 const eventSummary = {
   id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
   name: 'balances.Deposit',
@@ -39,15 +41,14 @@ export function mockTelegramUser() {
 
 export function mockUserInfo() {
   return {
-    id: ulid(),
+    id: '01H39NWDMQCXD308FH4Z0AR3MM',
     address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
   };
 }
 
 export function mockUserEntity(): UserEntity {
   return {
-    id: ulid(),
-    address: '5Ea3dne7kDTMvSnYCFTFrZsLNputsrg35ZQCaHwuviSYMa3e',
+    ...mockUserInfo(),
     createdAt: new Date('2023-06-19T02:37:30.588Z'),
   };
 }
@@ -95,14 +96,14 @@ export function mockChainEntity() {
   };
 }
 
-export function mockWorkflowEntity() {
+export function mockWorkflowEntity(id = null) {
   return {
-    id: '01H39G8FEXCKD3AVZDEN6GA85W',
+    id: id || ulid(),
     name: 'Dot webhook',
     createdAt: new Date('2023-06-19T02:37:30.588Z'),
     updatedAt: new Date('2023-06-19T09:37:30.590Z'),
     status: WorkflowStatus.RUNNING,
-    userId: '01H2WDDP0N9WP6J2TY12T3BNF2',
+    userId: mockUserEntity().id,
     chain: mockChainEntity(),
     event: mockEventEntity(),
     eventId: eventSummary.id,
@@ -132,4 +133,8 @@ export function mockWorkflowEntity() {
       },
     ],
   };
+}
+
+export function mockBlockJobData() {
+  return block;
 }

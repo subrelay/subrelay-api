@@ -26,7 +26,6 @@ describe('ChainWorker', () => {
   };
 
   const mockedWorkflowEntity = mockWorkflowEntity();
-  const chain = mockChainSummary();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

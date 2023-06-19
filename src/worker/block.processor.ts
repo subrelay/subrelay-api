@@ -8,6 +8,7 @@ import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from '../workflow/workflow.service';
 import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
+import { writeFileSync } from 'fs';
 
 @Processor('block')
 export class BlockProcessor {
@@ -22,6 +23,7 @@ export class BlockProcessor {
   @Process({ concurrency: 10 })
   async processNewBlock(job: Job) {
     const data: BlockJobData = job.data;
+
     const eventNames = uniq(map(data.events, 'name'));
     this.logger.debug(`Events: ${eventNames.join(' | ')}`);
 
@@ -60,6 +62,7 @@ export class BlockProcessor {
         (e) => e.name === workflow.event.name,
       );
       const eventInfo = find(events, { id: workflow.event.id });
+
       const blockEventData = reduce(
         blockEvent.data,
         (result, value, index) => {

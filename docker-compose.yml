@@ -20,6 +20,8 @@ services:
     volumes:
       - redis_data:/data
     restart: always
+    ports:
+      - 6379:6379
     env_file:
       - self-hosted.env
 
@@ -38,20 +40,6 @@ services:
     depends_on:
       - redis
       - postgres
-      - api
-
-  api:
-    build:
-      dockerfile: Dockerfile
-      context: .
-    env_file:
-      - self-hosted.env
-    ports:
-      - 3000:3000
-    restart: always
-    depends_on:
-      - postgres
-      - redis
 
 volumes:
   pgdata:
