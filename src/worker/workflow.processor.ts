@@ -7,7 +7,6 @@ import { BaseTask, TaskStatus, TaskType } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ulid } from 'ulid';
 import { ProcessWorkflowInput } from '../workflow/workflow.type';
-import { UserService } from '../user/user.service';
 
 @Processor('workflow')
 export class WorkflowProcessor {
@@ -21,7 +20,7 @@ export class WorkflowProcessor {
   async processWorkflowJob(job: Job) {
     const input: ProcessWorkflowInput = job.data;
     this.logger.debug(
-      `Process event "${input.event.name}" for workflow version ${input.workflow.id} xxxx`,
+      `Process event "${input.event.name}" for workflow version ${input.workflow.id}`,
     );
     const tasks = await this.taskService.getTasks(input.workflow.id, false);
 
@@ -29,6 +28,8 @@ export class WorkflowProcessor {
     tasks.forEach((task) => {
       schema[task.dependOn || 'start'] = new BaseTask(task);
     });
+
+    console.log(schema);
 
     const workflowResult = await this.workflowService.processWorkflow(
       input,
@@ -73,7 +74,10 @@ export class WorkflowProcessor {
         };
       });
 
+      console.log(taskLogs);
+
       await this.taskService.createTaskLogs(taskLogs);
+      console.log({ workflowLogStatus });
 
       await this.workflowService.finishWorkflowLog(
         workflowLogId,

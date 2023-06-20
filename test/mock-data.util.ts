@@ -7,6 +7,8 @@ import { ChainSummary } from '../src/chain/chain.dto';
 
 import * as block from './sample/block.json';
 import { ChainEntity } from '../src/chain/chain.entity';
+import { TaskEntity } from '../src/task/entity/task.entity';
+import { TaskType } from '../src/task/type/task.type';
 
 const mockedEventSummary = {
   id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
@@ -97,13 +99,64 @@ export function mockChainEntity() {
   };
 }
 
+export function mockTriggerTask(eventId, workflowId): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.TRIGGER,
+    name: 'trigger',
+    dependOn: null,
+    config: {
+      eventId,
+    },
+    workflowId,
+  };
+}
+
+export function mockFilterTask(workflowId, dependOn): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.FILTER,
+    name: 'filter',
+    dependOn,
+    config: {
+      conditions: [
+        [
+          {
+            value: 1,
+            operator: 'greaterThan',
+            variable: 'event.data.amount',
+          },
+        ],
+      ],
+    },
+    workflowId,
+  };
+}
+
+export function mockWebhookTask(workflowId, dependOn): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.WEBHOOK,
+    name: 'webhook',
+    dependOn,
+    config: {
+      secret: null,
+      encrypted: false,
+      url: 'https://webhook.site/b8d1f60c-959e-41e3-a138-cf672d68c633',
+    },
+    workflowId,
+  };
+}
+
 export function mockWorkflowEntity(
   user: UserEntity,
   event: EventEntity,
   chain: ChainEntity,
 ) {
+  const id = ulid();
+  const trigger = mockTriggerTask(event.id, id);
   return {
-    id: ulid(),
+    id,
     name: 'Dot webhook',
     createdAt: new Date('2023-06-19T02:37:30.588Z'),
     updatedAt: new Date('2023-06-19T09:37:30.590Z'),
@@ -113,30 +166,7 @@ export function mockWorkflowEntity(
     event: event,
     eventId: event.id,
     user,
-    tasks: [
-      {
-        id: '01H39G8FGBF8ZWX9D31CF4MDDY',
-        type: 'trigger',
-        name: 'trigger',
-        dependOn: null,
-        config: {
-          eventId: mockedEventSummary.id,
-        },
-        workflowId: '01H39G8FEXCKD3AVZDEN6GA85W',
-      },
-      {
-        id: '01H39G8FGPX10SXFY2WAGV6WHH',
-        type: 'webhook',
-        name: 'action',
-        dependOn: '01H39G8FGBF8ZWX9D31CF4MDDY',
-        config: {
-          secret: null,
-          encrypted: false,
-          url: 'https://webhook.site/b8d1f60c-959e-41e3-a138-cf672d68c633',
-        },
-        workflowId: '01H39G8FEXCKD3AVZDEN6GA85W',
-      },
-    ],
+    tasks: [trigger, mockWebhookTask(id, trigger.id)] as TaskEntity[],
   };
 }
 
