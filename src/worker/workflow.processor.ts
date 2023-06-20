@@ -29,8 +29,6 @@ export class WorkflowProcessor {
       schema[task.dependOn || 'start'] = new BaseTask(task);
     });
 
-    console.log(schema);
-
     const workflowResult = await this.workflowService.processWorkflow(
       input,
       schema,
@@ -57,7 +55,7 @@ export class WorkflowProcessor {
       const taskLogs = map(schema, (task) => {
         const log = workflowResult[task.id];
         const status = log ? log.status : TaskStatus.SKIPPED;
-        if (log) {
+        if (status !== TaskStatus.SKIPPED) {
           workflowLogStatus = log.status;
         }
 
@@ -66,18 +64,15 @@ export class WorkflowProcessor {
           status: status,
           taskId: task.id,
           workflowLogId,
-          output: log.output,
-          startedAt: log.startedAt,
-          finishedAt: log.finishedAt,
-          input: log.input,
-          error: log.error,
+          output: log?.output,
+          startedAt: log?.startedAt,
+          finishedAt: log?.finishedAt,
+          input: log?.input,
+          error: log?.error,
         };
       });
 
-      console.log(taskLogs);
-
       await this.taskService.createTaskLogs(taskLogs);
-      console.log({ workflowLogStatus });
 
       await this.workflowService.finishWorkflowLog(
         workflowLogId,
