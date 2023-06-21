@@ -1,61 +1,20 @@
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-  ValidateIf,
-} from 'class-validator';
-import { AbsConfig } from './task.type';
-import { IsTriggerConditions } from '../validator/trigger.validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventData } from '../../common/queue.type';
+import { IsString, validateSync } from 'class-validator';
+import { TaskValidationError } from './task.type';
+import { isEmpty } from 'lodash';
 
-export enum FilterOperator {
-  GREATETHANEQUAL = 'greaterThanEqual',
-  GREATETHAN = 'greaterThan',
-  LESSTHAN = 'lessThan',
-  LESSTHANEQUAL = 'lessThanEqual',
-  CONTAINS = 'contains',
-  EQUAL = 'equal',
-  ISTRUE = 'isTrue',
-  ISFALSE = 'isFalse',
-}
-
-export class TriggerCondition {
-  @ApiProperty({ example: 'data.amount' })
+export class TriggerTaskConfig {
   @IsString()
-  @IsNotEmpty()
-  variable: string;
+  eventId: string;
 
-  @ApiProperty({ example: FilterOperator.GREATETHAN, enum: FilterOperator })
-  @IsString()
-  @IsEnum(FilterOperator, {
-    message: `operator should be one of values: ${Object.values(
-      FilterOperator,
-    ).join(', ')}`,
-  })
-  operator: FilterOperator;
+  constructor(config: any) {
+    Object.assign(this, config);
 
-  @ApiProperty({ example: 1 })
-  @ValidateIf(
-    (o) =>
-      o.operator !== FilterOperator.ISFALSE &&
-      o.operator !== FilterOperator.ISTRUE,
-  )
-  @IsNotEmpty()
-  value?: string | number | boolean;
+    const errors = validateSync(this);
+    if (!isEmpty(errors)) {
+      const message = errors
+        .map((e) => Object.values(e.constraints).join('. '))
+        .join('. ');
+      throw new TaskValidationError(message);
+    }
+  }
 }
-
-export class TriggerTaskConfig extends AbsConfig {
-  @ApiProperty({ example: 9 })
-  @IsNumber()
-  eventId: number;
-
-  @ApiPropertyOptional({ isArray: true, type: TriggerCondition })
-  @IsTriggerConditions()
-  @IsOptional()
-  conditions?: Array<TriggerCondition[]>;
-}
-
-export type TriggerTaskInput = EventData;

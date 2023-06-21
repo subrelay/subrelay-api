@@ -9,18 +9,14 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { EventModule } from './event/event.module';
 import { ChainModule } from './chain/chain.module';
-import { SubstrateModule } from './substrate/substrate.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { AdminAuthMiddleware } from './common/admin-auth.middleware';
-import { ScheduleModule } from '@nestjs/schedule';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
+import { WorkerModule } from './worker/worker.module';
 
 @Module({
   imports: [
@@ -35,8 +31,8 @@ import { AuthMiddleware } from './common/auth.middleware';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        synchronize: true, // TODO Should not automatically synchronize in prod
-        logging: true,
+        synchronize: configService.get('NODE_ENV') != 'prod', // TODO Should not automatically synchronize in prod
+        logging: configService.get('NODE_ENV').startsWith('local'),
         autoLoadEntities: true,
       }),
     }),
@@ -50,15 +46,9 @@ import { AuthMiddleware } from './common/auth.middleware';
         },
       }),
     }),
-    BullModule.registerQueue({
-      name: 'block',
-    }),
-    ScheduleModule.forRoot(),
-    EventEmitterModule.forRoot(),
+    WorkerModule,
     UserModule,
-    EventModule,
     ChainModule,
-    SubstrateModule,
     TaskModule,
     WorkflowModule,
   ],
@@ -74,20 +64,15 @@ import { AuthMiddleware } from './common/auth.middleware';
 export class AppModule implements NestModule {
   public configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(AdminAuthMiddleware)
-      .forRoutes(
-        { method: RequestMethod.POST, path: '/chains' },
-        { method: RequestMethod.PUT, path: '/chains/:uuid' },
-      );
-
-    consumer
       .apply(AuthMiddleware)
       .exclude(
         { method: RequestMethod.GET, path: '/' },
         { method: RequestMethod.GET, path: '/api' },
         { method: RequestMethod.GET, path: '/api/*' },
         { method: RequestMethod.GET, path: '/chains' },
-        { method: RequestMethod.GET, path: '/tasks/operators' },
+        { method: RequestMethod.GET, path: '/tasks/filter/operators' },
+        { method: RequestMethod.GET, path: '/tasks/filter/fields' },
+        { method: RequestMethod.GET, path: '/tasks/custom-message/fields' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events' },
         { method: RequestMethod.GET, path: '/chains/:uuid/events/:eventId' },
         { method: RequestMethod.POST, path: '/chains' },

@@ -12,6 +12,6 @@ export const cliOrmConfig: DataSourceOptions = {
   migrations: ['./src/migration/*.ts'],
 };
 
-const datasource = new DataSource(cliOrmConfig);
+const dataSource = new DataSource(cliOrmConfig);
 
-export default datasource;
+export default dataSource;

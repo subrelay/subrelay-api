@@ -1,18 +1,12 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { ProcessStatus } from '../type/task.type';
-import { Task } from './task.entity';
-import { WorkflowLog } from '../../workflow/entity/workflow-log.entity';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { WorkflowLogEntity } from '../../workflow/entity/workflow-log.entity';
+import { TaskStatus } from '../type/task.type';
+import { TaskEntity } from './task.entity';
 
-@Entity()
-export class TaskLog {
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('task_log')
+export class TaskLogEntity {
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
   @Column({
     nullable: true,
@@ -29,22 +23,28 @@ export class TaskLog {
   finishedAt?: Date;
 
   @Column({ nullable: false })
-  status: ProcessStatus;
+  status: TaskStatus;
 
-  @ManyToOne(() => WorkflowLog, { onDelete: 'CASCADE' })
+  @ManyToOne(() => WorkflowLogEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowLogId', referencedColumnName: 'id' }])
-  workflowLog: WorkflowLog;
+  workflowLog?: WorkflowLogEntity;
 
-  @Column({ name: 'workflowLogId' })
-  workflowLogId: number;
+  @Column({ name: 'workflowLogId', type: 'char', length: 26 })
+  workflowLogId: string;
 
-  @ManyToOne(() => Task, { onDelete: 'CASCADE' })
+  @ManyToOne(() => TaskEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'taskId', referencedColumnName: 'id' }])
-  task: Task;
+  task?: TaskEntity;
 
-  @Column({ name: 'taskId' })
-  taskId: number;
+  @Column({ name: 'taskId', type: 'char', length: 26 })
+  taskId: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  output: any;
+  output?: any;
+
+  @Column({ type: 'jsonb', nullable: true })
+  input?: any;
+
+  @Column({ type: 'jsonb', nullable: true })
+  error?: any;
 }

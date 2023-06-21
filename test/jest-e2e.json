@@ -1,0 +1,14 @@
+{
+    "preset": "ts-jest",
+    "roots": [
+        "./"
+    ],
+    "testMatch": [
+        "**/*.e2e-spec.ts"
+    ],
+    "moduleNameMapper": {
+        "^src/(.*)$": "<rootDir>/src/$1"
+    },
+    "verbose": true,
+    "testTimeout": 60000
+}

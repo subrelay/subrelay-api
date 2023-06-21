@@ -1,32 +1,26 @@
-import { Event } from '../event/event.entity';
-
-export class EventRawData {
-  pallet: string;
-  name: string;
-  data: any;
-  hash: string;
-  block: {
-    hash: string;
-  };
-}
+import { WorkflowEntity } from '../workflow/entity/workflow.entity';
 
 export class BlockJobData {
   timestamp: number;
   hash: string;
-  chainUuid: string;
-  events: EventRawData[];
+  chainId: string;
+  events: {
+    name: string;
+    data: any;
+  }[];
   success: boolean;
 }
 
-export class EventData extends EventRawData {
+export class EventRawData {
   timestamp: number;
   success: boolean;
-  hash: string;
-  chainUuid: string;
+  block: {
+    hash: string;
+  };
+  data: any;
 }
 
 export class WorkflowJobData {
-  workflowVersionId: number;
-  event: Event;
-  eventData: EventData;
+  workflow: WorkflowEntity;
+  eventRawData: EventRawData;
 }

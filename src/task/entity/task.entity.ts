@@ -1,40 +1,28 @@
-import { WorkflowVersion } from '../../workflow/entity/workflow-version.entity';
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { AbsConfig, TaskType } from '../type/task.type';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { TaskType } from '../type/task.type';
+import { WorkflowEntity } from '../../workflow/entity/workflow.entity';
 
-@Entity()
-export class Task {
-  @ApiProperty({ example: 1 })
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('task')
+export class TaskEntity {
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
-  @ApiProperty({ example: TaskType.TRIGGER, enum: TaskType })
   @Column({ nullable: false, type: 'text' })
   type: TaskType;
 
-  @ApiProperty({ example: 'Task 1' })
   @Column({ nullable: false })
   name: string;
 
-  @ApiPropertyOptional({ example: 2 })
-  @Column({ nullable: true, name: 'dependOn' })
-  dependOn?: number;
+  @Column({ nullable: true, name: 'dependOn', type: 'char', length: 26 })
+  dependOn?: string;
 
   @Column({ nullable: false, type: 'jsonb' })
-  config: AbsConfig;
+  config: any;
 
-  @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])
-  workflowVersion: WorkflowVersion;
+  @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
+  workflow?: WorkflowEntity;
 
-  @ApiProperty({ example: 3 })
-  @Column({ name: 'workflowVersionId' })
-  workflowVersionId: number;
+  @Column({ name: 'workflowId', type: 'char', length: 26 })
+  workflowId: string;
 }

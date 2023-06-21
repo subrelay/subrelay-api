@@ -1,147 +1,185 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { set } from 'lodash';
+import { isNil, set, upperFirst, words } from 'lodash';
 import { Repository } from 'typeorm';
-import { EventDef, GeneralTypeEnum } from '../substrate/substrate.data';
-import { GetEventsQueryParams } from './event.dto';
-import { Event, EventDetail, SupportedFilterField } from './event.entity';
-import { EventData } from './event.type';
+import { ulid } from 'ulid';
+import { Pagination } from '../common/pagination.type';
+import { EventRawData } from '../common/queue.type';
+import { EventDef, GeneralTypeEnum } from '../substrate/substrate.type';
+import { DataField } from './event.dto';
+import { EventEntity } from './event.entity';
+import { ChainEntity } from '../chain/chain.entity';
+import { blake2AsHex } from '@polkadot/util-crypto';
+import { Event } from './event.type';
 
 @Injectable()
 export class EventService {
   constructor(
-    @InjectRepository(Event)
-    private eventRepository: Repository<Event>,
+    @InjectRepository(EventEntity)
+    private eventRepository: Repository<EventEntity>,
   ) {}
 
   async createEvents(events: EventDef[], chainUuid: string) {
-    const createEventsInput: Partial<Event>[] = events.map((event) => ({
+    const createEventsInput: Partial<EventEntity>[] = events.map((event) => ({
+      id: ulid(),
       ...event,
       chainUuid,
     }));
     await this.eventRepository.insert(createEventsInput);
   }
 
-  getEventsByChainUuidAndName(chainUuid: string, names: string[]) {
+  getEventsByChainIdAndName(chainId: string, names: string[]) {
     return this.eventRepository
-      .createQueryBuilder('event')
-      .where('"chainUuid" = :chainUuid', { chainUuid })
-      .andWhere(`CONCAT(pallet, '.', name) IN (:...names) `, { names })
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('c."chainId" = :chainId', { chainId })
+      .andWhere(`e.name IN (:...names) `, { names })
       .getMany();
   }
 
-  async getEventByChain(
-    chainUuid: string,
-    eventId: number,
-  ): Promise<EventDetail> {
-    const event = await this.eventRepository.findOneBy({
-      id: eventId,
-      chainUuid,
-    });
+  generateEventRawDataSample(event: Event): EventRawData {
+    const fields = this.getEventDataFields(event);
 
-    if (!event) {
-      return null;
-    }
-
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
-  }
-
-  async generateEventSample(eventId): Promise<EventData> {
-    const event = await this.getEventById(eventId);
-    if (!event) {
-      return null;
-    }
-
-    const eventData = {
+    const eventRawData: EventRawData = {
       timestamp: Date.now(),
       block: {
-        hash: '0xe80f966994c42e248e3de6d0102c09665e2b128cca66d71e470e1d2a9b7fbecf',
-      }, // TODO need to function to random a hash
-      chainUuid: event.chainUuid,
+        hash: blake2AsHex(ulid()),
+      },
+      success: true,
+      data: null,
     };
-    event.fields.forEach((f) => set(eventData, f.name, f.example));
-    return eventData;
+    fields.forEach((f) => set(eventRawData, f.name, f.data));
+
+    return eventRawData;
   }
 
-  async getEventById(eventId: number): Promise<EventDetail> {
-    const event = await this.eventRepository.findOneBy({
-      id: eventId,
-    });
-
-    if (!event) {
-      return null;
-    }
-
-    return {
-      ...event,
-      fields: this.getSupportedFields(event),
-    };
-  }
-
-  getEventsByChain(
-    chainUuid: string,
-    queryParams?: GetEventsQueryParams,
-  ): Promise<Event[]> {
+  async getEventById(eventId: string, chainUuid?: string): Promise<Event> {
     let queryBuilder = this.eventRepository
-      .createQueryBuilder('event')
+      .createQueryBuilder('e')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = e."chainUuid"')
+      .where('e."id" = :eventId', { eventId })
       .select([
-        'event.id',
-        'event.name',
-        'event.pallet',
-        'event.index',
-        'event.description',
-        'event."chainUuid"',
-      ])
-      .where('event."chainUuid" = :chainUuid', { chainUuid });
+        'e.id AS id',
+        'e.name AS name',
+        'e.description AS description',
+        'e.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
 
-    if (queryParams.pallet) {
-      queryBuilder = queryBuilder.andWhere('event.pallet = :pallet', {
-        pallet: queryParams.pallet,
+    if (!isNil(chainUuid)) {
+      queryBuilder = queryBuilder.andWhere('e."chainUuid =:chainUuid"', {
+        chainUuid,
       });
     }
 
+    return (await queryBuilder.getRawOne()) as Event;
+  }
+
+  async getEventsByChain(
+    chainUuid: string,
+    queryParams?: Pagination,
+  ): Promise<Event[]> {
+    let queryBuilder = this.eventRepository
+      .createQueryBuilder('event')
+      .innerJoin(ChainEntity, 'c', 'c.uuid = event."chainUuid"')
+      .where('event."chainUuid" = :chainUuid', { chainUuid })
+      .select([
+        'event.id AS id',
+        'event.name AS name',
+        'event.description AS description',
+        'event.schema AS schema',
+        `JSONB_BUILD_OBJECT('uuid', c.uuid, 'name', c.name, 'chainId', c."chainId", 'imageUrl', c."imageUrl") AS chain`,
+      ]);
+
     if (queryParams.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(event.name ILIKE :search OR event.pallet ILIKE :search OR event.description ILIKE :search)',
+        '(event.name ILIKE :search OR event.description ILIKE :search)',
         { search: `%${queryParams.search}%` },
       );
     }
 
-    const order = queryParams?.order || 'name';
+    const order = queryParams?.order
+      ? `event.${queryParams.order}`
+      : 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
-    if (queryParams.order && queryParams.offset) {
+    if (!isNaN(queryParams.limit) && !isNaN(queryParams.offset)) {
       queryBuilder = queryBuilder
         .limit(queryParams.limit)
         .offset(queryParams.offset);
     }
-    return queryBuilder.orderBy(order, sort, 'NULLS LAST').getMany();
+    return (await queryBuilder
+      .orderBy(order, sort, 'NULLS LAST')
+      .getRawMany()) as unknown as Event[];
   }
 
-  private getSupportedFields(event: Event): SupportedFilterField[] {
-    const dataFields = event.dataSchema.map((field) => {
-      const name = `data.${field.name}`;
+  getEventDataFields(event: Event): DataField[] {
+    return event.schema.map((field) => {
+      let name = `data.${field.name}`;
+      let display = upperFirst(words(field.name).join(' '));
+
+      if (!isNaN(parseInt(field.name))) {
+        name = `data[${field.name}]`;
+        display = `Event argument ${field.name}`;
+      }
 
       return {
         name,
-        description: field.description,
+        description: field.description || display,
         type: field.type as GeneralTypeEnum,
-        example: field.example,
+        data: field.example,
+        display,
       };
     });
+  }
 
-    const eventFields = [
+  getEventStatusFields(): DataField[] {
+    return [
       {
         name: 'success',
         description: 'The status of the event',
         type: GeneralTypeEnum.BOOL,
-        example: true,
+        data: true,
+        display: 'Status',
       },
     ];
+  }
 
-    return [...eventFields, ...dataFields].filter((field) => field);
+  getEventExtraFields(): DataField[] {
+    return [
+      {
+        name: 'block.hash',
+        description: 'The hash of the block',
+        type: GeneralTypeEnum.STRING,
+        data: blake2AsHex(ulid()),
+        display: 'Block Hash',
+      },
+    ];
+  }
+
+  getEventInfoFields(event: Event): DataField[] {
+    return [
+      {
+        name: 'id',
+        description: 'The Id of the event',
+        type: GeneralTypeEnum.NUMBER,
+        data: event.id,
+        display: 'Event ID',
+      },
+      {
+        name: 'name',
+        description: 'The name of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.name,
+        display: 'Event Name',
+      },
+      {
+        name: 'description',
+        description: 'The description of the event',
+        type: GeneralTypeEnum.STRING,
+        data: event.description,
+        display: 'Event Description',
+      },
+    ];
   }
 }

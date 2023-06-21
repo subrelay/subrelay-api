@@ -1,17 +1,19 @@
-import { IsEnum, ValidateNested } from 'class-validator';
-import { EventData } from '../common/queue.type';
-import { Event } from '../event/event.entity';
-import { WorkflowSummary } from '../workflow/workflow.dto';
-import { Task } from './entity/task.entity';
-import { AbsConfig, TaskOutput, TaskType } from './type/task.type';
-import { IsTaskConfig } from './validator/task-config.validator';
+import { IsEnum, IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { TaskEntity } from './entity/task.entity';
+import { TaskLog, TaskStatus, TaskType } from './type/task.type';
+
+export class ProcessTaskRequestData {
+  @IsString()
+  @IsNotEmpty()
+  eventId: string;
+}
 
 export class ProcessTaskRequest {
-  data: any;
+  @ValidateNested()
+  data: ProcessTaskRequestData;
 
   @ValidateNested()
-  @IsTaskConfig()
-  config: AbsConfig;
+  config: any;
 
   @IsEnum(TaskType, {
     message: `Invalid status. Possible values: ${Object.values(TaskType).join(
@@ -21,11 +23,24 @@ export class ProcessTaskRequest {
   type: TaskType;
 }
 
-export type TaskInput = Pick<Task, 'type' | 'config' | 'dependOn'>;
+export class TaskLogDetail {
+  id: number;
 
-export class ProcessTaskData {
-  eventData?: EventData;
-  event?: Event;
-  input?: TaskOutput; // prev task output
-  workflow?: Pick<WorkflowSummary, 'id' | 'name'>;
+  startedAt?: Date;
+
+  finishedAt?: Date;
+
+  status: TaskStatus;
+
+  task: TaskEntity;
+
+  output: any;
+
+  input?: any;
+}
+
+export class ProcessTaskResponse {
+  status: TaskLog['status'];
+  error: TaskLog['error'];
+  output: TaskLog['output'];
 }

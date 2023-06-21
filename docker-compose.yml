@@ -10,56 +10,39 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - ${DB_PORT}:${DB_PORT}
     restart: always
     env_file:
       - .env
 
-  pgadmin:
-    image: dpage/pgadmin4
-    ports:
-      - "5050:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    restart: always
-    depends_on:
-      - postgres
-
   redis:
     image: redis
+    volumes:
+      - redis_data:/data
+    restart: always
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    env_file:
+      - .env
+
 
   event-service:
-    image: subrelay-event-service
+    image: subrelay-event-service:latest
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
     ports:
-      - "3001:3001"
+      - "3001"
     restart: always
     env_file:
       - .env
     depends_on:
       - redis
       - postgres
-      - api
-  
-  api:
-    build:
-      dockerfile: Dockerfile
-      context: .
-    env_file:
-      - .env
-    ports:
-      - 3000:3000
-    restart: always
-    volumes:
-      - api:/app
-    depends_on:
-      - postgres
-      - redis
 
 volumes:
   pgdata:
-  api:
+  redis_data:

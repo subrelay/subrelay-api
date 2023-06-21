@@ -1,25 +1,62 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CreateUserDto } from './user.dto';
-import { User } from './user.entity';
+import { In, Repository } from 'typeorm';
+import { ulid } from 'ulid';
+import { CreateUserDto, UserSummary } from './user.dto';
+import { UserEntity } from './user.entity';
+import { UserIntegration } from './user.type';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
+    @InjectRepository(UserEntity)
+    private usersRepository: Repository<UserEntity>,
   ) {}
 
-  getUsers(): Promise<User[]> {
+  getUsers(): Promise<UserEntity[]> {
     return this.usersRepository.find();
   }
 
-  getUser(address: string): Promise<User> {
+  getUser(address: string): Promise<UserEntity> {
     return this.usersRepository.findOneBy({ address });
   }
 
-  createUser(input: CreateUserDto): Promise<User> {
-    return this.usersRepository.save(input);
+  async getUserSummary(
+    address: string,
+  ): Promise<Pick<UserEntity, 'id' | 'address'>> {
+    const user = await this.usersRepository.findOneBy({ address });
+
+    return (
+      user && {
+        id: user.id,
+        address: user.address,
+      }
+    );
+  }
+
+  getUserById(id: string): Promise<UserEntity> {
+    return this.usersRepository.findOneBy({ id });
+  }
+
+  getUserByIds(ids: string[]): Promise<UserEntity[]> {
+    return this.usersRepository.findBy({ id: In(ids) });
+  }
+
+  async updateUserIntegration(userId: string, integration: UserIntegration) {
+    await this.usersRepository.update({ id: userId }, { integration });
+  }
+
+  async createUser(input: CreateUserDto): Promise<UserSummary> {
+    const id = ulid();
+    const user = await this.usersRepository.save({
+      ...input,
+      id,
+      integration: {},
+    });
+
+    return {
+      id: user.id,
+      address: user.address,
+    };
   }
 }

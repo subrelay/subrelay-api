@@ -4,16 +4,15 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
 } from 'typeorm';
-import { WorkflowVersion } from './workflow-version.entity';
-import { EventData } from '../../common/queue.type';
-import { ProcessStatus } from '../../task/type/task.type';
+import { TaskStatus } from '../../task/type/task.type';
+import { WorkflowEntity } from './workflow.entity';
 
 @Entity({ name: 'workflow_log' })
-export class WorkflowLog {
-  @PrimaryGeneratedColumn()
-  id: number;
+export class WorkflowLogEntity {
+  @PrimaryColumn({ type: 'char', length: 26 })
+  id: string;
 
   @CreateDateColumn({
     name: 'startedAt',
@@ -28,15 +27,15 @@ export class WorkflowLog {
   finishedAt?: Date;
 
   @Column({ nullable: false, type: 'text' })
-  status: ProcessStatus;
+  status: TaskStatus;
 
   @Column({ nullable: false, type: 'jsonb' })
-  input: EventData;
+  input: any;
 
-  @ManyToOne(() => WorkflowVersion, { onDelete: 'CASCADE' })
-  @JoinColumn([{ name: 'workflowVersionId', referencedColumnName: 'id' }])
-  workflowVersion: WorkflowVersion;
+  @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
+  @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
+  workflow?: WorkflowEntity;
 
-  @Column({ name: 'workflowVersionId' })
-  workflowVersionId: number;
+  @Column({ name: 'workflowId', type: 'char', length: 26 })
+  workflowId: string;
 }
