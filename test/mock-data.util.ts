@@ -9,6 +9,7 @@ import * as block from './sample/block.json';
 import { ChainEntity } from '../src/chain/chain.entity';
 import { TaskEntity } from '../src/task/entity/task.entity';
 import { TaskType } from '../src/task/type/task.type';
+import { UserSummary } from '../src/user/user.dto';
 
 const mockedEventSummary = {
   id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
@@ -84,6 +85,10 @@ export function mockEventEntity(chainUuid: string): EventEntity {
 
 export function mockChainSummary() {
   return mockedChainSummary;
+}
+
+export function mockUserSummary(): UserSummary {
+  return userEntity;
 }
 
 export function mockChainEntity() {
