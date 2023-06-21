@@ -116,16 +116,13 @@ describe('UserService', () => {
       const input: CreateUserDto = {
         address: 'some-address',
       };
-      const userSummary: UserSummary = {
-        id: userEntity.id,
-        address: userEntity.address,
+      const user = mockUserEntity();
+      const userSummary = {
+        id: user.id,
+        address: user.address,
       };
 
-      jest.spyOn(usersRepository, 'save').mockImplementation();
-
-      jest
-        .spyOn(usersRepository, 'findOneBy')
-        .mockResolvedValueOnce(userEntity);
+      jest.spyOn(usersRepository, 'save').mockResolvedValueOnce(user);
 
       const result = await service.createUser(input);
 
