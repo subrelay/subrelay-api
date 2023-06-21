@@ -38,8 +38,10 @@ export class UserController implements OnModuleInit {
     const currentUser = await this.userService.getUserById(user.id);
 
     const telegramId = currentUser.integration?.telegram?.id;
+
     if (telegramId) {
       const telegramUser = await this.telegramService.getUser(telegramId);
+
       if (telegramUser) {
         currentUser.integration = {
           ...currentUser.integration,

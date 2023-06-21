@@ -48,8 +48,15 @@ export class UserService {
 
   async createUser(input: CreateUserDto): Promise<UserSummary> {
     const id = ulid();
-    await this.usersRepository.save({ ...input, id, integration: {} });
+    const user = await this.usersRepository.save({
+      ...input,
+      id,
+      integration: {},
+    });
 
-    return this.getUserSummary(id);
+    return {
+      id: user.id,
+      address: user.address,
+    };
   }
 }

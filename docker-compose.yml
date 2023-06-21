@@ -13,7 +13,7 @@ services:
       - ${DB_PORT}:${DB_PORT}
     restart: always
     env_file:
-      - self-hosted.env
+      - .env
 
   redis:
     image: redis
@@ -21,9 +21,9 @@ services:
       - redis_data:/data
     restart: always
     ports:
-      - 6379:6379
+      - ${REDIS_PORT}:${REDIS_PORT}
     env_file:
-      - self-hosted.env
+      - .env
 
 
   event-service:
@@ -32,11 +32,13 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
     ports:
       - "3001"
     restart: always
     env_file:
-      - self-hosted.env
+      - .env
     depends_on:
       - redis
       - postgres

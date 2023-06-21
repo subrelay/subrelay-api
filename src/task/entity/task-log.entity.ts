@@ -27,14 +27,14 @@ export class TaskLogEntity {
 
   @ManyToOne(() => WorkflowLogEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowLogId', referencedColumnName: 'id' }])
-  workflowLog: WorkflowLogEntity;
+  workflowLog?: WorkflowLogEntity;
 
   @Column({ name: 'workflowLogId', type: 'char', length: 26 })
   workflowLogId: string;
 
   @ManyToOne(() => TaskEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'taskId', referencedColumnName: 'id' }])
-  task: TaskEntity;
+  task?: TaskEntity;
 
   @Column({ name: 'taskId', type: 'char', length: 26 })
   taskId: string;

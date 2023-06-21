@@ -21,7 +21,7 @@ export class TaskEntity {
 
   @ManyToOne(() => WorkflowEntity, { onDelete: 'CASCADE' })
   @JoinColumn([{ name: 'workflowId', referencedColumnName: 'id' }])
-  workflow: WorkflowEntity;
+  workflow?: WorkflowEntity;
 
   @Column({ name: 'workflowId', type: 'char', length: 26 })
   workflowId: string;
