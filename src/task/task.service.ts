@@ -339,8 +339,6 @@ export class TaskService {
       if (error?.response?.status === 404) {
         failedResult.error.message = 'Webhook URL does not exist.';
       } else if (error?.response?.status) {
-        console.log(1);
-
         failedResult.error.message = `Sending request to webhook URL failed with status code ${error.response.status}.`;
       } else {
         failedResult.error.message = error?.message;

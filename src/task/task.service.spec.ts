@@ -221,7 +221,6 @@ describe('TaskService', () => {
   describe('getOperatorMapping', () => {
     it('returns a mapping of operators for boolean, string, and number types', () => {
       const operatorMapping = service.getOperatorMapping();
-      console.log(operatorMapping);
 
       expect(operatorMapping).toEqual({
         boolean: ['isFalse', 'isTrue'],

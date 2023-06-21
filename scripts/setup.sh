@@ -1,6 +1,4 @@
 #!/bin/bash
-source ./install-dependencies.sh
-
 $USER="node"
 
 if [ -x "$(command -v docker)" ]; then
@@ -29,17 +27,6 @@ else
   sudo apt-get install git -y
 fi
 
-# Set up environment
-if [ "$1" == "dev" ]; then
-  echo "Running in development environment."
-elif [ "$1" == "prod" ]; then
-  echo "Running in production environment."
-elif [ "$1" == "" ]; then
-  echo "Using development environment as default."
-else
-  echo "Invalid environment. Possible values: prod and develop. Exiting..."
-  exit 1
-fi
 
 $folder = "subrelay-backend"
 
@@ -57,6 +44,6 @@ docker build -t subrelay-event-service .
 cd ..
 git clone https://github.com/subrelay/subrelay-api.git
 cd subrelay-api
-git checkout $1
-echo "Please edit .env file in subrelay-api folder!"
+git checkout main
+
 exit 1
