@@ -21,7 +21,6 @@ import { WebhookTaskConfig } from './type/webhook.type';
 import { EventService } from '../event/event.service';
 import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
 import { DiscordTaskConfig, DiscordTaskInput } from './type/discord.type';
-import { EventEntity } from '../event/event.entity';
 import { DataField } from '../event/event.dto';
 import { DiscordService } from '../discord/discord.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -48,7 +47,7 @@ export class TaskService {
   ) {}
 
   async createTaskLogs(input: Partial<TaskLog>[]) {
-    return await this.taskLogRepository.save(input);
+    await this.taskLogRepository.save(input);
   }
 
   async updateTaskLogStatus(id: string, status: TaskStatus) {
@@ -230,10 +229,10 @@ export class TaskService {
       },
       ...map(
         [
-          ...eventInfoFields,
-          ...eventStatusFields,
-          ...eventExtraFields,
           ...eventDataFields,
+          ...eventStatusFields,
+          ...eventInfoFields,
+          ...eventExtraFields,
         ],
         (field) => ({
           ...field,
@@ -243,21 +242,21 @@ export class TaskService {
     ];
   }
 
-  private processFilterTask(
+  processFilterTask(
     config: FilterTaskConfig,
-    input: ProcessTaskInput,
+    input: { event: ProcessTaskInput['event'] },
   ): TaskResult {
-    if (config.conditions.length === 0) {
-      return {
-        input: input,
-        status: TaskStatus.SUCCESS,
-        output: {
-          match: true,
-        },
-      };
-    }
-
     try {
+      if (config.conditions.length === 0) {
+        return {
+          input,
+          status: TaskStatus.SUCCESS,
+          output: {
+            match: true,
+          },
+        };
+      }
+
       const match = config.conditions.some((conditionList) =>
         conditionList.every((condition) => {
           const actualValue = get(input, condition.variable);
@@ -298,7 +297,7 @@ export class TaskService {
     return taskLogs;
   }
 
-  private async processWebhookTask(
+  async processWebhookTask(
     { url, secret, encrypted }: WebhookTaskConfig,
     input: ProcessTaskInput,
   ) {
@@ -340,6 +339,8 @@ export class TaskService {
       if (error?.response?.status === 404) {
         failedResult.error.message = 'Webhook URL does not exist.';
       } else if (error?.response?.status) {
+        console.log(1);
+
         failedResult.error.message = `Sending request to webhook URL failed with status code ${error.response.status}.`;
       } else {
         failedResult.error.message = error?.message;
@@ -349,7 +350,7 @@ export class TaskService {
     }
   }
 
-  private buildCustomMessage(messageTemplate: string, data: ProcessTaskInput) {
+  buildCustomMessage(messageTemplate: string, data: ProcessTaskInput) {
     const compiled = template(messageTemplate);
     return compiled(data);
   }

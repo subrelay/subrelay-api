@@ -1,5 +1,9 @@
 import { ulid } from 'ulid';
-import { WorkflowStatus } from '../src/workflow/workflow.type';
+import {
+  Workflow,
+  WorkflowLogSummary,
+  WorkflowStatus,
+} from '../src/workflow/workflow.type';
 import { UserEntity } from '../src/user/user.entity';
 import { EventEntity } from '../src/event/event.entity';
 import { GeneralTypeEnum } from '../src/substrate/substrate.type';
@@ -8,8 +12,11 @@ import { ChainSummary } from '../src/chain/chain.dto';
 import * as block from './sample/block.json';
 import { ChainEntity } from '../src/chain/chain.entity';
 import { TaskEntity } from '../src/task/entity/task.entity';
-import { TaskType } from '../src/task/type/task.type';
+import { TaskStatus, TaskType } from '../src/task/type/task.type';
 import { UserSummary } from '../src/user/user.dto';
+import { TaskLogEntity } from '../src/task/entity/task-log.entity';
+import { WorkflowLogEntity } from '../src/workflow/entity/workflow-log.entity';
+import { Event } from '../src/event/event.type';
 
 const mockedEventSummary = {
   id: '01H2QCFESN1HQD9C2WZ2G3XNCF',
@@ -154,11 +161,14 @@ export function mockWebhookTask(workflowId, dependOn): TaskEntity {
 }
 
 export function mockWorkflowEntity(
-  user: UserEntity,
-  event: EventEntity,
-  chain: ChainEntity,
+  defaultUser: UserEntity = null,
+  defaultEvent: EventEntity = null,
+  defaultChain: ChainEntity = null,
 ) {
   const id = ulid();
+  const user = defaultUser || mockUserEntity();
+  const chain = defaultChain || mockChainEntity();
+  const event = defaultEvent || mockEventEntity(chain.uuid);
   const trigger = mockTriggerTask(event.id, id);
   return {
     id,
@@ -177,4 +187,50 @@ export function mockWorkflowEntity(
 
 export function mockBlockJobData() {
   return block;
+}
+
+export function mockTaskLogEntity(task: TaskEntity): TaskLogEntity {
+  return {
+    id: ulid(),
+    startedAt: new Date(),
+    finishedAt: new Date(),
+    status: TaskStatus.SUCCESS,
+    workflowLogId: task.workflowId,
+    task,
+    taskId: task.id,
+    output: null,
+    input: null,
+    error: null,
+  };
+}
+
+export function mockWorkflowLogSummary(workflow: Workflow): WorkflowLogSummary {
+  return {
+    id: ulid(),
+    startedAt: new Date(),
+    finishedAt: new Date(),
+    status: TaskStatus.SUCCESS,
+    input: {},
+    chain: {
+      name: workflow.chain.name,
+      uuid: workflow.chain.uuid,
+      imageUrl: workflow.chain.imageUrl,
+    },
+    workflow: {
+      id: workflow.id,
+      name: workflow.name,
+    },
+  };
+}
+
+export function mockEvent(): Event {
+  const chain = mockChainSummary();
+  const eventEntity = mockEventEntity(chain.uuid);
+  return {
+    id: eventEntity.id,
+    name: eventEntity.name,
+    chain,
+    schema: eventEntity.schema,
+    description: eventEntity.description,
+  };
 }
