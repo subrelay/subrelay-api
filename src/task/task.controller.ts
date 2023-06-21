@@ -13,7 +13,6 @@ import { ProcessTaskRequest, ProcessTaskResponse } from './task.dto';
 import { TaskService } from './task.service';
 import { BaseTask, ProcessTaskInput, TaskType } from './type/task.type';
 import { DataField } from '../event/event.dto';
-import { EventEntity } from '../event/event.entity';
 import { ulid } from 'ulid';
 import { UserEntity } from '../user/user.entity';
 import { UserInfo } from '../common/user-info.decorator';
@@ -49,6 +48,7 @@ export class TaskController {
       config: input.config,
       id: 'TestTask',
     });
+
     const result = await this.taskService.processTask(
       baseTask,
       this.createProcessTaskInput(
@@ -101,11 +101,9 @@ export class TaskController {
     return this.taskService.getCustomMessageFields(event);
   }
 
-  createProcessTaskInput(
-    user: UserEntity,
-    event: Event,
-  ): ProcessTaskInput {
+  createProcessTaskInput(user: UserEntity, event: Event): ProcessTaskInput {
     const eventRawData = this.eventService.generateEventRawDataSample(event);
+
     return {
       event: {
         ...pick(event, ['id', 'name']),
