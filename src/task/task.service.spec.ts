@@ -3,17 +3,21 @@ import { TelegramService } from '../telegram/telegram.service';
 import { DiscordService } from '../discord/discord.service';
 import {
   mockChainEntity,
+  mockDiscordTask,
   mockDiscordUser,
+  mockEmailTask,
   mockEvent,
   mockEventEntity,
   mockFilterTask,
   mockTaskLogEntity,
+  mockTelegramTask,
   mockTelegramUser,
   mockTriggerTask,
   mockUserEntity,
   mockWebhookTask,
   mockWorkflowEntity,
 } from '../../test/mock-data.util';
+import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
 import { NotFoundException } from '@nestjs/common';
 import { WebhookService } from '../webhook/webhook.service';
 import { EmailService } from '../email/email.service';
@@ -23,11 +27,21 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskEntity } from './entity/task.entity';
 import { TaskLogEntity } from './entity/task-log.entity';
-import { ProcessTaskInput, TaskLog, TaskStatus } from './type/task.type';
+import {
+  BaseTask,
+  ProcessTaskInput,
+  TaskLog,
+  TaskStatus,
+  TaskType,
+} from './type/task.type';
 import { ulid } from 'ulid';
 import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { DataField } from '../event/event.dto';
 import { FilterTaskConfig, FilterVariableOperator } from './type/filter.type';
+import { UserEntity } from '../user/user.entity';
+import { WebhookTaskConfig } from './type/webhook.type';
+import { TelegramTaskConfig } from './type/telegram.type';
+import { DiscordTaskConfig } from './type/discord.type';
 
 describe('TaskService', () => {
   let service: TaskService;
@@ -38,15 +52,49 @@ describe('TaskService', () => {
   let eventService: EventService;
   let taskRepository: Repository<TaskEntity>;
   let taskLogRepository: Repository<TaskLogEntity>;
+  let userRepository: Repository<UserEntity>;
+
+  const workflow = mockWorkflowEntity();
+  const mockUser = mockUserEntity();
+  const defaultConfig = {
+    url: 'https://example.com/webhook',
+    secret: 'my-secret',
+    encrypted: false,
+  };
+  const defaultInput: ProcessTaskInput = {
+    event: {
+      id: '123',
+      name: 'test',
+      description: 'test',
+      block: {
+        hash: '123',
+      },
+      data: {
+        value: 9,
+      },
+      success: true,
+      timestamp: Date.now(),
+      time: new Date(),
+    },
+    workflow,
+    chain: workflow.chain,
+    user: workflow.user,
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaskService],
       providers: [
         {
+          provide: getRepositoryToken(UserEntity),
+          useClass: Repository,
+        },
+
+        {
           provide: TelegramService,
           useValue: {
             getUser: jest.fn(),
+            sendDirectMessage: jest.fn(),
           },
         },
         {
@@ -60,12 +108,14 @@ describe('TaskService', () => {
           provide: EmailService,
           useValue: {
             getUser: jest.fn(),
+            sendEmails: jest.fn(),
           },
         },
         {
           provide: DiscordService,
           useValue: {
             getUser: jest.fn(),
+            sendDirectMessage: jest.fn(),
           },
         },
         {
@@ -96,6 +146,9 @@ describe('TaskService', () => {
     eventService = module.get<EventService>(EventService);
     taskRepository = module.get<Repository<TaskEntity>>(
       getRepositoryToken(TaskEntity),
+    );
+    userRepository = module.get<Repository<UserEntity>>(
+      getRepositoryToken(UserEntity),
     );
     taskLogRepository = module.get<Repository<TaskLogEntity>>(
       getRepositoryToken(TaskLogEntity),
@@ -368,23 +421,6 @@ describe('TaskService', () => {
   });
 
   describe('processFilterTask', () => {
-    const defaultInput = {
-      event: {
-        id: '123',
-        name: 'test',
-        description: 'test',
-        block: {
-          hash: '123',
-        },
-        data: {
-          value: 9,
-        },
-        success: true,
-        timestamp: Date.now(),
-        time: new Date(),
-      },
-    };
-
     it('should return success with match=true if no conditions are given', () => {
       const config: FilterTaskConfig = {
         conditions: [],
@@ -522,32 +558,7 @@ describe('TaskService', () => {
   describe('processWebhookTask', () => {
     const signatureHeader = 'my-signature';
     const errorMessage = 'Failed to process webhook task.';
-    const workflow = mockWorkflowEntity();
 
-    const defaultConfig = {
-      url: 'https://example.com/webhook',
-      secret: 'my-secret',
-      encrypted: false,
-    };
-    const defaultInput: ProcessTaskInput = {
-      event: {
-        id: '123',
-        name: 'test',
-        description: 'test',
-        block: {
-          hash: '123',
-        },
-        data: {
-          value: 9,
-        },
-        success: true,
-        timestamp: Date.now(),
-        time: new Date(),
-      },
-      workflow,
-      chain: workflow.chain,
-      user: workflow.user,
-    };
     const message = {
       event: defaultInput.event,
       workflow: defaultInput.workflow,
@@ -673,36 +684,644 @@ describe('TaskService', () => {
         signatureHeader,
       );
     });
+  });
 
-    describe('buildCustomMessage', () => {
-      const workflow = mockWorkflowEntity();
-      const defaultInput: ProcessTaskInput = {
-        event: {
-          id: '123',
-          name: 'test',
-          description: 'test',
-          block: {
-            hash: '123',
-          },
-          data: { taskName: 'myTask', status: 'completed' },
-          success: true,
-          timestamp: Date.now(),
-          time: new Date(),
+  describe('buildCustomMessage', () => {
+    it('returns the compiled message', () => {
+      const messageTemplate = 'Event ${ event.name } has been triggered';
+      const expectedMessage = 'Event test has been triggered';
+
+      expect(service.buildCustomMessage(messageTemplate, defaultInput)).toEqual(
+        expectedMessage,
+      );
+    });
+  });
+
+  describe('getEmailTaskInput', () => {
+    const mockEmailTaskConfig: EmailTaskConfig = {
+      addresses: ['test@example.com'],
+      subjectTemplate: 'Your event has been triggered',
+      bodyTemplate: 'Event ${ event.name } has been triggered',
+    };
+
+    it('returns the expected email task input', () => {
+      const actualEmailTaskInput = service.getEmailTaskInput(
+        mockEmailTaskConfig,
+        defaultInput,
+      );
+
+      expect(actualEmailTaskInput).toEqual({
+        subject: mockEmailTaskConfig.subjectTemplate,
+        body: 'Event test has been triggered',
+      });
+    });
+  });
+
+  describe('processEmailTask', () => {
+    const mockEmailTaskConfig: EmailTaskConfig = {
+      addresses: ['test@example.com'],
+      subjectTemplate: 'Your event has been triggered',
+      bodyTemplate: 'Event ${ event.name } has been triggered',
+    };
+
+    it('should send an email and return a success status', async () => {
+      const input = {
+        subject: 'test',
+        body: 'test',
+      };
+      jest.spyOn(service, 'getEmailTaskInput').mockReturnValueOnce(input);
+      jest.spyOn(emailService, 'sendEmails').mockResolvedValue(undefined);
+
+      const result = await service.processEmailTask(
+        mockEmailTaskConfig,
+        defaultInput,
+      );
+
+      expect(emailService.sendEmails).toHaveBeenCalledWith(
+        mockEmailTaskConfig.addresses,
+        input.subject,
+        input.body,
+      );
+      expect(result).toEqual({
+        input,
+        status: TaskStatus.SUCCESS,
+      });
+    });
+
+    it('should log an error and return a failed status if sending emails fails', async () => {
+      const error = new Error('Failed to send email');
+      const input = {
+        subject: 'test',
+        body: 'test',
+      };
+      jest.spyOn(service, 'getEmailTaskInput').mockReturnValueOnce(input);
+      jest.spyOn(emailService, 'sendEmails').mockRejectedValue(error);
+
+      const result = await service.processEmailTask(
+        mockEmailTaskConfig,
+        defaultInput,
+      );
+
+      expect(emailService.sendEmails).toHaveBeenCalledWith(
+        mockEmailTaskConfig.addresses,
+        input.subject,
+        input.body,
+      );
+
+      expect(result).toEqual({
+        input,
+        status: TaskStatus.FAILED,
+        error: {
+          message: error.message || 'Failed to process email task.',
         },
-        workflow,
-        chain: workflow.chain,
-        user: workflow.user,
+      });
+    });
+  });
+
+  describe('getTelegramTaskInput', () => {
+    it('returns a TelegramTaskInput object with the expected message', () => {
+      const messageTemplate = 'Event ${ event.name } has been triggered';
+      const result = service.getTelegramTaskInput(
+        { messageTemplate },
+        defaultInput,
+      );
+
+      expect(result).toEqual({ message: 'Event test has been triggered' });
+    });
+  });
+
+  describe('getDiscordTaskInput', () => {
+    it('returns a getDiscordTaskInput object with the expected message', () => {
+      const messageTemplate = 'Event ${ event.name } has been triggered';
+      const result = service.getDiscordTaskInput(
+        { messageTemplate },
+        defaultInput,
+      );
+
+      expect(result).toEqual({ message: 'Event test has been triggered' });
+    });
+  });
+
+  describe('processTelegramTask', () => {
+    const messageTemplate = 'Event ${ event.name } has been triggered';
+    const expectedMessage = 'Event test has been triggered';
+
+    it('should return FAILED status if chatId is not provided', async () => {
+      const user = {
+        ...mockUser,
+        integration: {},
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+      const result = await service.processTelegramTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error?.message).toBe(
+        "Telegram integration does't set up yet.",
+      );
+      expect(telegramService.sendDirectMessage).not.toHaveBeenCalled();
+    });
+
+    it('should send a direct message and return SUCCESS status if chatId is provided', async () => {
+      const user = {
+        ...mockUser,
+        integration: {
+          telegram: mockTelegramUser(),
+        },
+      };
+      const input = {
+        ...defaultInput,
+        user,
       };
 
-      it('returns the compiled message', () => {
-        const messageTemplate =
-          'Event ${ event.name } has ${ event.data.status }';
-        const expectedMessage = 'Event test has completed';
+      const result = await service.processTelegramTask(
+        { messageTemplate },
+        input,
+      );
 
-        expect(
-          service.buildCustomMessage(messageTemplate, defaultInput),
-        ).toEqual(expectedMessage);
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(result.error).toBeUndefined();
+      expect(telegramService.sendDirectMessage).toHaveBeenCalledWith(
+        user.integration.telegram.id,
+        expectedMessage,
+      );
+    });
+
+    it('should return FAILED status with error message if sending direct message fails', async () => {
+      const user = {
+        ...mockUser,
+        integration: {
+          telegram: mockTelegramUser(),
+        },
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+      const error = new Error('Failed to send message');
+      jest
+        .spyOn(telegramService, 'sendDirectMessage')
+        .mockRejectedValueOnce(error);
+
+      const result = await service.processTelegramTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error?.message).toBe('Failed to send message');
+      expect(telegramService.sendDirectMessage).toHaveBeenCalledWith(
+        user.integration.telegram.id,
+        expectedMessage,
+      );
+    });
+  });
+
+  describe('processDiscordTask', () => {
+    const messageTemplate = 'Event ${ event.name } has been triggered';
+    const expectedMessage = 'Event test has been triggered';
+
+    it('should return FAILED status if chatId is not provided', async () => {
+      const user = {
+        ...mockUser,
+        integration: {},
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+      const result = await service.processDiscordTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error?.message).toBe(
+        "Discord integration does't set up yet.",
+      );
+      expect(discordService.sendDirectMessage).not.toHaveBeenCalled();
+    });
+
+    it('should send a direct message and return SUCCESS status if chatId is provided', async () => {
+      const user = {
+        ...mockUser,
+        integration: {
+          discord: mockDiscordUser(),
+        },
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+
+      const result = await service.processDiscordTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(result.error).toBeUndefined();
+      expect(discordService.sendDirectMessage).toHaveBeenCalledWith(
+        user.integration.discord.id,
+        expectedMessage,
+      );
+    });
+
+    it('should return FAILED status with error message if sending direct message fails', async () => {
+      const user = {
+        ...mockUser,
+        integration: {
+          discord: mockDiscordUser(),
+        },
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+      const error = new Error('Failed to send message');
+      jest
+        .spyOn(discordService, 'sendDirectMessage')
+        .mockRejectedValueOnce(error);
+
+      const result = await service.processDiscordTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error?.message).toBe('Failed to send message');
+      expect(discordService.sendDirectMessage).toHaveBeenCalledWith(
+        user.integration.discord.id,
+        expectedMessage,
+      );
+    });
+
+    it('should return FAILED status with User not found error', async () => {
+      const user = {
+        ...mockUser,
+        integration: {
+          discord: mockDiscordUser(),
+        },
+      };
+      const input = {
+        ...defaultInput,
+        user,
+      };
+      const error = new Error('Invalid Recipient(s)');
+      jest
+        .spyOn(discordService, 'sendDirectMessage')
+        .mockRejectedValueOnce(error);
+
+      const result = await service.processDiscordTask(
+        { messageTemplate },
+        input,
+      );
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error?.message).toBe('User not found');
+      expect(discordService.sendDirectMessage).toHaveBeenCalledWith(
+        user.integration.discord.id,
+        expectedMessage,
+      );
+    });
+  });
+
+  describe('isMatchCondition', () => {
+    it('should return true for IS_TRUE operator if actualValue is true', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.IS_TRUE, true, null),
+      ).toBe(true);
+    });
+
+    it('should return false for IS_TRUE operator if actualValue is false', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.IS_TRUE, false, null),
+      ).toBe(false);
+    });
+
+    it('should return true for IS_FALSE operator if actualValue is false', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.IS_FALSE, false, null),
+      ).toBe(true);
+    });
+
+    it('should return false for IS_FALSE operator if actualValue is true', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.IS_FALSE, true, null),
+      ).toBe(false);
+    });
+
+    it('should return true for CONTAINS operator if actualValue is a string that includes expectedValue', () => {
+      expect(
+        service.isMatchCondition(
+          FilterVariableOperator.CONTAINS,
+          'hello world',
+          'hello',
+        ),
+      ).toBe(true);
+    });
+
+    it('should return false for CONTAINS operator if actualValue is a string that does not include expectedValue', () => {
+      expect(
+        service.isMatchCondition(
+          FilterVariableOperator.CONTAINS,
+          'hello world',
+          'goodbye',
+        ),
+      ).toBe(false);
+    });
+
+    it('should return true for GREATER_THAN operator if actualValue is greater than expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.GREATER_THAN, 5, 3),
+      ).toBe(true);
+    });
+
+    it('should return false for GREATER_THAN operator if actualValue is less than or equal to expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.GREATER_THAN, 3, 5),
+      ).toBe(false);
+      expect(
+        service.isMatchCondition(FilterVariableOperator.GREATER_THAN, 5, 5),
+      ).toBe(false);
+    });
+
+    it('should return true for GREATER_THAN_EQUAL operator if actualValue is greater than or equal to expectedValue', () => {
+      expect(
+        service.isMatchCondition(
+          FilterVariableOperator.GREATER_THAN_EQUAL,
+          5,
+          3,
+        ),
+      ).toBe(true);
+      expect(
+        service.isMatchCondition(
+          FilterVariableOperator.GREATER_THAN_EQUAL,
+          5,
+          5,
+        ),
+      ).toBe(true);
+    });
+
+    it('should return false for GREATER_THAN_EQUAL operator if actualValue is less than expectedValue', () => {
+      expect(
+        service.isMatchCondition(
+          FilterVariableOperator.GREATER_THAN_EQUAL,
+          3,
+          5,
+        ),
+      ).toBe(false);
+    });
+
+    it('should return true for LESS_THAN operator if actualValue is less than expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN, 3, 5),
+      ).toBe(true);
+    });
+
+    it('should return false for LESS_THAN operator if actualValue is greater than or equal to expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN, 5, 3),
+      ).toBe(false);
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN, 5, 5),
+      ).toBe(false);
+    });
+
+    it('should return true for LESS_THAN_EQUAL operator if actualValue is less than or equal to expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN_EQUAL, 3, 5),
+      ).toBe(true);
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN_EQUAL, 5, 5),
+      ).toBe(true);
+    });
+
+    it('should return false for LESS_THAN_EQUAL operator if actualValue is greater than expectedValue', () => {
+      expect(
+        service.isMatchCondition(FilterVariableOperator.LESS_THAN_EQUAL, 5, 3),
+      ).toBe(false);
+    });
+
+    it('should return true for EQUAL operator if actualValue is equal to expectedValue', () => {
+      expect(service.isMatchCondition(FilterVariableOperator.EQUAL, 5, 5)).toBe(
+        true,
+      );
+    });
+  });
+
+  describe('processTask', () => {
+    it('should return success for trigger task', async () => {
+      const task = new BaseTask(mockTriggerTask('eventId', 'wfId'));
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toEqual(TaskStatus.SUCCESS);
+    });
+
+    it('should return result for filter task', async () => {
+      const task = new BaseTask(mockFilterTask('wfId', ''));
+      jest.spyOn(service, 'processFilterTask').mockReturnValueOnce({
+        status: TaskStatus.SUCCESS,
+        output: { match: true },
       });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(service.processFilterTask).toHaveBeenCalledWith(
+        expect.any(FilterTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return error for filter task', async () => {
+      const task = new BaseTask(mockFilterTask('wfId', ''));
+      jest.spyOn(service, 'processFilterTask').mockReturnValueOnce({
+        status: TaskStatus.FAILED,
+        error: {
+          message: 'Failed to process task',
+        },
+      });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toEqual(TaskStatus.FAILED);
+      expect(result.error.message).toEqual('Failed to process task');
+      expect(service.processFilterTask).toHaveBeenCalledWith(
+        expect.any(FilterTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return result for email task', async () => {
+      const task = new BaseTask(mockEmailTask('wfId', ''));
+      jest.spyOn(service, 'processEmailTask').mockResolvedValueOnce({
+        status: TaskStatus.SUCCESS,
+        input: {
+          body: 'Event test has been triggered',
+          subject: 'Your event has been triggered',
+        },
+      });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(service.processEmailTask).toHaveBeenCalledWith(
+        expect.any(EmailTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return error for email task', async () => {
+      const task = new BaseTask(mockEmailTask('wfId', ''));
+      const taskLog = {
+        status: TaskStatus.FAILED,
+        input: {
+          body: 'Event test has been triggered',
+          subject: 'Your event has been triggered',
+        },
+        error: {
+          message: 'Failed to process task',
+        },
+      };
+      jest.spyOn(service, 'processEmailTask').mockResolvedValueOnce(taskLog);
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.input).toBe(taskLog.input);
+      expect(result.error).toBe(taskLog.error);
+      expect(service.processEmailTask).toHaveBeenCalledWith(
+        expect.any(EmailTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return result for webhook task', async () => {
+      const task = new BaseTask(mockWebhookTask('wfId', ''));
+      jest.spyOn(service, 'processWebhookTask').mockResolvedValueOnce({
+        status: TaskStatus.SUCCESS,
+        input: defaultInput,
+      });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(service.processWebhookTask).toHaveBeenCalledWith(
+        expect.any(WebhookTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return error for webhook task', async () => {
+      const task = new BaseTask(mockWebhookTask('wfId', ''));
+      const taskLog = {
+        status: TaskStatus.FAILED,
+        input: defaultInput,
+        error: {
+          message: 'Failed to process task',
+        },
+      };
+      jest.spyOn(service, 'processWebhookTask').mockResolvedValueOnce(taskLog);
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.input).toBe(taskLog.input);
+      expect(result.error).toBe(taskLog.error);
+      expect(service.processWebhookTask).toHaveBeenCalledWith(
+        expect.any(WebhookTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return result for telegram task', async () => {
+      const task = new BaseTask(mockTelegramTask('wfId', ''));
+      jest.spyOn(service, 'processTelegramTask').mockResolvedValueOnce({
+        status: TaskStatus.SUCCESS,
+        input: {
+          message: 'Event test has been triggered',
+        },
+      });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(service.processTelegramTask).toHaveBeenCalledWith(
+        expect.any(TelegramTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return error for telegram task', async () => {
+      const task = new BaseTask(mockTelegramTask('wfId', ''));
+      const taskLog = {
+        status: TaskStatus.FAILED,
+        input: {
+          message: 'Event test has been triggered',
+        },
+        error: {
+          message: 'Failed to process task',
+        },
+      };
+      jest.spyOn(service, 'processTelegramTask').mockResolvedValueOnce(taskLog);
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.input).toBe(taskLog.input);
+      expect(result.error).toBe(taskLog.error);
+      expect(service.processTelegramTask).toHaveBeenCalledWith(
+        expect.any(TelegramTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return result for discord task', async () => {
+      const task = new BaseTask(mockDiscordTask('wfId', ''));
+      jest.spyOn(service, 'processDiscordTask').mockResolvedValueOnce({
+        status: TaskStatus.SUCCESS,
+        input: {
+          message: 'Event test has been triggered',
+        },
+      });
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.SUCCESS);
+      expect(service.processDiscordTask).toHaveBeenCalledWith(
+        expect.any(DiscordTaskConfig),
+        defaultInput,
+      );
+    });
+
+    it('should return error for discord task', async () => {
+      const task = new BaseTask(mockDiscordTask('wfId', ''));
+      const taskLog = {
+        status: TaskStatus.FAILED,
+        input: {
+          message: 'Event test has been triggered',
+        },
+        error: {
+          message: 'Failed to process task',
+        },
+      };
+      jest.spyOn(service, 'processDiscordTask').mockResolvedValueOnce(taskLog);
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.input).toBe(taskLog.input);
+      expect(result.error).toBe(taskLog.error);
+      expect(service.processDiscordTask).toHaveBeenCalledWith(
+        expect.any(DiscordTaskConfig),
+        defaultInput,
+      );
     });
   });
 });

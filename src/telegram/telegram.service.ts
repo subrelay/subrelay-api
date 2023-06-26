@@ -20,7 +20,7 @@ export class TelegramService {
     });
   }
 
-  private async validateChatId(chatId: string) {
+  async validateChatId(chatId: string) {
     const info = await this.getChatInfo(chatId);
     if (!info) {
       throw new Error('Chat not found.');
@@ -57,7 +57,7 @@ export class TelegramService {
         parseInt(userId),
       );
       let avatar = null;
-      if (photo.total_count > 1) {
+      if (photo.total_count >= 1) {
         const fileId = photo.photos[0][0]?.file_id;
         avatar =
           fileId && (await this.telegramBot.telegram.getFileLink(fileId));
