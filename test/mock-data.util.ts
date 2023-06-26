@@ -160,6 +160,47 @@ export function mockWebhookTask(workflowId, dependOn): TaskEntity {
   };
 }
 
+export function mockEmailTask(workflowId, dependOn): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.EMAIL,
+    name: 'email',
+    dependOn,
+    config: {
+      addresses: ['test@example.com'],
+      bodyTemplate: 'Event ${ event.name } has been triggered',
+      subjectTemplate: 'Your event has been triggered',
+    },
+    workflowId,
+  };
+}
+
+export function mockTelegramTask(workflowId, dependOn): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.TELEGRAM,
+    name: 'telegram',
+    dependOn,
+    config: {
+      messageTemplate: 'Event ${ event.name } has been triggered',
+    },
+    workflowId,
+  };
+}
+
+export function mockDiscordTask(workflowId, dependOn): TaskEntity {
+  return {
+    id: ulid(),
+    type: TaskType.DISCORD,
+    name: 'discord',
+    dependOn,
+    config: {
+      messageTemplate: 'Event ${ event.name } has been triggered',
+    },
+    workflowId,
+  };
+}
+
 export function mockWorkflowEntity(
   defaultUser: UserEntity = null,
   defaultEvent: EventEntity = null,
