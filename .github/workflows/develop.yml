@@ -83,4 +83,4 @@ jobs:
             git pull
             yarn install
             yarn build
-            pm2 restart main
+            pm2 reload main
