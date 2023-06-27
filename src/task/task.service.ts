@@ -133,8 +133,6 @@ export class TaskService {
             input,
           );
           break;
-        default:
-          throw new TaskValidationError(`Unsupported type: ${task.type}`);
       }
 
       return {
@@ -353,7 +351,7 @@ export class TaskService {
     return compiled(data);
   }
 
-  private getEmailTaskInput(
+  getEmailTaskInput(
     { subjectTemplate, bodyTemplate }: EmailTaskConfig,
     input: ProcessTaskInput,
   ): EmailTaskInput {
@@ -366,10 +364,7 @@ export class TaskService {
     };
   }
 
-  private async processEmailTask(
-    config: EmailTaskConfig,
-    input: ProcessTaskInput,
-  ) {
+  async processEmailTask(config: EmailTaskConfig, input: ProcessTaskInput) {
     const { subject, body } = this.getEmailTaskInput(config, input);
     const taskInput = { subject, body };
 
@@ -395,7 +390,7 @@ export class TaskService {
     }
   }
 
-  private getTelegramTaskInput(
+  getTelegramTaskInput(
     { messageTemplate }: TelegramTaskConfig,
     input: ProcessTaskInput,
   ): TelegramTaskInput {
@@ -404,7 +399,7 @@ export class TaskService {
     };
   }
 
-  private getDiscordTaskInput(
+  getDiscordTaskInput(
     { messageTemplate }: DiscordTaskConfig,
     input: ProcessTaskInput,
   ): DiscordTaskInput {
@@ -413,7 +408,7 @@ export class TaskService {
     };
   }
 
-  private async processTelegramTask(
+  async processTelegramTask(
     config: TelegramTaskConfig,
     input: ProcessTaskInput,
   ) {
@@ -449,10 +444,7 @@ export class TaskService {
     }
   }
 
-  private async processDiscordTask(
-    config: DiscordTaskConfig,
-    input: ProcessTaskInput,
-  ) {
+  async processDiscordTask(config: DiscordTaskConfig, input: ProcessTaskInput) {
     const { message } = this.getDiscordTaskInput(config, input);
     const chatId = input.user?.integration?.discord?.id;
     if (!chatId) {
@@ -474,6 +466,8 @@ export class TaskService {
     } catch (error) {
       let errorMessage = error.message || 'Failed to process discord task.';
       if (error.message === 'Invalid Recipient(s)') {
+        console.log(error);
+
         errorMessage = 'User not found';
       }
 
@@ -489,7 +483,7 @@ export class TaskService {
     }
   }
 
-  private isMatchCondition(
+  isMatchCondition(
     operator: FilterVariableOperator,
     acctualValue: any,
     expectedValue: any,
@@ -513,8 +507,6 @@ export class TaskService {
         return (acctualValue as number) <= (expectedValue as number);
       case FilterVariableOperator.EQUAL:
         return acctualValue == expectedValue;
-      default:
-        return false;
     }
   }
 }

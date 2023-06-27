@@ -8,11 +8,7 @@ import { Repository } from 'typeorm';
 import { EventEntity } from '../event/event.entity';
 import { ApiPromise } from '@polkadot/api';
 import * as defaultChains from './chains.json';
-import {
-  mockChainEntity,
-  mockChainSummary,
-  mockEventEntity,
-} from '../../test/mock-data.util';
+import { mockChainEntity, mockChainSummary } from '../../test/mock-data.util';
 
 describe('ChainService', () => {
   let service: ChainService;

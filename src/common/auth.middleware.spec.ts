@@ -1,5 +1,4 @@
 import { AuthMiddleware } from './auth.middleware';
-import { ForbiddenException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../user/user.service';
 import * as Auth from './auth';
