@@ -21,10 +21,11 @@ export class EventService {
 
   async createEvents(events: EventDef[], chainUuid: string) {
     const createEventsInput: Partial<EventEntity>[] = events.map((event) => ({
-      id: ulid(),
+      id: ulid(Date.now()),
       ...event,
       chainUuid,
     }));
+
     await this.eventRepository.insert(createEventsInput);
   }
 
@@ -103,11 +104,6 @@ export class EventService {
       : 'event.name';
     const sort = queryParams?.sort || 'ASC';
 
-    if (!isNaN(queryParams.limit) && !isNaN(queryParams.offset)) {
-      queryBuilder = queryBuilder
-        .limit(queryParams.limit)
-        .offset(queryParams.offset);
-    }
     return (await queryBuilder
       .orderBy(order, sort, 'NULLS LAST')
       .getRawMany()) as unknown as Event[];

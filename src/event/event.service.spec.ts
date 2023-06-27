@@ -223,12 +223,10 @@ describe('EventService', () => {
       expect(
         eventRepository.createQueryBuilder().andWhere,
       ).not.toHaveBeenCalled();
-      expect(eventRepository.createQueryBuilder().limit).toHaveBeenCalledWith(
-        1,
-      );
-      expect(eventRepository.createQueryBuilder().offset).toHaveBeenCalledWith(
-        0,
-      );
+      expect(eventRepository.createQueryBuilder().limit).not.toHaveBeenCalled();
+      expect(
+        eventRepository.createQueryBuilder().offset,
+      ).not.toHaveBeenCalled();
       expect(eventRepository.createQueryBuilder().orderBy).toHaveBeenCalledWith(
         'event.name',
         'ASC',
