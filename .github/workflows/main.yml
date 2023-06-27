@@ -85,5 +85,5 @@ jobs:
             git pull
             yarn install
             yarn build
-            pm2 start dist/main.js
+            pm2 restart main
 

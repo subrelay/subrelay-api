@@ -14,7 +14,7 @@ jest.mock('nestjs-telegraf', () => ({
 
 describe('TelegramService', () => {
   let service: TelegramService;
-  let bot = {
+  const bot = {
     telegram: {
       sendMessage: jest.fn(),
       getChatMember: jest.fn(),
@@ -37,70 +37,70 @@ describe('TelegramService', () => {
     service = moduleRef.get<TelegramService>(TelegramService);
   });
 
-    describe('sendDirectMessage', () => {
-      it('should send a direct message', async () => {
-        const chatId = 'CHAT_ID';
-        const message = 'Hello, world!';
+  describe('sendDirectMessage', () => {
+    it('should send a direct message', async () => {
+      const chatId = 'CHAT_ID';
+      const message = 'Hello, world!';
 
-        jest.spyOn(service, 'validateChatId').mockResolvedValueOnce(undefined);
-        const mockSendMessage = jest
-          .spyOn(bot.telegram, 'sendMessage')
-          .mockResolvedValueOnce(true);
+      jest.spyOn(service, 'validateChatId').mockResolvedValueOnce(undefined);
+      const mockSendMessage = jest
+        .spyOn(bot.telegram, 'sendMessage')
+        .mockResolvedValueOnce(true);
 
-        await service.sendDirectMessage(chatId, message);
+      await service.sendDirectMessage(chatId, message);
 
-        expect(mockSendMessage).toHaveBeenCalledWith(chatId, message, {
-          parse_mode: 'HTML',
-        });
-      });
-
-      it('should throw an error if chat is not found', async () => {
-        const chatId = 'INVALID_CHAT_ID';
-        const message = 'Hello, world!';
-
-        const telegramBotMock = jest.spyOn(bot.telegram, 'sendMessage');
-        telegramBotMock.mockImplementationOnce(() => Promise.reject('Error'));
-
-        await expect(
-          service.sendDirectMessage(chatId, message),
-        ).rejects.toThrowError('Chat not found.');
+      expect(mockSendMessage).toHaveBeenCalledWith(chatId, message, {
+        parse_mode: 'HTML',
       });
     });
 
-    describe('getChatInfo', () => {
-      it('should return chat info', async () => {
-        const chatId = 'CHAT_ID';
+    it('should throw an error if chat is not found', async () => {
+      const chatId = 'INVALID_CHAT_ID';
+      const message = 'Hello, world!';
 
-        const telegramBotMock = jest.spyOn(bot.telegram, 'getChatMember');
-        telegramBotMock.mockImplementationOnce(() =>
-          Promise.resolve({ user: {} }),
-        );
+      const telegramBotMock = jest.spyOn(bot.telegram, 'sendMessage');
+      telegramBotMock.mockImplementationOnce(() => Promise.reject('Error'));
 
-        const result = await service.getChatInfo(chatId);
-
-        expect(telegramBotMock).toHaveBeenCalledWith(chatId, parseInt(chatId));
-        expect(result).toBeDefined();
-      });
-
-      it('should return null for invalid chat id', async () => {
-        const chatId = '';
-
-        const result = await service.getChatInfo(chatId);
-
-        expect(result).toBeNull();
-      });
-
-      it('should return null if chat is not found', async () => {
-        const chatId = 'INVALID_CHAT_ID';
-
-        const telegramBotMock = jest.spyOn(bot.telegram, 'getChatMember');
-        telegramBotMock.mockImplementationOnce(() => Promise.reject('Error'));
-
-        const result = await service.getChatInfo(chatId);
-
-        expect(result).toBeNull();
-      });
+      await expect(
+        service.sendDirectMessage(chatId, message),
+      ).rejects.toThrowError('Chat not found.');
     });
+  });
+
+  describe('getChatInfo', () => {
+    it('should return chat info', async () => {
+      const chatId = 'CHAT_ID';
+
+      const telegramBotMock = jest.spyOn(bot.telegram, 'getChatMember');
+      telegramBotMock.mockImplementationOnce(() =>
+        Promise.resolve({ user: {} }),
+      );
+
+      const result = await service.getChatInfo(chatId);
+
+      expect(telegramBotMock).toHaveBeenCalledWith(chatId, parseInt(chatId));
+      expect(result).toBeDefined();
+    });
+
+    it('should return null for invalid chat id', async () => {
+      const chatId = '';
+
+      const result = await service.getChatInfo(chatId);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null if chat is not found', async () => {
+      const chatId = 'INVALID_CHAT_ID';
+
+      const telegramBotMock = jest.spyOn(bot.telegram, 'getChatMember');
+      telegramBotMock.mockImplementationOnce(() => Promise.reject('Error'));
+
+      const result = await service.getChatInfo(chatId);
+
+      expect(result).toBeNull();
+    });
+  });
 
   describe('getUser', () => {
     afterEach(() => {

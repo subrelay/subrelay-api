@@ -14,7 +14,7 @@ jest.mock('@discord-nestjs/core', () => ({
 
 describe('DiscordService', () => {
   let service: DiscordService;
-  let client = {
+  const client = {
     users: {
       send: jest.fn(),
       fetch: jest.fn(),
