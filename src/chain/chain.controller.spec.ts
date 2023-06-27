@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChainController } from './chain.controller';
 import { ChainService } from './chain.service';
 import { EventService } from '../event/event.service';
-import { ChainSummary, UpdateChainRequest } from './chain.dto';
+import { ChainSummary } from './chain.dto';
 import { Event } from '../event/event.type';
 import { DataField } from '../event/event.dto';
 import { GeneralTypeEnum } from '../substrate/substrate.type';

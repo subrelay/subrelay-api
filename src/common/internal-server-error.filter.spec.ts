@@ -10,7 +10,7 @@ jest.mock('rollbar');
 
 describe('InternalServerExceptionsFilter', () => {
   let filter: InternalServerExceptionsFilter;
-  let mockConfigService = {
+  const mockConfigService = {
     get: jest.fn(),
   };
   let status;

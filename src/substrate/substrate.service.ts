@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { PortableType, Si1Field } from '@polkadot/types/interfaces';
+import { Si1Field } from '@polkadot/types/interfaces';
 import {
   ChainInfo,
   ErrorDef,
@@ -26,12 +26,11 @@ export class SubstrateService {
 
   async getChainInfo(api: ApiPromise): Promise<ChainInfo> {
     const block = await api.rpc.chain.getBlock();
+
     const apiAt = await api.at(block.block.header.hash);
 
     const metadata = await api.runtimeMetadata;
-    const allTypes = metadata.asLatest.lookup
-      .types as unknown as PortableType[];
-    const events: EventDef[] = this.parseEventsDef(allTypes, apiAt.events);
+    const events: EventDef[] = this.parseEventsDef(apiAt.events);
 
     const chainInfo = {
       chainId: apiAt.runtimeVersion.specName.toString(),
@@ -54,26 +53,30 @@ export class SubstrateService {
     ].includes(type);
   }
 
-  parseEventsDef(
-    types: PortableType[],
-    defs: any,
-  ): EventDef[] | ErrorDef[] {
+  parseEventsDef(defs: any): EventDef[] | ErrorDef[] {
     return Object.keys(defs).flatMap((pallet) => {
       return Object.keys(defs[pallet]).map((eventName) => {
         const eventMeta = defs[pallet][eventName].meta;
 
         let dataSchema: TypeSchema[];
-        const description: string = eventMeta.docs.join(' ');
+        let description: string = eventMeta.docs.join(' ');
         if (eventMeta.fields) {
           const fieldsStringMatches = description.match(/\[(.)+\]/);
           const fieldNames = [];
 
           if (!isEmpty(fieldsStringMatches)) {
-            const fieldsString = fieldsStringMatches[0].replace(/ /g, '');
+            const fieldsString = fieldsStringMatches[0]
+              .replace(/ /g, '')
+              .replace(/\\/g, '');
+
             fieldNames.push(
               ...fieldsString.substring(1, fieldsString.length - 1).split(','),
             );
-            description.substring(0, description.indexOf(fieldsString));
+
+            description = description.substring(
+              0,
+              description.indexOf(fieldsStringMatches[0]) - 3,
+            );
           }
 
           dataSchema = map(eventMeta.fields, (field, index) => {
@@ -104,7 +107,7 @@ export class SubstrateService {
 
     return {
       ...schema,
-      name: field.name.toString(),
+      name: field.name?.toString(),
       typeName: field.typeName.toString(),
       description: field.docs.join(''),
     };

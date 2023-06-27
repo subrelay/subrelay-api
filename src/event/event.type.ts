@@ -6,7 +6,10 @@ export type EventSummary = Pick<EventEntity, 'id' | 'name' | 'description'> & {
   chain: ChainSummary;
 };
 
-export type Event = Pick<EventEntity, 'id' | 'name' | 'description' | 'schema'> & {
+export type Event = Pick<
+  EventEntity,
+  'id' | 'name' | 'description' | 'schema'
+> & {
   chain: ChainSummary;
 };
 

@@ -248,10 +248,7 @@ describe('EventService', () => {
         sort: SortType.DESC,
         order: 'id',
       };
-      await eventService.getEventsByChain(
-        event.chain.uuid,
-        params,
-      );
+      await eventService.getEventsByChain(event.chain.uuid, params);
 
       expect(eventRepository.createQueryBuilder().orderBy).toHaveBeenCalledWith(
         `event.${params.order}`,
