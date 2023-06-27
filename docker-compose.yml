@@ -29,19 +29,15 @@ services:
   event-service:
     image: subrelay-event-service:latest
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT}
     ports:
       - "3001"
     restart: always
-    env_file:
-      - .env
     depends_on:
       - redis
-      - postgres
+    env_file:
+      - .env
 
 volumes:
   pgdata:

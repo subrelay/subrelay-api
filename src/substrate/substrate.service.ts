@@ -54,7 +54,7 @@ export class SubstrateService {
     ].includes(type);
   }
 
-  private parseEventsDef(
+  parseEventsDef(
     types: PortableType[],
     defs: any,
   ): EventDef[] | ErrorDef[] {
@@ -99,7 +99,7 @@ export class SubstrateService {
     });
   }
 
-  private parseFieldSchema(field: Si1Field, arg: string): TypeSchema {
+  parseFieldSchema(field: Si1Field, arg: string): TypeSchema {
     const schema = this.parseArgType(arg);
 
     return {
@@ -110,7 +110,7 @@ export class SubstrateService {
     };
   }
 
-  private parseArgType(arg: string): {
+  parseArgType(arg: string): {
     type: GeneralTypeEnum;
     example?: any;
     originalType: string;
