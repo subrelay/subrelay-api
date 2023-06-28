@@ -81,6 +81,4 @@ jobs:
             git checkout develop
             git reset --hard
             git pull
-            yarn install
-            yarn build
-            pm2 reload main
+            docker-compose up -d --build
