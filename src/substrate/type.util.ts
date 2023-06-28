@@ -2,7 +2,7 @@ import { formatBalance } from '@polkadot/util';
 
 // TODO handle custom type
 export function formatValue(type: string, value) {
-  if (type === 'T::Balance' || type.startsWith('BalanceOf')) {
+  if (type.toLocaleLowerCase().includes('balance')) {
     // TODO Get decimals from chain
 
     return formatBalance(value, {
