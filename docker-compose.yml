@@ -9,8 +9,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # ports:
-    #   - ${DB_PORT}:${DB_PORT}
     restart: always
     env_file:
       - .env
@@ -18,8 +16,6 @@ services:
   redis:
     image: redis:6.2-alpine
     restart: always
-    # ports:
-    #   - ${REDIS_PORT}:${REDIS_PORT}
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: /bin/sh -c "redis-server --requirepass $$REDIS_PASSWORD"
