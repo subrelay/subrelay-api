@@ -42,15 +42,18 @@ import { WorkerModule } from './worker/worker.module';
       useFactory: (configService: ConfigService) => ({
         redis: {
           host: configService.get('REDIS_HOST'),
-          port: 6379,
+          port: configService.get('REDIS_PORT'),
+          password: configService.get('REDIS_PASSWORD'),
         },
       }),
     }),
+
     WorkerModule,
     UserModule,
     ChainModule,
     TaskModule,
     WorkflowModule,
+    WorkerModule,
   ],
   controllers: [AppController],
   providers: [
@@ -67,8 +70,7 @@ export class AppModule implements NestModule {
       .apply(AuthMiddleware)
       .exclude(
         { method: RequestMethod.GET, path: '/' },
-        { method: RequestMethod.GET, path: '/api' },
-        { method: RequestMethod.GET, path: '/api/*' },
+        { method: RequestMethod.GET, path: '/workers' },
         { method: RequestMethod.GET, path: '/chains' },
         { method: RequestMethod.GET, path: '/tasks/filter/operators' },
         { method: RequestMethod.GET, path: '/tasks/filter/fields' },

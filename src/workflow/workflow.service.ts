@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { find, get, isEmpty, isNil, isNull, map, union } from 'lodash';
+import { find, get, isEmpty, isNil, isNull, map, union, uniq } from 'lodash';
 import { DataSource, Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
 import { TaskEntity } from '../task/entity/task.entity';
@@ -37,7 +37,7 @@ import { AppEvent } from '../common/app-event.type';
 import { ChainService } from '../chain/chain.service';
 
 @Injectable()
-export class WorkflowService implements OnApplicationBootstrap {
+export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
   constructor(
     @InjectRepository(WorkflowEntity)
@@ -53,20 +53,6 @@ export class WorkflowService implements OnApplicationBootstrap {
     private readonly chainService: ChainService,
     private eventEmitter: EventEmitter2,
   ) {}
-
-  async onApplicationBootstrap() {
-    this.logger.debug('Checking running workflows to start chain worker');
-    const runningWorkflows = await this.getRunningWorkflows();
-
-    if (!isEmpty(runningWorkflows)) {
-      const chains = await this.chainService.getChainsByEventIds(
-        runningWorkflows.map((wf) => wf.event.id),
-      );
-      this.eventEmitter.emit(AppEvent.WORKFLOW_CREATED, chains);
-    } else {
-      this.logger.debug('Not found running workflows');
-    }
-  }
 
   async processWorkflow(
     input: ProcessWorkflowInput,
@@ -182,7 +168,6 @@ export class WorkflowService implements OnApplicationBootstrap {
       throw err;
     }
 
-    this.eventEmitter.emit(AppEvent.WORKFLOW_CREATED, [eventId]);
     const workflow = await this.getWorkflow(workflowId, userId);
 
     return workflow;
