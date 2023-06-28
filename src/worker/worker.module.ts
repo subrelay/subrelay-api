@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ChainWorker } from './chain.worker';
 import { BullModule } from '@nestjs/bull';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { TaskModule } from '../task/task.module';
@@ -9,12 +8,10 @@ import { BlockProcessor } from './block.processor';
 import { WorkflowProcessor } from './workflow.processor';
 import { UserModule } from '../user/user.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { WorkerController } from './worker.controller';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: 'chain',
-    }),
     BullModule.registerQueue({
       name: 'workflow',
     }),
@@ -28,6 +25,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     UserModule,
     EventEmitterModule.forRoot(),
   ],
-  providers: [ChainWorker, BlockProcessor, WorkflowProcessor],
+  controllers: [WorkerController],
+  providers: [BlockProcessor, WorkflowProcessor],
 })
 export class WorkerModule {}

@@ -466,8 +466,6 @@ export class TaskService {
     } catch (error) {
       let errorMessage = error.message || 'Failed to process discord task.';
       if (error.message === 'Invalid Recipient(s)') {
-        console.log(error);
-
         errorMessage = 'User not found';
       }
 
