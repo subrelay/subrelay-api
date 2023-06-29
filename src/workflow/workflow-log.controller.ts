@@ -7,13 +7,14 @@ import {
 } from '@nestjs/common';
 import { UserInfo } from '../common/user-info.decorator';
 import { TaskService } from '../task/task.service';
-import { UserEntity } from '../user/user.entity';
 import {
   GetWorkflowLogsQueryParams,
   GetWorkflowLogsResponse,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 import { UserSummary } from '../user/user.dto';
+import { TaskLogEntity } from '../task/entity/task-log.entity';
+import { find, findIndex, map } from 'lodash';
 
 @Controller('workflow-logs')
 export class WorkflowLogController {
@@ -52,7 +53,24 @@ export class WorkflowLogController {
 
     return {
       ...workflowLog,
-      taskLogs,
+      taskLogs: this.orderTaskLogs(taskLogs),
     };
+  }
+
+  orderTaskLogs(logs: TaskLogEntity[]) {
+    const tasks = map(logs, 'task');
+    const order = tasks.map((task) => ({
+      taskId: task.id,
+      dependOnIndex: task.dependOn
+        ? findIndex(tasks, { id: task.dependOn })
+        : -2,
+    }));
+
+    return logs.sort((a, b) => {
+      return (
+        find(order, { taskId: a.task.id }).dependOnIndex -
+        find(order, { taskId: b.task.id }).dependOnIndex
+      );
+    });
   }
 }
