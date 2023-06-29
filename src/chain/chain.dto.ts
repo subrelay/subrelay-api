@@ -1,4 +1,5 @@
 import { IsArray, IsNotEmpty, IsString, IsUrl } from 'class-validator';
+import { ChainConfig } from './chain.entity';
 
 export class CreateChainRequest {
   @IsNotEmpty()
@@ -31,4 +32,10 @@ export class ChainSummary {
   version: string;
   name: string;
   imageUrl: string;
+}
+
+export class Chain {
+  uuid: string;
+  name: string;
+  config: ChainConfig;
 }
