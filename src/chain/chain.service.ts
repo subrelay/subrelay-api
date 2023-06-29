@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  Chain,
   ChainSummary,
   CreateChainRequest,
   UpdateChainRequest,
@@ -79,6 +80,14 @@ export class ChainService implements OnModuleInit {
         '"chainId"',
       ])
       .where({ uuid: chainUuid })
+      .getRawOne();
+  }
+
+  getChainByChainId(chainId: string): Promise<Chain> {
+    return this.chainRepository
+      .createQueryBuilder()
+      .select(['uuid', '"name"', 'config'])
+      .where({ chainId })
       .getRawOne();
   }
 

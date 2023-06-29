@@ -103,4 +103,4 @@ jobs:
             git checkout main
             git reset --hard
             git pull
-            docker-compose -f docker-compose.main.yml up -d  --build
+            docker-compose -f docker-compose.main.yml up -d  --build --pull --no-cache

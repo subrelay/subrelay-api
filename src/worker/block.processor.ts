@@ -8,6 +8,7 @@ import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from '../workflow/workflow.service';
 import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
+import { ChainService } from '../chain/chain.service';
 
 @Processor('block')
 export class BlockProcessor {
@@ -17,6 +18,7 @@ export class BlockProcessor {
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
     private readonly userService: UserService,
+    private readonly chainService: ChainService,
   ) {}
 
   @Process({ concurrency: 10 })
@@ -55,6 +57,8 @@ export class BlockProcessor {
       removeOnFail: true,
     };
 
+    const chain = await this.chainService.getChainByChainId(data.chainId);
+
     const jobs = runningWorkflows.map((workflow) => {
       const blockEvent = find(
         data.events,
@@ -66,7 +70,7 @@ export class BlockProcessor {
         blockEvent.data,
         (result, value, index) => {
           const field = eventInfo.schema[index];
-          result[field.name] = formatValue(field.typeName, value);
+          result[field.name] = formatValue(field.typeName, value, chain.config.chainDecimals[0]);
           return result;
         },
         {},

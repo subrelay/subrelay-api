@@ -1,9 +1,7 @@
 import * as Bull from '@nestjs/bull';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BlockJobData, EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
 import { WorkflowService } from '../workflow/workflow.service';
-import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
 import { BlockProcessor } from './block.processor';
 import {
@@ -15,12 +13,15 @@ import {
 } from '../../test/mock-data.util';
 
 import { Job } from 'bull';
+import { ChainService } from '../chain/chain.service';
 
 describe('BlockProcessor', () => {
   let blockProcessor: BlockProcessor;
   let eventService: EventService;
   let workflowService: WorkflowService;
   let userService: UserService;
+  let chainService: ChainService;
+
   const blockQueue = {
     add: jest.fn(),
     process: jest.fn(),
@@ -61,6 +62,12 @@ describe('BlockProcessor', () => {
           },
         },
         {
+          provide: ChainService,
+          useValue: {
+            getChainByChainId: jest.fn(),
+          },
+        },
+        {
           provide: UserService,
           useValue: {
             getUserByIds: jest.fn(),
@@ -73,6 +80,7 @@ describe('BlockProcessor', () => {
     eventService = module.get<EventService>(EventService);
     workflowService = module.get<WorkflowService>(WorkflowService);
     userService = module.get<UserService>(UserService);
+    chainService = module.get<ChainService>(ChainService);
   });
 
   describe('processNewBlock', () => {
@@ -125,6 +133,12 @@ describe('BlockProcessor', () => {
         .spyOn(userService, 'getUserByIds')
         .mockResolvedValueOnce([mockedWorkflowEntity.user]);
 
+      jest.spyOn(chainService, 'getChainByChainId').mockResolvedValueOnce({
+        name: mockedWorkflowEntity.chain.name,
+        uuid: mockedWorkflowEntity.chain.uuid,
+        config: mockedWorkflowEntity.chain.config,
+      });
+
       const addBulkSpy = jest
         .spyOn(workflowQueue, 'addBulk')
         .mockResolvedValueOnce(undefined);
@@ -145,7 +159,7 @@ describe('BlockProcessor', () => {
               },
               data: {
                 who: 'F3opxRbN5ZbjJNU511Kj2TLuzFcDq9BGduA9TgiECafpg29',
-                amount: '0.0422',
+                amount: '0.0004',
               },
               time: new Date('2023-06-19T10:47:00.000Z'),
             },
