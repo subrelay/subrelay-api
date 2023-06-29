@@ -133,3 +133,6 @@ Authentication token expiration is 1 day.
 If you want to access the API as an admin, you must:
 - Define your account address when setup API.
 - Using GET token to access the API.
+
+
+- docker-compose -f docker-compose.local.yml up -d  --build
