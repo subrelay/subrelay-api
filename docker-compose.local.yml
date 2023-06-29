@@ -37,6 +37,7 @@ services:
       - postgres
 
   event-service:
+    # image: ghcr.io/subrelay/event-service/main:latest
     image: subrelay-event-service:latest
     environment:
       REDIS_HOST: redis
