@@ -1,18 +1,12 @@
-FROM node:18 As development
+FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-
-# Install dependencies
-RUN yarn install
-
-# Copy the rest of the project files to the container
+COPY package.json yarn.lock ./
 COPY . .
 
-# Build the project
+RUN yarn install --production --frozen-lockfile
+RUN yarn global add @nestjs/cli
 RUN yarn build
 
-USER node
-
-CMD [ "yarn", "start" ]
+CMD ["node", "--max-old-space-size=300", "dist/main.js"]
