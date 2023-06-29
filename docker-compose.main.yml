@@ -25,7 +25,7 @@ services:
       - .env
 
   api:
-    image: ghcr.io/subrelay/api/main:latest
+    image: ghcr.io/subrelay/subrelay-api/main:latest
     env_file:
       - .env
     ports:
