@@ -4,12 +4,12 @@ import { INestApplication } from '@nestjs/common';
 import { ChainModule } from '../src/chain/chain.module';
 import { SubstrateService } from '../src/substrate/substrate.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import ormConfig from '../src/config/ormconfig';
 import { ChainSummary } from '../src/chain/chain.dto';
 import { EventEntity } from '../src/event/event.entity';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { ConfigService } from '@nestjs/config';
+import { cliOrmConfig } from './test-ormconfig';
 
 describe('Chain', () => {
   let app: INestApplication;
@@ -18,7 +18,7 @@ describe('Chain', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [ChainModule, TypeOrmModule.forRoot(ormConfig)],
+      imports: [ChainModule, TypeOrmModule.forRoot(cliOrmConfig)],
       providers: [
         SubstrateService,
         ConfigService,

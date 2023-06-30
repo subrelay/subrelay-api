@@ -2,7 +2,6 @@ import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
-import ormConfig from '../src/config/ormconfig';
 import { TelegramService } from '../src/telegram/telegram.service';
 import { DiscordService } from '../src/discord/discord.service';
 import { Repository } from 'typeorm';
@@ -25,6 +24,7 @@ import { ulid } from 'ulid';
 import { WorkflowModule } from '../src/workflow/workflow.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WorkflowEntity } from '../src/workflow/entity/workflow.entity';
+import { cliOrmConfig } from './test-ormconfig';
 
 describe('Task', () => {
   let app: INestApplication;
@@ -58,7 +58,7 @@ describe('Task', () => {
       imports: [
         ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
         WorkflowModule,
-        TypeOrmModule.forRoot(ormConfig),
+        TypeOrmModule.forRoot(cliOrmConfig),
         TypeOrmModule.forFeature([EventEntity, UserEntity]),
       ],
       providers: [

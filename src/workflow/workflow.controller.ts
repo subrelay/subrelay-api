@@ -6,23 +6,12 @@ import {
   Get,
   HttpCode,
   NotFoundException,
-  OnModuleInit,
   Param,
   Patch,
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  filter,
-  findIndex,
-  groupBy,
-  isEmpty,
-  map,
-  orderBy,
-  some,
-  toPairs,
-  uniq,
-} from 'lodash';
+import { findIndex, groupBy, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';
@@ -33,6 +22,7 @@ import {
   CreateWorkflowTaskRequest,
   GetWorkflowsQueryParams,
   UpdateWorkflowRequest,
+  WorkflowTaskInput,
 } from './workflow.dto';
 import { WorkflowService } from './workflow.service';
 import { TriggerTaskConfig } from '../task/type/trigger.type';
@@ -109,14 +99,15 @@ export class WorkflowController {
     @Body() input: CreateWorkFlowRequest,
     @UserInfo() userInfo: UserSummary,
   ) {
-    input.tasks = this.modifyTaskRequests(input.tasks);
+    const taskInputs = this.modifyTaskRequests(input.tasks);
     await this.validateWorkflowTasks(
       await this.userService.getUserById(userInfo.id),
-      input.tasks,
+      taskInputs,
     );
 
     const workflow = await this.workflowService.createWorkflow(
-      input,
+      input.name,
+      taskInputs,
       userInfo.id,
     );
 
@@ -128,40 +119,69 @@ export class WorkflowController {
     };
   }
 
-  private async validateWorkflowTasks(
-    user: UserEntity,
-    tasks: CreateWorkflowTaskRequest[],
-  ) {
+  async validateWorkflowTasks(user: UserEntity, tasks: WorkflowTaskInput[]) {
+    this.validateTaskCount(tasks);
+    this.validateTaskNames(tasks);
+    this.validateTriggerTask(tasks);
+
+    const triggerTaskConfig = this.getTriggerTaskConfig(tasks);
+    await this.validateEvent(triggerTaskConfig.eventId);
+
+    this.validateDependingTasks(tasks);
+    this.validateTaskConfigs(tasks);
+    this.validateDuplicateDependingTasks(tasks);
+
+    this.validateIntegration(user, tasks, TaskType.TELEGRAM);
+    this.validateIntegration(user, tasks, TaskType.DISCORD);
+  }
+
+  validateTaskCount(tasks: WorkflowTaskInput[]) {
     if (tasks.length < 2) {
       throw new BadRequestException('Workflow should have at least 2 tasks.');
     }
+  }
 
-    const taskNames = map(tasks, 'name');
-    if (taskNames.length > uniq(taskNames).length) {
-      throw new BadRequestException('Task names in a workflow should be uniq.');
+  validateTaskNames(tasks: WorkflowTaskInput[]) {
+    const taskNames = tasks.map((task) => task.name);
+    const uniqueTaskNames = [...new Set(taskNames)];
+    if (taskNames.length !== uniqueTaskNames.length) {
+      throw new BadRequestException(
+        'Task names in a workflow should be unique.',
+      );
     }
+  }
 
-    const triggerTasks = filter(tasks, { type: TaskType.TRIGGER });
-    if (isEmpty(triggerTasks)) {
-      throw new BadRequestException('Can not found trigger task.');
-    } else if (triggerTasks.length > 1) {
+  validateTriggerTask(tasks: WorkflowTaskInput[]) {
+    const triggerTasks = tasks.filter((task) => task.type === TaskType.TRIGGER);
+    if (triggerTasks.length !== 1) {
       throw new BadRequestException(
         'Should have only one trigger task in a workflow.',
       );
     }
+  }
 
-    const triggerTaskConfig = new TriggerTaskConfig(triggerTasks[0].config);
-    const event = await this.eventService.getEventById(
-      triggerTaskConfig.eventId,
-    );
+  getTriggerTaskConfig(tasks: WorkflowTaskInput[]) {
+    const triggerTask = tasks.find((task) => task.type === TaskType.TRIGGER);
+    if (!triggerTask) {
+      throw new BadRequestException('Can not find trigger task.');
+    }
+    return new TriggerTaskConfig(triggerTask.config);
+  }
+
+  async validateEvent(eventId: string) {
+    const event = await this.eventService.getEventById(eventId);
     if (!event) {
       throw new BadRequestException('Event not found');
     }
+  }
 
+  validateDependingTasks(tasks: WorkflowTaskInput[]) {
     const missingDependingTaskNames = tasks
-      .filter((t) => t.dependOnIndex === null && t.type !== TaskType.TRIGGER)
-      .map((t) => t.name);
-    if (!isEmpty(missingDependingTaskNames)) {
+      .filter(
+        (task) => task.dependOnIndex === null && task.type !== TaskType.TRIGGER,
+      )
+      .map((task) => task.name);
+    if (missingDependingTaskNames.length > 0) {
       throw new BadRequestException(
         `${missingDependingTaskNames.join(
           ', ',
@@ -170,52 +190,51 @@ export class WorkflowController {
     }
 
     const invalidDependingTaskNames = tasks
-      .filter((t) => t.dependOnIndex === -1)
-      .map((t) => t.name);
-    if (!isEmpty(invalidDependingTaskNames)) {
+      .filter((task) => task.dependOnIndex === -1)
+      .map((task) => task.name);
+    if (invalidDependingTaskNames.length > 0) {
       throw new BadRequestException(
         `${invalidDependingTaskNames.join(
           ', ',
-        )} task(s) depend on invalid task.`,
-      );
-    }
-
-    tasks.forEach((task) => {
-      validateTaskConfig(task.type, task.config);
-    });
-
-    toPairs(groupBy(tasks, 'dependOnIndex')).forEach(([, value]) => {
-      if (value.length > 1) {
-        throw new BadRequestException(
-          `${map(value, 'name').join(
-            ', ',
-          )} task(s) are depend on the same task.`,
-        );
-      }
-    });
-
-    if (
-      some(tasks, { type: TaskType.TELEGRAM }) &&
-      !user?.integration?.telegram
-    ) {
-      throw new BadRequestException(
-        "The integration with Telegram does't set up yet.",
-      );
-    }
-
-    if (
-      some(tasks, { type: TaskType.DISCORD }) &&
-      !user?.integration?.discord
-    ) {
-      throw new BadRequestException(
-        "The integration with Discord does't set up yet.",
+        )} task(s) depend on an invalid task.`,
       );
     }
   }
 
-  modifyTaskRequests(
-    tasks: CreateWorkflowTaskRequest[],
-  ): CreateWorkflowTaskRequest[] {
+  validateTaskConfigs(tasks: WorkflowTaskInput[]) {
+    tasks.forEach((task) => {
+      validateTaskConfig(task.type, task.config);
+    });
+  }
+
+  validateDuplicateDependingTasks(tasks: WorkflowTaskInput[]) {
+    const groupedTasks = groupBy(tasks, 'dependOnIndex');
+    Object.values(groupedTasks).forEach((tasksWithSameDependOnIndex) => {
+      if (tasksWithSameDependOnIndex.length > 1) {
+        const taskNames = tasksWithSameDependOnIndex.map((task) => task.name);
+        throw new BadRequestException(
+          `${taskNames.join(', ')} task(s) are depend on the same task.`,
+        );
+      }
+    });
+  }
+
+  validateIntegration(
+    user: UserEntity,
+    tasks: WorkflowTaskInput[],
+    taskType: TaskType.TELEGRAM | TaskType.DISCORD,
+  ) {
+    if (
+      tasks.some((task) => task.type === taskType) &&
+      !user?.integration?.[taskType.toString()]
+    ) {
+      throw new BadRequestException(
+        `The integration with ${taskType.toString()} doesn't set up yet.`,
+      );
+    }
+  }
+
+  modifyTaskRequests(tasks: CreateWorkflowTaskRequest[]): WorkflowTaskInput[] {
     return orderBy(
       tasks.map((task) => ({
         ...task,

@@ -70,7 +70,11 @@ export class BlockProcessor {
         blockEvent.data,
         (result, value, index) => {
           const field = eventInfo.schema[index];
-          result[field.name] = formatValue(field.typeName, value, chain.config.chainDecimals[0]);
+          result[field.name] = formatValue(
+            field.typeName,
+            value,
+            chain.config.chainDecimals[0],
+          );
           return result;
         },
         {},

@@ -75,7 +75,7 @@ describe('TaskController', () => {
     it('should throw NotFoundException if event is not found', async () => {
       jest.spyOn(eventService, 'getEventById').mockResolvedValueOnce(undefined);
       const filterTask = mockFilterTask('workflowId', 'taskId');
-      const task = await expect(
+      await expect(
         taskController.processTask(
           {
             data: { eventId: 'invalidId' },
@@ -220,16 +220,6 @@ describe('TaskController', () => {
 
   describe('getFilterVariableOperators', () => {
     it('should return filter operators', async () => {
-      const fields: DataField[] = [
-        {
-          name: 'Field 1',
-          type: GeneralTypeEnum.STRING,
-          data: {},
-          description: '',
-          display: 'Field 1',
-          originalType: 'string',
-        },
-      ];
       jest.spyOn(taskService, 'getOperatorMapping').mockReturnValueOnce({
         string: [FilterVariableOperator.EQUAL],
       });
