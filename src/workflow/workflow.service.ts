@@ -20,6 +20,7 @@ import {
   GetWorkflowsOrderBy,
   GetWorkflowsQueryParams,
   UpdateWorkflowRequest,
+  WorkflowTaskInput,
 } from './workflow.dto';
 import {
   ProcessWorkflowInput,
@@ -105,7 +106,8 @@ export class WorkflowService {
   }
 
   async createWorkflow(
-    input: CreateWorkFlowRequest,
+    name: string,
+    tasks: WorkflowTaskInput[],
     userId: string,
   ): Promise<Workflow> {
     let err;
@@ -115,7 +117,7 @@ export class WorkflowService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    const { eventId } = find(input.tasks, { type: TaskType.TRIGGER }).config;
+    const { eventId } = find(tasks, { type: TaskType.TRIGGER }).config;
     try {
       const workflow = await queryRunner.manager
         .getRepository(WorkflowEntity)
@@ -123,7 +125,7 @@ export class WorkflowService {
           id: ulid(),
           userId,
           status: WorkflowStatus.RUNNING,
-          name: input.name,
+          name,
           eventId,
           updatedAt: new Date(),
         });
@@ -131,7 +133,7 @@ export class WorkflowService {
       const tasksObject: { [key: string]: string } = {};
       const taskRepo = queryRunner.manager.getRepository(TaskEntity);
 
-      for (const taskInput of input.tasks) {
+      for (const taskInput of tasks) {
         if (taskInput.type === TaskType.WEBHOOK) {
           const webhookSecretKey = this.configService.get('WEBHOOK_SECRET_KEY');
           taskInput.config = {

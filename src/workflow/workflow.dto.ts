@@ -97,8 +97,10 @@ export class CreateWorkflowTaskRequest {
   @IsOptional()
   @IsString()
   dependOnName?: string;
+}
 
-  dependOnIndex?: number;
+export class WorkflowTaskInput extends CreateWorkflowTaskRequest {
+  dependOnIndex: number;
 }
 
 export class GetWorkflowLogsResponse {
