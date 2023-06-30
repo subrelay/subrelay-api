@@ -1,9 +1,8 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { find, get, isEmpty, isNil, isNull, map, union, uniq } from 'lodash';
-import { DataSource, Repository } from 'typeorm';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { find, get, isEmpty, isNil, isNull } from 'lodash';
+import { Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
-import { TaskEntity } from '../task/entity/task.entity';
 import { TaskService } from '../task/task.service';
 import {
   BaseTask,
@@ -14,7 +13,6 @@ import {
 import { WorkflowLogEntity } from './entity/workflow-log.entity';
 import { WorkflowEntity } from './entity/workflow.entity';
 import {
-  CreateWorkFlowRequest,
   GetWorkflowLogsOrderBy,
   GetWorkflowLogsQueryParams,
   GetWorkflowsOrderBy,
@@ -33,9 +31,6 @@ import { EventEntity } from '../event/event.entity';
 import { encryptText } from '../common/crypto.util';
 import { ConfigService } from '@nestjs/config';
 import { SortType } from '../common/pagination.type';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AppEvent } from '../common/app-event.type';
-import { ChainService } from '../chain/chain.service';
 
 @Injectable()
 export class WorkflowService {
@@ -47,12 +42,8 @@ export class WorkflowService {
     @InjectRepository(WorkflowLogEntity)
     private workflowLogRepository: Repository<WorkflowLogEntity>,
 
-    @InjectDataSource() private dataSource: DataSource,
-
     private readonly taskService: TaskService,
     private readonly configService: ConfigService,
-    private readonly chainService: ChainService,
-    private eventEmitter: EventEmitter2,
   ) {}
 
   async processWorkflow(
@@ -110,28 +101,20 @@ export class WorkflowService {
     tasks: WorkflowTaskInput[],
     userId: string,
   ): Promise<Workflow> {
-    let err;
     let workflowId;
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    const { eventId } = find(tasks, { type: TaskType.TRIGGER }).config;
     try {
-      const workflow = await queryRunner.manager
-        .getRepository(WorkflowEntity)
-        .save({
-          id: ulid(),
-          userId,
-          status: WorkflowStatus.RUNNING,
-          name,
-          eventId,
-          updatedAt: new Date(),
-        });
+      const { eventId } = find(tasks, { type: TaskType.TRIGGER }).config;
+      const workflow = await this.workflowRepository.save({
+        id: ulid(),
+        userId,
+        status: WorkflowStatus.RUNNING,
+        name,
+        eventId,
+        updatedAt: new Date(),
+      });
 
       const tasksObject: { [key: string]: string } = {};
-      const taskRepo = queryRunner.manager.getRepository(TaskEntity);
 
       for (const taskInput of tasks) {
         if (taskInput.type === TaskType.WEBHOOK) {
@@ -145,7 +128,7 @@ export class WorkflowService {
           };
         }
 
-        const { id: taskId } = await taskRepo.save({
+        const { id: taskId } = await this.taskService.createTask({
           id: ulid(),
           name: taskInput.name,
           type: taskInput.type,
@@ -153,26 +136,20 @@ export class WorkflowService {
           dependOn: get(tasksObject, taskInput.dependOnName),
           workflowId: workflow.id,
         });
+
         Object.assign(tasksObject, { [taskInput.name]: taskId });
       }
 
-      await queryRunner.commitTransaction();
-      workflowId = workflow.id;
+      return await this.getWorkflow(workflowId, userId);
     } catch (err) {
-      err = err;
       this.logger.error('Failed to create workflow', err);
-      await queryRunner.rollbackTransaction();
-    } finally {
-      await queryRunner.release();
-    }
 
-    if (err) {
+      if (workflowId) {
+        await this.workflowRepository.delete({ id: workflowId });
+      }
+
       throw err;
     }
-
-    const workflow = await this.getWorkflow(workflowId, userId);
-
-    return workflow;
   }
 
   async getRunningWorkflowsByEventIds(eventIds: string[]): Promise<Workflow[]> {

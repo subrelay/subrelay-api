@@ -222,7 +222,7 @@ export function mockWorkflowEntity(
     event: event,
     eventId: event.id,
     user,
-    tasks: [trigger, mockWebhookTask(id, trigger.id)] as TaskEntity[],
+    tasks: [trigger, mockEmailTask(id, trigger.id)] as TaskEntity[],
   };
 }
 

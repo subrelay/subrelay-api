@@ -11,7 +11,7 @@ import {
 } from './type/task.type';
 import { TaskEntity } from './entity/task.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { TaskLogEntity } from './entity/task-log.entity';
 import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { ulid } from 'ulid';
@@ -72,6 +72,14 @@ export class TaskService {
       { workflowLogId, status: TaskStatus.PENDING },
       { status: TaskStatus.SKIPPED, finishedAt: new Date() },
     );
+  }
+
+  async createTask(input: TaskEntity) {
+    return this.taskRepository.save(input);
+  }
+
+  async deleteTasks(ids: string[]) {
+    await this.taskRepository.delete({ id: In(ids) });
   }
 
   async getTasks(workflowId: string, protect = true) {

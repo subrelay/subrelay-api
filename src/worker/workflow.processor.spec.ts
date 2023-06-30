@@ -135,11 +135,7 @@ describe('WorkflowProcessor', () => {
           id: workflow.tasks[1].id,
           dependOn: workflow.tasks[1].dependOn,
           type: workflow.tasks[1].type,
-          config: {
-            secret: null,
-            encrypted: false,
-            url: workflow.tasks[1].config.url,
-          },
+          config: workflow.tasks[1].config,
           name: workflow.tasks[1].name,
           workflowId: workflow.id,
         },

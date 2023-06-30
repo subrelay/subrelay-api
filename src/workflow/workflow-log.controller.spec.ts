@@ -1,37 +1,19 @@
 import { Test } from '@nestjs/testing';
 import { WorkflowService } from './workflow.service';
 import {
-  CreateWorkFlowRequest,
-  CreateWorkflowTaskRequest,
   GetWorkflowLogsOrderBy,
   GetWorkflowLogsQueryParams,
-  GetWorkflowsOrderBy,
-  UpdateWorkflowRequest,
-  WorkflowTaskInput,
 } from './workflow.dto';
 import {
-  mockDiscordTask,
-  mockDiscordUser,
-  mockEmailTask,
-  mockEvent,
-  mockFilterTask,
   mockTaskLogEntity,
-  mockTelegramTask,
-  mockTelegramUser,
   mockTriggerTask,
-  mockUserEntity,
   mockUserSummary,
   mockWebhookTask,
-  mockWorkflowEntity,
-  mockWorkflowLogSummary,
 } from '../../test/mock-data.util';
-import { Workflow, WorkflowLogSummary, WorkflowStatus } from './workflow.type';
-import { UserService } from '../user/user.service';
+import { WorkflowLogSummary } from './workflow.type';
 import { TaskService } from '../task/task.service';
-import { EventService } from '../event/event.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { TaskStatus, TaskType } from '../task/type/task.type';
-import { TriggerTaskConfig } from '../task/type/trigger.type';
+import { NotFoundException } from '@nestjs/common';
+import { TaskStatus } from '../task/type/task.type';
 import { UserSummary } from '../user/user.dto';
 import { ulid } from 'ulid';
 import { WorkflowLogController } from './workflow-log.controller';
@@ -40,71 +22,6 @@ describe('WorkflowLogController', () => {
   let controller: WorkflowLogController;
   let service: WorkflowService;
   let taskService: TaskService;
-
-  const user = mockUserSummary();
-  const defaultWorkflow = mockWorkflowEntity();
-  const defaultTriggerTask = mockTriggerTask('eventId', 'workflowId');
-  const defaultFilterTask = mockFilterTask('workflowId', '');
-  const defaultWebhookTask = mockWebhookTask('workflowId', '');
-  const defaultEmailTask = mockEmailTask('workflowId', '');
-  const defaultTelegramTask = mockTelegramTask('workflowId', '');
-  const defaultDiscordTask = mockDiscordTask('workflowId', '');
-  const defaultWorkflowTaskRequests: CreateWorkflowTaskRequest[] = [
-    defaultTriggerTask,
-    {
-      ...defaultFilterTask,
-      dependOnName: defaultTriggerTask.name,
-    },
-    {
-      ...defaultWebhookTask,
-      dependOnName: defaultFilterTask.name,
-    },
-  ];
-
-  const defaultWebhookWorkflowTasks: WorkflowTaskInput[] = [
-    {
-      ...defaultTriggerTask,
-      dependOnIndex: -2,
-    },
-    {
-      ...defaultFilterTask,
-      dependOnName: defaultTriggerTask.name,
-      dependOnIndex: 0,
-    },
-    {
-      ...defaultWebhookTask,
-      dependOnName: defaultFilterTask.name,
-      dependOnIndex: 1,
-    },
-  ];
-
-  const telegramWorkflowTasks: WorkflowTaskInput[] = [
-    { ...defaultTriggerTask, dependOnIndex: -2 },
-    {
-      ...defaultFilterTask,
-      dependOnName: defaultTriggerTask.name,
-      dependOnIndex: 0,
-    },
-    {
-      ...defaultTelegramTask,
-      dependOnIndex: 0,
-      dependOnName: defaultTriggerTask.name,
-    },
-  ];
-
-  const discordWorkflowTasks: WorkflowTaskInput[] = [
-    { ...defaultTriggerTask, dependOnIndex: -2 },
-    {
-      ...defaultFilterTask,
-      dependOnName: defaultTriggerTask.name,
-      dependOnIndex: 0,
-    },
-    {
-      ...defaultDiscordTask,
-      dependOnIndex: 0,
-      dependOnName: defaultTriggerTask.name,
-    },
-  ];
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({

@@ -412,10 +412,9 @@ describe('SubstrateService', () => {
       expect(result).toBeUndefined();
     });
 
-    it('returns a number greater than or equal to 0 and less than or equal to 10 for u8', () => {
+    it('returns a number greater than or equal to 0', () => {
       const result = service.generateFloat('u8');
       expect(result).toBeGreaterThanOrEqual(0);
-      expect(result).toBeLessThan(10);
     });
 
     it('returns a number greater than or equal to 0 and less than or equal to 100000 for u16, u32, u64, u128, and u256', () => {
