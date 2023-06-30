@@ -125,7 +125,7 @@ export class WorkflowController {
     this.validateTriggerTask(tasks);
 
     const triggerTaskConfig = this.getTriggerTaskConfig(tasks);
-    this.validateEvent(triggerTaskConfig.eventId);
+    await this.validateEvent(triggerTaskConfig.eventId);
 
     this.validateDependingTasks(tasks);
     this.validateTaskConfigs(tasks);

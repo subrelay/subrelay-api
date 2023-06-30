@@ -109,7 +109,6 @@ describe('WorkflowService', () => {
       getRepositoryToken(WorkflowLogEntity),
     );
     taskService = module.get<TaskService>(TaskService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {
