@@ -1,12 +1,11 @@
 import 'reflect-metadata';
 import { Test } from '@nestjs/testing';
 import { DiscordService } from './discord.service';
-import { Client, GatewayIntentBits } from 'discord.js';
-import { InjectDiscordClient } from '@discord-nestjs/core';
+import { Client } from 'discord.js';
 
 jest.mock('@discord-nestjs/core', () => ({
-  InjectDiscordClient: (item: any) => {
-    return (target, propertyKey, descriptor) => {
+  InjectDiscordClient: (_: any) => {
+    return () => {
       return undefined;
     };
   },

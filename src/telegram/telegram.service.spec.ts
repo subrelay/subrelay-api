@@ -5,8 +5,8 @@ import { mockTelegramUser } from '../../test/mock-data.util';
 import { User } from 'telegraf/typings/core/types/typegram';
 
 jest.mock('nestjs-telegraf', () => ({
-  InjectBot: (item: any) => {
-    return (target, propertyKey, descriptor) => {
+  InjectBot: () => {
+    return () => {
       return undefined;
     };
   },

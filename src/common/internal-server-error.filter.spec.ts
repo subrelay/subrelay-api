@@ -23,9 +23,6 @@ describe('InternalServerExceptionsFilter', () => {
     filter = new InternalServerExceptionsFilter(
       mockConfigService as unknown as ConfigService,
     );
-    status = null;
-    errorMessage = null;
-    json = null;
     res = {
       status: jest.fn().mockImplementation((s) => {
         status = s;

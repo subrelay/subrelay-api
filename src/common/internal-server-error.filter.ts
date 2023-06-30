@@ -11,12 +11,10 @@ import { ConfigService } from '@nestjs/config';
 import { TaskValidationError } from '../task/type/task.type';
 import { TelegramTaskError } from '../task/type/telegram.type';
 import { UserInputError } from './error.type';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
 @Catch()
 export class InternalServerExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(InternalServerExceptionsFilter.name);
-
   constructor(private configService: ConfigService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {

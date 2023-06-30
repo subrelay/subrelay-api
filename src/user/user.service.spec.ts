@@ -1,14 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
 import { UserEntity } from './user.entity';
-import { CreateUserDto, UserSummary } from './user.dto';
+import { CreateUserDto } from './user.dto';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  mockDiscordUser,
-  mockUserEntity,
-  mockUserSummary,
-} from '../../test/mock-data.util';
+import { mockDiscordUser, mockUserEntity } from '../../test/mock-data.util';
 
 describe('UserService', () => {
   let service: UserService;

@@ -1,7 +1,6 @@
 import { ApiPromise } from '@polkadot/api';
-import { WsProvider } from '@polkadot/rpc-provider';
 import { SubstrateService } from './substrate.service';
-import { EventDef, GeneralTypeEnum, TypeSchema } from './substrate.type';
+import { GeneralTypeEnum } from './substrate.type';
 import { Test } from '@nestjs/testing';
 import { Si1Field } from '@polkadot/types/interfaces';
 

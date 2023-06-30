@@ -11,17 +11,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  filter,
-  findIndex,
-  groupBy,
-  isEmpty,
-  map,
-  orderBy,
-  some,
-  toPairs,
-  uniq,
-} from 'lodash';
+import { findIndex, groupBy, orderBy } from 'lodash';
 import { UserInfo } from '../common/user-info.decorator';
 import { EventService } from '../event/event.service';
 import { TaskService } from '../task/task.service';

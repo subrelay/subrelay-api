@@ -9,12 +9,10 @@ import {
   WorkflowTaskInput,
 } from './workflow.dto';
 import {
-  mockChainSummary,
   mockDiscordTask,
   mockDiscordUser,
   mockEmailTask,
   mockEvent,
-  mockEventEntity,
   mockFilterTask,
   mockTelegramTask,
   mockTelegramUser,
@@ -29,7 +27,7 @@ import { UserService } from '../user/user.service';
 import { TaskService } from '../task/task.service';
 import { EventService } from '../event/event.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { TaskType, validateTaskConfig } from '../task/type/task.type';
+import { TaskType } from '../task/type/task.type';
 import { TriggerTaskConfig } from '../task/type/trigger.type';
 import { UserSummary } from '../user/user.dto';
 import { ulid } from 'ulid';
@@ -46,7 +44,6 @@ describe('WorkflowController', () => {
   const defaultTriggerTask = mockTriggerTask('eventId', 'workflowId');
   const defaultFilterTask = mockFilterTask('workflowId', '');
   const defaultWebhookTask = mockWebhookTask('workflowId', '');
-  const defaultEmailTask = mockEmailTask('workflowId', '');
   const defaultTelegramTask = mockTelegramTask('workflowId', '');
   const defaultDiscordTask = mockDiscordTask('workflowId', '');
   const defaultWorkflowTaskRequests: CreateWorkflowTaskRequest[] = [

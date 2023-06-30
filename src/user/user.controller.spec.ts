@@ -10,7 +10,6 @@ import {
   mockTelegramUser,
   mockUserEntity,
 } from '../../test/mock-data.util';
-import { ModuleRef } from '@nestjs/core';
 import { NotFoundException } from '@nestjs/common';
 
 describe('UserController', () => {

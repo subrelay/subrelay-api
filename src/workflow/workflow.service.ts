@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { find, get, isEmpty, isNil, isNull } from 'lodash';
+import { find, get, isNil, isNull } from 'lodash';
 import { Repository } from 'typeorm';
 import { ChainEntity } from '../chain/chain.entity';
 import { TaskService } from '../task/task.service';
@@ -113,6 +113,7 @@ export class WorkflowService {
         eventId,
         updatedAt: new Date(),
       });
+      workflowId = workflow.id;
 
       const tasksObject: { [key: string]: string } = {};
 
@@ -254,7 +255,7 @@ export class WorkflowService {
       });
     }
 
-    const order = `w."${requestedOrder}"` || GetWorkflowsOrderBy.UPDATED_AT;
+    const order = `w."${requestedOrder || GetWorkflowsOrderBy.UPDATED_AT}"`;
     queryBuilder = queryBuilder.addOrderBy(order, sort || SortType.DESC);
 
     const total = await queryBuilder.getCount();

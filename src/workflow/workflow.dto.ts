@@ -42,7 +42,7 @@ export class GetWorkflowsQueryParams extends Pagination {
   })
   order: GetWorkflowsOrderBy = GetWorkflowsOrderBy.UPDATED_AT;
 
-  id?: number;
+  id?: string;
 }
 
 export class GetWorkflowLogsQueryParams extends Pagination {
