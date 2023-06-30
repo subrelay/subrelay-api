@@ -2,7 +2,6 @@ import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
-import ormConfig from '../src/config/ormconfig';
 import { UserModule } from '../src/user/user.module';
 import { TelegramService } from '../src/telegram/telegram.service';
 import { DiscordService } from '../src/discord/discord.service';
@@ -14,6 +13,7 @@ import {
   mockTelegramUser,
   mockUserEntity,
 } from './mock-data.util';
+import { cliOrmConfig } from './test-ormconfig';
 
 describe('User', () => {
   let app: INestApplication;
@@ -26,7 +26,7 @@ describe('User', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         UserModule,
-        TypeOrmModule.forRoot(ormConfig),
+        TypeOrmModule.forRoot(cliOrmConfig),
         TypeOrmModule.forFeature([UserEntity]),
       ],
       providers: [TelegramService, DiscordService],

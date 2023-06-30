@@ -15,7 +15,6 @@ import { TaskEntity } from '../src/task/entity/task.entity';
 import { TaskStatus, TaskType } from '../src/task/type/task.type';
 import { UserSummary } from '../src/user/user.dto';
 import { TaskLogEntity } from '../src/task/entity/task-log.entity';
-import { WorkflowLogEntity } from '../src/workflow/entity/workflow-log.entity';
 import { Event } from '../src/event/event.type';
 
 const mockedEventSummary = {
@@ -222,7 +221,7 @@ export function mockWorkflowEntity(
     event: event,
     eventId: event.id,
     user,
-    tasks: [trigger, mockWebhookTask(id, trigger.id)] as TaskEntity[],
+    tasks: [trigger, mockEmailTask(id, trigger.id)] as TaskEntity[],
   };
 }
 

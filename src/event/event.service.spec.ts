@@ -5,7 +5,6 @@ import { Repository } from 'typeorm';
 import { EventDef, GeneralTypeEnum } from '../substrate/substrate.type';
 import { Event } from './event.type';
 import { get } from 'lodash';
-import { DataField } from './event.dto';
 import { SortType } from '../common/pagination.type';
 
 describe('EventService', () => {

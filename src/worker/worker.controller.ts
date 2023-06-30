@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 
-import { isEmpty, map, uniq, uniqBy } from 'lodash';
+import { isEmpty, uniqBy } from 'lodash';
 import { ChainService } from '../chain/chain.service';
 import { WorkflowService } from '../workflow/workflow.service';
 
@@ -12,7 +12,7 @@ export class WorkerController {
   ) {}
 
   @Get()
-  async getWorkers(): Promise<{ chainId: String; rpc: String }[]> {
+  async getWorkers(): Promise<{ chainId: string; rpc: string }[]> {
     // TODO verify request from event service
     const runningWorkflows = await this.workflowService.getRunningWorkflows();
 

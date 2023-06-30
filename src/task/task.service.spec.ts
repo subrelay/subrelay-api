@@ -17,8 +17,7 @@ import {
   mockWebhookTask,
   mockWorkflowEntity,
 } from '../../test/mock-data.util';
-import { EmailTaskConfig, EmailTaskInput } from './type/email.type';
-import { NotFoundException } from '@nestjs/common';
+import { EmailTaskConfig } from './type/email.type';
 import { WebhookService } from '../webhook/webhook.service';
 import { EmailService } from '../email/email.service';
 import { TaskService } from './task.service';
@@ -27,13 +26,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaskEntity } from './entity/task.entity';
 import { TaskLogEntity } from './entity/task-log.entity';
-import {
-  BaseTask,
-  ProcessTaskInput,
-  TaskLog,
-  TaskStatus,
-  TaskType,
-} from './type/task.type';
+import { BaseTask, ProcessTaskInput, TaskStatus } from './type/task.type';
 import { ulid } from 'ulid';
 import { GeneralTypeEnum } from '../substrate/substrate.type';
 import { DataField } from '../event/event.dto';
@@ -52,7 +45,6 @@ describe('TaskService', () => {
   let eventService: EventService;
   let taskRepository: Repository<TaskEntity>;
   let taskLogRepository: Repository<TaskLogEntity>;
-  let userRepository: Repository<UserEntity>;
 
   const workflow = mockWorkflowEntity();
   const mockUser = mockUserEntity();
@@ -147,12 +139,21 @@ describe('TaskService', () => {
     taskRepository = module.get<Repository<TaskEntity>>(
       getRepositoryToken(TaskEntity),
     );
-    userRepository = module.get<Repository<UserEntity>>(
-      getRepositoryToken(UserEntity),
-    );
     taskLogRepository = module.get<Repository<TaskLogEntity>>(
       getRepositoryToken(TaskLogEntity),
     );
+  });
+
+  describe('createTask', () => {
+    it('should save the input task entity', async () => {
+      const task = mockTriggerTask('eventId', 'wfId');
+      jest.spyOn(taskRepository, 'save').mockResolvedValueOnce(undefined);
+
+      await service.createTask(task);
+
+      // Assert
+      expect(taskRepository.save).toHaveBeenCalledWith(task);
+    });
   });
 
   describe('createTaskLogs', () => {
@@ -1140,20 +1141,24 @@ describe('TaskService', () => {
     });
 
     it('should return error for filter task', async () => {
-      const task = new BaseTask(mockFilterTask('wfId', ''));
-      jest.spyOn(service, 'processFilterTask').mockReturnValueOnce({
+      const task = new BaseTask(mockDiscordTask('wfId', ''));
+      const error = new Error('Failed to process task');
+      jest.spyOn(service, 'processDiscordTask').mockRejectedValueOnce(error);
+
+      const result = await service.processTask(task, defaultInput);
+
+      expect(result).toEqual({
+        input: defaultInput,
         status: TaskStatus.FAILED,
         error: {
           message: 'Failed to process task',
         },
+        startedAt: expect.any(Date),
+        finishedAt: expect.any(Date),
       });
 
-      const result = await service.processTask(task, defaultInput);
-
-      expect(result.status).toEqual(TaskStatus.FAILED);
-      expect(result.error.message).toEqual('Failed to process task');
-      expect(service.processFilterTask).toHaveBeenCalledWith(
-        expect.any(FilterTaskConfig),
+      expect(service.processDiscordTask).toHaveBeenCalledWith(
+        expect.any(DiscordTaskConfig),
         defaultInput,
       );
     });

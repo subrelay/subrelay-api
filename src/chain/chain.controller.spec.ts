@@ -77,7 +77,7 @@ describe('ChainController', () => {
   });
 
   describe('getChains', () => {
-    it('should return an array of ChainSummary objects', async () => {
+    it('should return an array of ChainSummary', async () => {
       const result = [chainSummary];
       const mockGetChainsSummary = jest
         .spyOn(chainService, 'getChainsSummary')
