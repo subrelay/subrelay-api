@@ -11,7 +11,6 @@ import {
 import {
   mockDiscordTask,
   mockDiscordUser,
-  mockEmailTask,
   mockEvent,
   mockFilterTask,
   mockTelegramTask,

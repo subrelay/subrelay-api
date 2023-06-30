@@ -4,7 +4,7 @@ import { DiscordService } from './discord.service';
 import { Client } from 'discord.js';
 
 jest.mock('@discord-nestjs/core', () => ({
-  InjectDiscordClient: (_: any) => {
+  InjectDiscordClient: () => {
     return () => {
       return undefined;
     };

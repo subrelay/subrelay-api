@@ -2,7 +2,6 @@ import * as request from 'supertest';
 import { Test } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
-import ormConfig from '../src/config/ormconfig';
 import { TelegramService } from '../src/telegram/telegram.service';
 import { DiscordService } from '../src/discord/discord.service';
 import { Repository } from 'typeorm';
@@ -25,6 +24,7 @@ import {
 import { UserService } from '../src/user/user.service';
 import { ChainService } from '../src/chain/chain.service';
 import { ChainEntity } from '../src/chain/chain.entity';
+import { cliOrmConfig } from '../src/config/cli-ormconfig';
 
 describe('Task', () => {
   let app: INestApplication;
@@ -55,7 +55,7 @@ describe('Task', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
         TaskModule,
-        TypeOrmModule.forRoot(ormConfig),
+        TypeOrmModule.forRoot(cliOrmConfig),
         TypeOrmModule.forFeature([EventEntity, UserEntity, ChainEntity]),
       ],
       providers: [

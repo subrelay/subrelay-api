@@ -190,7 +190,7 @@ describe('ChainService', () => {
 
   describe('getChainInfoByRpcs', () => {
     test('returns chainInfo and valid/invalid RPCs', async () => {
-      jest.spyOn(substrateService, 'createAPI').mockImplementation((_) =>
+      jest.spyOn(substrateService, 'createAPI').mockImplementation(() =>
         Promise.resolve({
           isConnected: true,
         } as unknown as ApiPromise),
@@ -211,7 +211,7 @@ describe('ChainService', () => {
     test('throws error for invalid RPC', async () => {
       const mockCreateAPI = jest
         .spyOn(substrateService, 'createAPI')
-        .mockImplementation((_) =>
+        .mockImplementation(() =>
           Promise.resolve({
             isConnected: false,
           } as unknown as ApiPromise),

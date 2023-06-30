@@ -14,7 +14,6 @@ describe('InternalServerExceptionsFilter', () => {
     get: jest.fn(),
   };
   let status;
-  let errorMessage;
   let json;
   let res;
   let host;

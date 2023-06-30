@@ -4,7 +4,6 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import * as Rollbar from 'rollbar';
 import { ConfigService } from '@nestjs/config';

@@ -21,7 +21,6 @@ import {
   mockWorkflowLogSummary,
 } from '../../test/mock-data.util';
 import { GetWorkflowLogsOrderBy, WorkflowTaskInput } from './workflow.dto';
-import { TaskEntity } from '../task/entity/task.entity';
 import * as CryptoUtil from '../common/crypto.util';
 import {
   ProcessWorkflowInput,
@@ -37,7 +36,6 @@ describe('WorkflowService', () => {
   let workflowRepository: Repository<WorkflowEntity>;
   let workflowLogRepository: Repository<WorkflowLogEntity>;
   let taskService: TaskService;
-  let configService: ConfigService;
 
   const chain = mockChainEntity();
   const event = mockEventEntity(chain.uuid);
@@ -56,7 +54,6 @@ describe('WorkflowService', () => {
     eventId: event.id,
     user,
   };
-  const tasks = [triggerTask, emailTask] as TaskEntity[];
   const expectedWorkflow = {
     id: workflowId,
     name: workflowEntity.name,
