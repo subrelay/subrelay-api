@@ -7,7 +7,8 @@ export function formatValue(type: string, value, decimals) {
 
     return formatBalance(value, {
       decimals,
-      withSi: false,
+      withSi: true,
+      withUnit: false,
       forceUnit: '-',
     }) as unknown as number;
   }
