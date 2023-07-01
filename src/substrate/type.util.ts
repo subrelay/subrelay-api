@@ -10,6 +10,7 @@ export function formatValue(type: string, value, decimals) {
       withSi: true,
       withUnit: false,
       forceUnit: '-',
+      withZero: false,
     }) as unknown as number;
   }
 

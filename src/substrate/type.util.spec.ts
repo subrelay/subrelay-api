@@ -12,7 +12,7 @@ describe('formatValue', () => {
   });
 
   it('should format balance value with given decimals if type includes "balance"', () => {
-    const value = 1000000000;
+    const value = 10000000000;
     const type = 'balanceOf';
     const decimals = 12;
 
