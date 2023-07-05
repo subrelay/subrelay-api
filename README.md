@@ -13,7 +13,7 @@ The guide [here](https://docs.subrelay.com/self-hosted/getting-started#update-en
 
 
 ### Run migration
-Use the following command to run E2E tests:
+Use the following command:
 ```bash
 yarn run typeorm migration:run
 ```
