@@ -9,7 +9,7 @@ import { EventEntity } from '../src/event/event.entity';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from '../src/common/internal-server-error.filter';
 import { ConfigService } from '@nestjs/config';
-import { cliOrmConfig } from './test-ormconfig';
+import { cliOrmConfig } from '../src/config/cli-ormconfig';
 
 describe('Chain', () => {
   let app: INestApplication;

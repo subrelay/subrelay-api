@@ -13,7 +13,7 @@ import {
   mockTelegramUser,
   mockUserEntity,
 } from './mock-data.util';
-import { cliOrmConfig } from './test-ormconfig';
+import { cliOrmConfig } from '../src/config/cli-ormconfig';
 
 describe('User', () => {
   let app: INestApplication;
