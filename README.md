@@ -7,10 +7,23 @@ Following this [instruction](https://docs.subrelay.com/self-hosted/getting-start
 
 # Testing
 
+## E2E test
+### Create .env file and update variables
+The guide [here](https://docs.subrelay.com/self-hosted/getting-started#update-env-file)
+
+
+### Run migration
+Use the following command to run E2E tests:
+```bash
+yarn run typeorm migration:run
+```
+
+### Run test command
 Use the following command to run E2E tests:
 ```bash
 yarn test:e2e
 ```
+## Unit test
 
 Use the following command to run unit tests:
 ```bash

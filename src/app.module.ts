@@ -17,6 +17,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
 import { WorkerModule } from './worker/worker.module';
+import { truncate } from 'lodash';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { WorkerModule } from './worker/worker.module';
         username: configService.get('DB_USERNAME'),
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
-        synchronize: configService.get('NODE_ENV') != 'prod', // TODO Should not automatically synchronize in prod
+        synchronize: true,
         logging: configService.get('NODE_ENV').startsWith('local'),
         autoLoadEntities: true,
       }),

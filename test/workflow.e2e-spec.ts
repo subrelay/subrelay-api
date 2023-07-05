@@ -24,7 +24,7 @@ import { ulid } from 'ulid';
 import { WorkflowModule } from '../src/workflow/workflow.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WorkflowEntity } from '../src/workflow/entity/workflow.entity';
-import { cliOrmConfig } from './test-ormconfig';
+import { cliOrmConfig } from '../src/config/cli-ormconfig';
 
 describe('Task', () => {
   let app: INestApplication;
