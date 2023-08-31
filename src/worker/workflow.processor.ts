@@ -1,4 +1,3 @@
-import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { find, map } from 'lodash';
@@ -7,8 +6,9 @@ import { BaseTask, TaskStatus, TaskType } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ulid } from 'ulid';
 import { ProcessWorkflowInput } from '../workflow/workflow.type';
+import { QueueMessageHandler } from '@subrelay/nestjs-queue';
+import { WORKFLOW_QUEUE } from './queue.constants';
 
-@Processor('workflow')
 export class WorkflowProcessor {
   private readonly logger = new Logger(WorkflowProcessor.name);
   constructor(
@@ -16,7 +16,7 @@ export class WorkflowProcessor {
     private readonly taskService: TaskService,
   ) {}
 
-  @Process({ concurrency: 10 })
+  @QueueMessageHandler(WORKFLOW_QUEUE)
   async processWorkflowJob(job: Job) {
     const input: ProcessWorkflowInput = job.data;
     this.logger.debug(

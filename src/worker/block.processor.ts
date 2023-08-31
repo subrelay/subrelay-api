@@ -1,6 +1,4 @@
-import { InjectQueue, Process, Processor } from '@nestjs/bull';
-import { Logger } from '@nestjs/common';
-import { Job, Queue } from 'bull';
+import { Injectable, Logger } from '@nestjs/common';
 import { find, isEmpty, map, reduce, uniq } from 'lodash';
 import { BlockJobData, EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
@@ -9,27 +7,30 @@ import { WorkflowService } from '../workflow/workflow.service';
 import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
 import { ChainService } from '../chain/chain.service';
+import { BLOCK_QUEUE, WORKFLOW_QUEUE } from './queue.constants';
+import { QueueMessageHandler, QueueService } from '@subrelay/nestjs-queue';
 
-@Processor('block')
+@Injectable()
 export class BlockProcessor {
   private readonly logger = new Logger(BlockProcessor.name);
   constructor(
-    @InjectQueue('workflow') private workflowQueue: Queue,
     private readonly workflowService: WorkflowService,
     private readonly eventService: EventService,
     private readonly userService: UserService,
     private readonly chainService: ChainService,
+    private readonly queueService: QueueService,
   ) {}
 
-  @Process({ concurrency: 10 })
-  async processNewBlock(job: Job) {
-    const data: BlockJobData = job.data;
+  @QueueMessageHandler(BLOCK_QUEUE)
+  async processNewBlock({ id: jobId, body }: any) {
+    this.logger.debug(`Job: ${jobId}, Hash: ${body.hash}`);
+    const [chainId, version, hash] = jobId.split('_');
 
-    const eventNames = uniq(map(data.events, 'name'));
+    const eventNames = uniq(map(body.events, 'name'));
     this.logger.debug(`Events: ${eventNames.join(' | ')}`);
 
     const events = await this.eventService.getEventsByChainIdAndName(
-      data.chainId,
+      chainId,
       eventNames,
     );
 
@@ -52,16 +53,11 @@ export class BlockProcessor {
       map(runningWorkflows, 'userId'),
     );
 
-    const jobOption = {
-      removeOnComplete: true,
-      removeOnFail: true,
-    };
-
-    const chain = await this.chainService.getChainByChainId(data.chainId);
+    const chain = await this.chainService.getChainByChainId(chainId);
 
     const jobs = runningWorkflows.map((workflow) => {
       const blockEvent = find(
-        data.events,
+        body.events,
         (e) => e.name === workflow.event.name,
       );
       const eventInfo = find(events, { id: workflow.event.id });
@@ -81,10 +77,10 @@ export class BlockProcessor {
       );
 
       const eventRawData: EventRawData = {
-        timestamp: data.timestamp,
-        success: data.success,
+        timestamp: body.timestamp,
+        success: body.success,
         block: {
-          hash: data.hash,
+          hash: body.hash,
         },
         data: blockEventData,
       };
@@ -92,15 +88,12 @@ export class BlockProcessor {
       const user = find(users, { id: workflow.userId });
 
       return {
-        data: createProcessWorkflowInput(workflow, eventRawData, user),
-        opts: {
-          ...jobOption,
-          jobId: `${workflow.id}_${data.hash}`,
-        },
+        body: createProcessWorkflowInput(workflow, eventRawData, user),
+        id: `${workflow.id}_${body.hash}`,
       };
     });
 
-    await this.workflowQueue.addBulk(jobs);
+    await this.queueService.send(WORKFLOW_QUEUE, jobs);
     this.logger.debug(
       `Found running workflows, ${JSON.stringify(
         runningWorkflows.map((i) => `${i.id} | ${i.event.name}`),

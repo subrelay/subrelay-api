@@ -12,12 +12,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ChainModule } from './chain/chain.module';
 import { TaskModule } from './task/task.module';
 import { WorkflowModule } from './workflow/workflow.module';
-import { BullModule } from '@nestjs/bull';
 import { APP_FILTER } from '@nestjs/core';
 import { InternalServerExceptionsFilter } from './common/internal-server-error.filter';
 import { AuthMiddleware } from './common/auth.middleware';
 import { WorkerModule } from './worker/worker.module';
-import { truncate } from 'lodash';
 
 @Module({
   imports: [
@@ -37,24 +35,11 @@ import { truncate } from 'lodash';
         autoLoadEntities: true,
       }),
     }),
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get('REDIS_HOST'),
-          port: configService.get('REDIS_PORT'),
-          password: configService.get('REDIS_PASSWORD'),
-        },
-      }),
-    }),
-
     WorkerModule,
     UserModule,
     ChainModule,
     TaskModule,
     WorkflowModule,
-    WorkerModule,
   ],
   controllers: [AppController],
   providers: [
