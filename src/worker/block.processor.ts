@@ -23,7 +23,7 @@ export class BlockProcessor {
 
   @QueueMessageHandler(BLOCK_QUEUE)
   async processNewBlock({ id: jobId, body }: any) {
-    this.logger.debug(`Job: ${jobId}, Hash: ${body.hash}`);
+    this.logger.debug(`[${this.queueService.getConsumerQueueType(BLOCK_QUEUE)}] Job: ${jobId}, Hash: ${body.hash}`);
     const [chainId, version, hash] = jobId.split('_');
 
     const eventNames = uniq(map(body.events, 'name'));
