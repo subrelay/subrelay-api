@@ -76,10 +76,11 @@ jobs:
           script: |
             cd subrelay-backend/subrelay-api
             git checkout feat/using-queue-util
-            docker-compose up -d --build
             git reset --hard
             git pull
+            docker-compose up -d --build
             yarn install
             yarn build
-            pm2 start dist/main.js --name subrelay-api-develop
+            docker ps
+            pm2 reload subrelay-api-develop
 
