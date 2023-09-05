@@ -79,6 +79,7 @@ jobs:
             docker-compose up -d --build
             git reset --hard
             git pull
+            yarn install
             yarn build
             pm2 start dist/main.js --name subrelay-api-develop
 
