@@ -74,10 +74,14 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            docker stop $(docker ps -a -q)
-            docker rm $(docker ps -a -q)
-            npm install -g n
-            n stable
-            npm install pm2 -g
             pm2 kill
+            cd subrelay-backend/subrelay-api
+            git checkout feat/using-queue-util
+            git reset --hard
+            git pull
+            yarn build
+            docker-compose up -d --build
+            chmod a+rx scripts/run-chain-worker.sh
+            ./scripts/run-chain-worker.sh
             pm2 start dist/main.js --name subrelay-api-develop
+

@@ -34,11 +34,11 @@ mkdir $folder
 cd $folder
 
 # Event service
-git clone https://github.com/subrelay/event-service.git
-cd event-service
-git checkout $1
-docker build -t subrelay-event-service .
-
+git clone https://github.com/subrelay/chain-worker.git
+cd chain-worker
+yarn install --production --frozen-lockfile
+yarn global add @nestjs/cli
+yarn run build
 
 # API
 cd ..
