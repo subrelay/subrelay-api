@@ -8,7 +8,11 @@ import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
 import { ChainService } from '../chain/chain.service';
 import { BLOCK_QUEUE, WORKFLOW_QUEUE } from './queue.constants';
-import { QueueMessageHandler, QueueService } from '@subrelay/nestjs-queue';
+import {
+  QueueConsumerEventHandler,
+  QueueMessageHandler,
+  QueueService,
+} from '@subrelay/nestjs-queue';
 
 @Injectable()
 export class BlockProcessor {
@@ -21,9 +25,16 @@ export class BlockProcessor {
     private readonly queueService: QueueService,
   ) {}
 
-  @QueueMessageHandler(BLOCK_QUEUE)
+  @QueueMessageHandler('block')
   async processNewBlock({ id: jobId, body }: any) {
-    this.logger.debug(`[${this.queueService.getConsumerQueueType(BLOCK_QUEUE)}] Job: ${jobId}, Hash: ${body.hash}`);
+    console.log({ id: jobId, body });
+
+    this.logger.debug(
+      `[${this.queueService.getConsumerQueueType(
+        BLOCK_QUEUE,
+      )}] Job: ${jobId}, Hash: ${body.hash}`,
+    );
+
     const [chainId, version, hash] = jobId.split('_');
 
     const eventNames = uniq(map(body.events, 'name'));

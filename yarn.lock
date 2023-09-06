@@ -2145,10 +2145,10 @@
   resolved "https://registry.npmjs.org/@sqltools/formatter/-/formatter-1.2.5.tgz"
   integrity sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw==
 
-"@subrelay/nestjs-queue@1.1.1":
-  version "1.1.1"
-  resolved "https://registry.npmjs.org/@subrelay/nestjs-queue/-/nestjs-queue-1.1.1.tgz"
-  integrity sha512-4Sd8exNXIUZZWL+8IclUveZbc4QC6fdwSozqSAqAVKca3Xy30UxU1rxJbwfYCBTluQDVhJkDEjOI1OI92LZSKw==
+"@subrelay/nestjs-queue@1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@subrelay/nestjs-queue/-/nestjs-queue-1.1.2.tgz#b08b00c56d58af29b92c55efabbc2e39bbfef8dc"
+  integrity sha512-v4COo6opFpNeHR9BKLb0UZh8Na2Lb8nvPCsDgjB9L2OaBSh4L0lVwS2r9JYD1bQQ11MuT/8NioFm1o8jOobzxQ==
   dependencies:
     "@golevelup/nestjs-discovery" "^4.0.0"
     bullmq "^4.8.0"

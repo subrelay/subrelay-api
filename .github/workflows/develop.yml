@@ -78,9 +78,10 @@ jobs:
             git checkout feat/using-queue-util
             git reset --hard
             git pull
+            docker-compose down
+            docker volume rm subrelay-api_redis_data
+            docker pull ghcr.io/subrelay/chain-worker/develop:latest
             docker-compose up -d --build
             yarn install
             yarn build
-            docker ps
             pm2 reload subrelay-api-develop
-
