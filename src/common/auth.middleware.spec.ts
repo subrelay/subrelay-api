@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserService } from '../user/user.service';
 import * as Auth from './auth';
 import { mockUserEntity } from '../../test/mock-data.util';
+import { ConfigService } from '@nestjs/config';
 
 jest.mock('./auth', () => {
   return {
@@ -16,6 +17,7 @@ jest.mock('./auth', () => {
 describe('AuthMiddleware', () => {
   let authMiddleware: AuthMiddleware;
   let userService: UserService;
+  let configService: ConfigService;
 
   const user = mockUserEntity();
   const authInfo = {
@@ -30,7 +32,11 @@ describe('AuthMiddleware', () => {
       createUser: jest.fn(),
     } as any;
 
-    authMiddleware = new AuthMiddleware(userService);
+    configService = {
+      get: jest.fn(),
+    } as any;
+
+    authMiddleware = new AuthMiddleware(userService, configService);
   });
 
   describe('use', () => {
