@@ -25,7 +25,7 @@ export class BlockProcessor {
     private readonly queueService: QueueService,
   ) {}
 
-  @QueueMessageHandler('block')
+  @QueueMessageHandler(BLOCK_QUEUE)
   async processNewBlock({ id: jobId, body }: any) {
     this.logger.debug(
       `[${this.queueService.getConsumerQueueType(
@@ -103,6 +103,7 @@ export class BlockProcessor {
     });
 
     await this.queueService.send(WORKFLOW_QUEUE, jobs);
+
     this.logger.debug(
       `Found running workflows, ${JSON.stringify(
         runningWorkflows.map((i) => `${i.id} | ${i.event.name}`),
