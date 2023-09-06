@@ -1,5 +1,4 @@
-import { Process, Processor } from '@nestjs/bull';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { find, map } from 'lodash';
 import { TaskService } from '../task/task.service';
@@ -7,20 +6,32 @@ import { BaseTask, TaskStatus, TaskType } from '../task/type/task.type';
 import { WorkflowService } from '../workflow/workflow.service';
 import { ulid } from 'ulid';
 import { ProcessWorkflowInput } from '../workflow/workflow.type';
+import { QueueMessageHandler, QueueService } from '@subrelay/nestjs-queue';
+import { WORKFLOW_QUEUE } from './queue.constants';
 
-@Processor('workflow')
+@Injectable()
 export class WorkflowProcessor {
   private readonly logger = new Logger(WorkflowProcessor.name);
   constructor(
     private readonly workflowService: WorkflowService,
     private readonly taskService: TaskService,
+    private readonly queueService: QueueService,
   ) {}
 
-  @Process({ concurrency: 10 })
-  async processWorkflowJob(job: Job) {
-    const input: ProcessWorkflowInput = job.data;
+  @QueueMessageHandler(WORKFLOW_QUEUE)
+  async processWorkflowJob({
+    id: jobId,
+    body: input,
+  }: {
+    id: string;
+    body: ProcessWorkflowInput;
+  }) {
     this.logger.debug(
-      `Process event "${input.event.name}" for workflow version ${input.workflow.id}`,
+      `[${this.queueService
+        .getConsumerQueueType(WORKFLOW_QUEUE)
+        .toUpperCase()}] Process event "${input.event.name}" for workflow version ${
+        input.workflow.id
+      }`,
     );
     const tasks = await this.taskService.getTasks(input.workflow.id, false);
 
