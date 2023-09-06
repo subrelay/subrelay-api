@@ -27,16 +27,14 @@ export class BlockProcessor {
 
   @QueueMessageHandler(BLOCK_QUEUE)
   async processNewBlock({ id: jobId, body }: any) {
+    const [chainId, version, hash] = jobId.split('_');
+    const eventNames = uniq(map(body.events, 'name'));
+
     this.logger.debug(
       `[${this.queueService.getConsumerQueueType(
         BLOCK_QUEUE,
-      )}] Process job: ${jobId}`,
+      ).toUpperCase()}] Chain: ${chainId.toUpperCase()}, Events: ${eventNames.join(' | ')}`,
     );
-
-    const [chainId, version, hash] = jobId.split('_');
-
-    const eventNames = uniq(map(body.events, 'name'));
-    this.logger.debug(`Chain: ${chainId}, Events: ${eventNames.join(' | ')}`);
 
     const events = await this.eventService.getEventsByChainIdAndName(
       chainId,
@@ -44,7 +42,6 @@ export class BlockProcessor {
     );
 
     if (isEmpty(events)) {
-      this.logger.debug(`Not found events: ${eventNames.join(', ')}`);
       return;
     }
 
@@ -54,7 +51,6 @@ export class BlockProcessor {
       );
 
     if (isEmpty(runningWorkflows)) {
-      this.logger.debug(`Not found running workflows match with events`);
       return true;
     }
 

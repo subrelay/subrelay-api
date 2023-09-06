@@ -18,8 +18,13 @@ export class WorkflowProcessor {
   ) {}
 
   @QueueMessageHandler(WORKFLOW_QUEUE)
-  async processWorkflowJob(job: Job) {
-    const input: ProcessWorkflowInput = job.data;
+  async processWorkflowJob({
+    id: jobId,
+    body: input,
+  }: {
+    id: string;
+    body: ProcessWorkflowInput;
+  }) {
     this.logger.debug(
       `[${this.queueService.getConsumerQueueType(
         WORKFLOW_QUEUE,
