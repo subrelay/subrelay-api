@@ -66,6 +66,7 @@ jobs:
 
   deploy-develop:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
     steps:
       - name: SSH and deploy node app
         uses: appleboy/ssh-action@master
@@ -75,7 +76,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd subrelay-backend/subrelay-api
-            git checkout feat/using-queue-util
+            git checkout develop
             git reset --hard
             git pull
             yarn install
