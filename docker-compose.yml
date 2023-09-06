@@ -30,6 +30,49 @@ services:
     env_file:
       - .env
 
+  polkadot:
+    image: ghcr.io/subrelay/chain-worker/develop:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      QUEUE_NAME: "block"
+      CHAIN_RPC: "wss://rpc.polkadot.io"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: "redis"
+      QUEUE_URL: ${QUEUE_URL}
+    env_file:
+      - .env
+
+  kusama:
+    image: ghcr.io/subrelay/chain-worker/develop:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      QUEUE_NAME: "block"
+      CHAIN_RPC: "wss://kusama-rpc.polkadot.io"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: "redis"
+    env_file:
+      - .env
+
+  westend:
+    image: ghcr.io/subrelay/chain-worker/develop:latest
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      QUEUE_NAME: "block"
+      CHAIN_RPC: "wss://westend-rpc.polkadot.io"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: "redis"
+    env_file:
+      - .env
+
 volumes:
   pgdata:
   redis_data:
