@@ -27,18 +27,16 @@ export class BlockProcessor {
 
   @QueueMessageHandler('block')
   async processNewBlock({ id: jobId, body }: any) {
-    console.log({ id: jobId, body });
-
     this.logger.debug(
       `[${this.queueService.getConsumerQueueType(
         BLOCK_QUEUE,
-      )}] Job: ${jobId}, Hash: ${body.hash}`,
+      )}] Process job: ${jobId}`,
     );
 
     const [chainId, version, hash] = jobId.split('_');
 
     const eventNames = uniq(map(body.events, 'name'));
-    this.logger.debug(`Events: ${eventNames.join(' | ')}`);
+    this.logger.debug(`Chain: ${chainId}, Events: ${eventNames.join(' | ')}`);
 
     const events = await this.eventService.getEventsByChainIdAndName(
       chainId,
