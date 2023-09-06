@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { find, map } from 'lodash';
 import { TaskService } from '../task/task.service';
@@ -9,6 +9,7 @@ import { ProcessWorkflowInput } from '../workflow/workflow.type';
 import { QueueMessageHandler, QueueService } from '@subrelay/nestjs-queue';
 import { WORKFLOW_QUEUE } from './queue.constants';
 
+@Injectable()
 export class WorkflowProcessor {
   private readonly logger = new Logger(WorkflowProcessor.name);
   constructor(
@@ -26,9 +27,9 @@ export class WorkflowProcessor {
     body: ProcessWorkflowInput;
   }) {
     this.logger.debug(
-      `[${this.queueService.getConsumerQueueType(
-        WORKFLOW_QUEUE,
-      )}] Process event "${input.event.name}" for workflow version ${
+      `[${this.queueService
+        .getConsumerQueueType(WORKFLOW_QUEUE)
+        .toUpperCase()}] Process event "${input.event.name}" for workflow version ${
         input.workflow.id
       }`,
     );

@@ -6,9 +6,9 @@ import { ChainModule } from '../chain/chain.module';
 import { BlockProcessor } from './block.processor';
 import { WorkflowProcessor } from './workflow.processor';
 import { UserModule } from '../user/user.module';
-import { WorkerController } from './worker.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { QueueModule } from '@subrelay/nestjs-queue';
+import { WORKFLOW_QUEUE, BLOCK_QUEUE } from './queue.constants';
 
 @Global()
 @Module({
@@ -32,17 +32,17 @@ import { QueueModule } from '@subrelay/nestjs-queue';
         return {
           consumers: [
             {
-              name: 'block',
+              name: BLOCK_QUEUE,
               ...options,
             },
             {
-              name: 'workflow',
+              name: WORKFLOW_QUEUE,
               ...options,
             },
           ],
           producers: [
             {
-              name: 'workflow',
+              name: WORKFLOW_QUEUE,
               ...options,
             },
           ],
@@ -50,7 +50,6 @@ import { QueueModule } from '@subrelay/nestjs-queue';
       },
     }),
   ],
-  controllers: [WorkerController],
   providers: [BlockProcessor, WorkflowProcessor],
 })
 export class WorkerModule {}

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { find, isEmpty, map, reduce, uniq } from 'lodash';
-import { BlockJobData, EventRawData } from '../common/queue.type';
+import { EventRawData } from '../common/queue.type';
 import { EventService } from '../event/event.service';
 import { formatValue } from '../substrate/type.util';
 import { WorkflowService } from '../workflow/workflow.service';
@@ -8,11 +8,7 @@ import { createProcessWorkflowInput } from '../workflow/workflow.type';
 import { UserService } from '../user/user.service';
 import { ChainService } from '../chain/chain.service';
 import { BLOCK_QUEUE, WORKFLOW_QUEUE } from './queue.constants';
-import {
-  QueueConsumerEventHandler,
-  QueueMessageHandler,
-  QueueService,
-} from '@subrelay/nestjs-queue';
+import { QueueMessageHandler, QueueService } from '@subrelay/nestjs-queue';
 
 @Injectable()
 export class BlockProcessor {
@@ -31,9 +27,11 @@ export class BlockProcessor {
     const eventNames = uniq(map(body.events, 'name'));
 
     this.logger.debug(
-      `[${this.queueService.getConsumerQueueType(
-        BLOCK_QUEUE,
-      ).toUpperCase()}] Chain: ${chainId.toUpperCase()}, Events: ${eventNames.join(' | ')}`,
+      `[${this.queueService
+        .getConsumerQueueType(BLOCK_QUEUE)
+        .toUpperCase()}] Chain: ${chainId.toUpperCase()}, Events: ${eventNames.join(
+        ' | ',
+      )}`,
     );
 
     const events = await this.eventService.getEventsByChainIdAndName(
@@ -98,7 +96,8 @@ export class BlockProcessor {
       };
     });
 
-    await this.queueService.send(WORKFLOW_QUEUE, jobs);
+    const rs = await this.queueService.send(WORKFLOW_QUEUE, jobs);
+    console.log(rs);
 
     this.logger.debug(
       `Found running workflows, ${JSON.stringify(

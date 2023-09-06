@@ -8,14 +8,21 @@ import {
   tokenExpired,
   verifyUserSignature,
 } from './auth';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
     const authInfo = getAuthInfo(req);
-    // this.authorize(authInfo, req);
+
+    if (this.configService.get('NODE_ENV') !== 'local') {
+      this.authorize(authInfo, req);
+    }
 
     const user =
       (await this.userService.getUserSummary(authInfo.address)) ||
